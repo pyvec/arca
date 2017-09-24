@@ -102,3 +102,7 @@ ENV/
 
 # Editors
 .idea/
+
+# data
+venv_backend
+arca/venv_backend

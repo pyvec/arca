@@ -24,6 +24,9 @@ setup(
     url="https://github.com/mikicz/arca",
     packages=find_packages(),
     long_description=read("README.rst"),
+    install_requires=[
+        "gitpython",
+    ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",  # TODO: update when ready
         "Intended Audience :: Developers",
@@ -37,5 +40,7 @@ setup(
         "Topic :: Utilities",
         "Topic :: Software Development :: Build Tools",
         "Topic :: Software Development :: Version Control :: Git"
-    ]
+    ],
+    setup_requires=["pytest-runner"],
+    tests_require=["pytest", "pytest-flake8"],
 )
