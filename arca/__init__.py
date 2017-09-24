@@ -1,5 +1,3 @@
-# encoding=utf-8
-
 from ._arca import Arca
 from .backend import BaseBackend, VenvBackend
 from .result import Result

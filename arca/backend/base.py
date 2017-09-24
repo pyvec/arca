@@ -1,4 +1,3 @@
-# encoding=utf-8
 import re
 
 from arca.task import Task

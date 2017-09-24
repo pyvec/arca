@@ -1,4 +1,3 @@
-# encoding=utf-8
 import hashlib
 import json
 import os
@@ -124,7 +123,7 @@ class VenvBackend(BaseBackend):
             process = subprocess.Popen([str(script_path)],
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            [out_stream, err_stream] = process.communicate()
+            out_stream, _ = process.communicate()
 
             return Result(json.loads(out_stream))
         except:
