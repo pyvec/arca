@@ -5,11 +5,17 @@ from arca.result import Result
 
 
 def test_success():
-    res = Result({"success": True, "text": "Message"})
+    res = Result({"success": True, "result": "Message"})
     assert res.success
-    assert res.text == "Message"
+    assert res.result == "Message"
     with pytest.raises(AttributeError):
         res.error
+
+    res2 = Result({"success": True, "result": 1})
+    assert res2.success
+    assert res2.result == 1
+    with pytest.raises(AttributeError):
+        res2.error
 
 
 def test_error():
@@ -17,4 +23,4 @@ def test_error():
     assert not res.success
     assert res.error == "Error"
     with pytest.raises(AttributeError):
-        res.text
+        res.result

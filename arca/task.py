@@ -10,16 +10,16 @@ class Task:
                  args: Optional[Iterable[Any]]=None,
                  kwargs: Optional[Dict[str, Any]]=None):
         self.function_call = function_call
-        self.imports = list(imports or []) + ["traceback", "json"]
+        self.imports = list(imports or [])
         self.from_imports = list(from_imports or [])
         self.args = list(args or [])
         self.kwargs = dict(kwargs or {})
 
     def build_imports(self):
-        return "\n".join([f"import {x}" for x in self.imports])
+        return "\n".join([f"    import {x}" for x in self.imports])
 
     def build_from_imports(self):
-        return "\n".join([f"from {x[0]} import {x[1]}" for x in self.from_imports])
+        return "\n".join([f"    from {x[0]} import {x[1]}" for x in self.from_imports])
 
     def build_function_call(self):
         if len(self.args) and len(self.kwargs):
@@ -45,11 +45,14 @@ class Task:
         result = ""
 
         result += "#!" + str(venv_path.resolve() / "bin" / "python3") + "\n\n"
+        result += "import json\n"
+        result += "import traceback\n"
+        result += "try:\n"
 
         result += self.build_imports() + "\n\n"
         result += self.build_from_imports() + "\n\n"
 
-        result += f"""try:
+        result += f"""
     res = {self.build_function_call()}
     print(json.dumps({{"success": True, "result": res}}))
 except:

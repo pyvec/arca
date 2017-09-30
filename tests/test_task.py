@@ -16,16 +16,16 @@ def _clean_lines(x: str) -> str:
     ([], ""),
     (set(), ""),
     (["single_import"], "import single_import"),
-    (["more_imports", "more_imports.second"], "import more_imports\nimport more_imports.second\n"),
+    (["more_imports", "more_imports.second"], "import more_imports\n    import more_imports.second\n"),
     ({"import_from_set"}, "import import_from_set"),
 ))
 def test_imports(imports, res):
     task = Task("func", imports=imports)
     assert _clean_lines(task.build_script(env_path)) == _clean_lines("""#!/usr/bin/python3
-{}
-import traceback
 import json
+import traceback
 try:
+    {}
     res = func()
     print(json.dumps({{"success": True, "result": res}}))
 except:
@@ -39,15 +39,15 @@ except:
     (set(), ""),
     ([("single_import", "Things")], "from single_import import Things"),
     ([("more_imports", "Thing"), ("multiple_imports", "SecondThing")],
-     "from more_imports import Thing\nfrom multiple_imports import SecondThing\n")
+     "from more_imports import Thing\n    from multiple_imports import SecondThing\n")
 ))
 def test_from_imports(from_imports, res):
     task = Task("func", from_imports=from_imports)
     assert _clean_lines(task.build_script(env_path)) == _clean_lines("""#!/usr/bin/python3
-import traceback
 import json
-{}
+import traceback
 try:
+    {}
     res = func()
     print(json.dumps({{"success": True, "result": res}}))
 except:
@@ -66,8 +66,8 @@ except:
 def test_function_call(args, kwargs, res):
     task = Task("func", args=args, kwargs=kwargs)
     assert _clean_lines(task.build_script(env_path)) == _clean_lines("""#!/usr/bin/python3
-import traceback
 import json
+import traceback
 try:
     res = {}
     print(json.dumps({{"success": True, "result": res}}))

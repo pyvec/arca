@@ -1,11 +1,11 @@
-from typing import Dict, Union
+from typing import Dict, Union, Any
 
 
 class Result:
 
-    def __init__(self, result: Dict[str, Union[bool, str]]):
+    def __init__(self, result: Dict[str, Union[bool, Any]]):
         self.success = result.get("success")
-        self._text = result.get("text")
+        self._result = result.get("result")
         self._error = result.get("error")
 
     @property
@@ -16,8 +16,8 @@ class Result:
         return self._error
 
     @property
-    def text(self) -> str:
+    def result(self) -> Any:
         if not self.success:
-            raise AttributeError("The task did not succeed, there's not text")
+            raise AttributeError("The task did not succeed, there's not result")
 
-        return self._text
+        return self._result
