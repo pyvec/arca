@@ -2,7 +2,6 @@ from __future__ import unicode_literals, print_function
 
 from typing import Union
 
-
 from .backend import BaseBackend, VenvBackend
 from .result import Result
 from .task import Task

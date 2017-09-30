@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 from arca.task import Task
 
@@ -10,15 +11,24 @@ class BaseBackend:
         self.requirements_location = requirements_location
 
     def validate_repo_url(self, repo: str):
-        if not repo.startswith("http") or not repo.endswith(".git"):  # TODO: probably a regex would be better
+        # that should match valid git repos
+        if not isinstance(repo, str) or not re.match(r"^(https?|file):\/\/[\w._\-\/~]*[\.git]?\/?$", repo):
             # TODO: probably a custom exception would be better
-            raise ValueError(f"{repo} is not a valid http[s] git repo")
+            raise ValueError(f"{repo} is not a valid http[s] or file:// git repo")
 
     def repo_id(self, repo: str) -> str:
-        parts = re.sub(r".git$", "", repo).split("/")
-        if len(parts) > 2:
-            return "_".join(parts[-2:])
-        return parts[-1]
+        if repo.startswith("http"):
+            repo = re.sub(r"https?://(.www)?", "", repo)
+            repo = re.sub(r"\.git/?$", "", repo)
+
+            return "_".join(repo.split("/"))
+        else:
+            repo = repo.replace("file://", "")
+            repo = re.sub(r"\.git/?$", "", repo)
+            if repo.startswith("~"):
+                repo = str(Path(repo).resolve())
+
+            return "_".join(repo.split("/"))
 
     def create_environment(self, repo: str, branch: str):
         raise NotImplementedError
