@@ -47,6 +47,9 @@ class Task:
         result += "#!" + str(venv_path.resolve() / "bin" / "python3") + "\n\n"
         result += "import json\n"
         result += "import traceback\n"
+        result += "import sys\n"
+        result += "import os\n"
+        result += "sys.path.insert(1, os.getcwd())\n"
         result += "try:\n"
 
         result += self.build_imports() + "\n\n"

@@ -128,7 +128,8 @@ class VenvBackend(BaseBackend):
 
         try:
             process = subprocess.Popen([str(script_path)],
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                       cwd=str(self.get_path_to_environment(repo, branch)))
 
             out_stream, _ = process.communicate()
 

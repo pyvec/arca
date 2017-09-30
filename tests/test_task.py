@@ -24,6 +24,9 @@ def test_imports(imports, res):
     assert _clean_lines(task.build_script(env_path)) == _clean_lines("""#!/usr/bin/python3
 import json
 import traceback
+import sys
+import os
+sys.path.insert(1, os.getcwd())
 try:
     {}
     res = func()
@@ -46,6 +49,9 @@ def test_from_imports(from_imports, res):
     assert _clean_lines(task.build_script(env_path)) == _clean_lines("""#!/usr/bin/python3
 import json
 import traceback
+import sys
+import os
+sys.path.insert(1, os.getcwd())
 try:
     {}
     res = func()
@@ -68,6 +74,9 @@ def test_function_call(args, kwargs, res):
     assert _clean_lines(task.build_script(env_path)) == _clean_lines("""#!/usr/bin/python3
 import json
 import traceback
+import sys
+import os
+sys.path.insert(1, os.getcwd())
 try:
     res = {}
     print(json.dumps({{"success": True, "result": res}}))
