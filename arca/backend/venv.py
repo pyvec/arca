@@ -28,8 +28,12 @@ class VenvBackend(BaseBackend):
         return (self.get_path_to_environment_repo_base(repo) / branch).resolve()
 
     def create_or_update_venv(self, path: Path):
-        requirements_file = path / self.requirements_location
-        requirements_hash = hashlib.md5(bytes(requirements_file.read_text(), "utf-8")).hexdigest()
+        requirements_file = self.get_requirements_file(path)
+        if requirements_file is None:
+            requirements_hash = "no_requirements_file"
+        else:
+            requirements_hash = hashlib.md5(bytes(requirements_file.read_text(), "utf-8")).hexdigest()
+
         venv_path = Path(self.base_dir) / "venvs" / requirements_hash
         if not (Path(self.base_dir) / "venvs" / requirements_hash).exists():
             if self.verbosity:
@@ -37,24 +41,27 @@ class VenvBackend(BaseBackend):
             builder = EnvBuilder(with_pip=True)
             builder.create(venv_path)
 
-            if self.verbosity:
-                print(f"Installing requirements from {requirements_file}")
+            if requirements_file is not None:
+                if self.verbosity:
+                    print(f"Installing requirements from {requirements_file}")
 
-            process = subprocess.Popen([str(venv_path / "bin" / "pip3"), "install", "-r", str(requirements_file)],
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                process = subprocess.Popen([str(venv_path / "bin" / "pip3"), "install", "-r", str(requirements_file)],
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            [out_stream, err_stream] = process.communicate()
+                [out_stream, err_stream] = process.communicate()
 
-            if process.returncode:
+                if process.returncode:
+                    if self.verbosity:
+                        print(out_stream.decode("utf-8"))
+                    print(err_stream.decode("utf-8"))
+                    raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
+
                 if self.verbosity:
                     print(out_stream.decode("utf-8"))
-                print(err_stream.decode("utf-8"))
-                raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
-
-            if self.verbosity:
-                print(out_stream.decode("utf-8"))
-                print(err_stream.decode("utf-8"))
-
+                    print(err_stream.decode("utf-8"))
+            else:
+                if self.verbosity:
+                    print("Requirements file not present in repo, empty venv it is.")
         else:
             if self.verbosity:
                 print(f"Venv already eixsts in {venv_path}")
