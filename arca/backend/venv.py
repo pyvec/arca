@@ -10,6 +10,7 @@ from venv import EnvBuilder
 import subprocess
 from git import Repo
 
+import arca
 from arca.task import Task
 from arca.result import Result
 from .base import BaseBackend
@@ -32,16 +33,28 @@ class VenvBackend(BaseBackend):
         if requirements_file is None:
             requirements_hash = "no_requirements_file"
         else:
-            requirements_hash = hashlib.md5(bytes(requirements_file.read_text(), "utf-8")).hexdigest()
+            requirements_hash = hashlib.md5(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
 
         venv_path = Path(self.base_dir) / "venvs" / requirements_hash
-        if not (Path(self.base_dir) / "venvs" / requirements_hash).exists():
+        if not venv_path.exists():
             if self.verbosity:
                 print(f"Creating a venv in {venv_path}")
             builder = EnvBuilder(with_pip=True)
             builder.create(venv_path)
 
             if requirements_file is not None:
+                if self.verbosity:
+                    print(f"Ensuring pip exists in venv ")
+
+                process = subprocess.Popen([str(venv_path / "bin" / "python3"), "-m", "ensurepip", "--upgrade"],
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                [out_stream, err_stream] = process.communicate()
+
+                if self.verbosity:
+                    print(out_stream.decode("utf-8"))
+                    print(err_stream.decode("utf-8"))
+
                 if self.verbosity:
                     print(f"Installing requirements from {requirements_file}")
 
@@ -54,6 +67,7 @@ class VenvBackend(BaseBackend):
                     if self.verbosity:
                         print(out_stream.decode("utf-8"))
                     print(err_stream.decode("utf-8"))
+                    venv_path.rmdir()
                     raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
 
                 if self.verbosity:

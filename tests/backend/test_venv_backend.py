@@ -113,6 +113,10 @@ def test_venv_backend(requirements_location, file_location):
     repo.index.commit("Added requirements, changed to version")
 
     result = arca.run(f"file://{git_dir}", "master", task)
+    try:
+        print(result.error)
+    except AttributeError:
+        pass
     assert result.success
     assert result.result == "1.11.4"
 
