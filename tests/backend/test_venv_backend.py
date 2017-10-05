@@ -1,5 +1,6 @@
 from pathlib import Path
 from uuid import uuid4
+import os
 
 import pytest
 from git import Repo
@@ -43,7 +44,12 @@ def test_venv_backend(requirements_location, file_location):
     if file_location is not None:
         kwargs["cwd"] = file_location
 
-    backend = VenvBackend(base_dir="/tmp/arca/test", **kwargs)
+    if os.environ.get("TRAVIS", False):
+        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
+    else:
+        base_dir = "/tmp/arca/test"
+
+    backend = VenvBackend(base_dir=base_dir, **kwargs)
 
     arca = Arca(backend=backend)
 
