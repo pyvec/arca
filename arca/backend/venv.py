@@ -73,7 +73,7 @@ class VenvBackend(BaseBackend):
         repo_base = self.get_path_to_environment_repo_base(repo)
         path = self.get_path_to_environment(repo, branch)
 
-        if repo_base.exists():
+        if repo_base.exists() and not repo.startswith("file://"):
             subdirectories = [x for x in repo_base.iterdir() if (x.is_dir() and x.name != branch)]
             if len(subdirectories) > 0:
                 clone_from_local_subdirectory = Repo.init(subdirectories[0])
@@ -86,7 +86,7 @@ class VenvBackend(BaseBackend):
             git_repo.remote().set_url(repo)
             git_repo.remote().pull()
         else:
-            git_repo = Repo.clone_from(repo, path)
+            git_repo = Repo.clone_from(repo, str(path))
 
         git_repo.git.checkout(branch)
 
@@ -129,7 +129,7 @@ class VenvBackend(BaseBackend):
         try:
             process = subprocess.Popen([str(script_path)],
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                       cwd=str(self.get_path_to_environment(repo, branch)))
+                                       cwd=str(self.get_path_to_environment(repo, branch) / self.cwd))
 
             out_stream, _ = process.communicate()
 

@@ -1,3 +1,5 @@
+import re
+
 from pathlib import Path
 from typing import Optional, Tuple, Any, Dict, Iterable
 
@@ -9,6 +11,9 @@ class Task:
                  from_imports: Optional[Iterable[Tuple[str, str]]]=None,
                  args: Optional[Iterable[Any]]=None,
                  kwargs: Optional[Dict[str, Any]]=None):
+        if re.match(r".*\s.*", function_call):
+            raise ValueError("function_call contains a whitespace")  # TODO: custom exception
+
         self.function_call = function_call
         self.imports = list(imports or [])
         self.from_imports = list(from_imports or [])

@@ -83,3 +83,9 @@ try:
 except:
     print(json.dumps({{"success": False, "error": traceback.format_exc()}}))
 """.format(res))
+
+
+@pytest.mark.parametrize("call", [" test", "test ", "te st", "te\tst", "test()\ntest2"])
+def test_invalid_function_call(call):
+    with pytest.raises(ValueError):
+        Task(call)

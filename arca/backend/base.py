@@ -7,9 +7,13 @@ from arca.task import Task
 
 class BaseBackend:
 
-    def __init__(self, *, verbosity=0, requirements_location="requirements.txt"):
+    def __init__(self, *, verbosity=0, requirements_location="requirements.txt", cwd=None):
         self.verbosity = verbosity
         self.requirements_location = requirements_location
+        if cwd is None:
+            self.cwd = ""
+        else:
+            self.cwd = cwd
 
     def validate_repo_url(self, repo: str):
         # that should match valid git repos

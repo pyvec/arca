@@ -25,7 +25,7 @@ setup(
     packages=find_packages(),
     long_description=read("README.rst"),
     install_requires=[
-        "gitpython",
+        "gitpython==2.1.7",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",  # TODO: update when ready
