@@ -80,7 +80,7 @@ class VenvBackend(BaseBackend):
                         print(requirements_file.read_text())
                     print(f"Installing requirements from {requirements_file}")
 
-                pip_install_command = [str(venv_path / "bin" / "python3"), "-m", "pip", "install",
+                pip_install_command = [str(venv_path / "bin" / "python3"), "-c", "'import sys; print(sys.path)'",
                                        "-r", str(requirements_file)]
 
                 if self.verbosity > 1:
