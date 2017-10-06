@@ -5,15 +5,25 @@ import stat
 import traceback
 from pathlib import Path
 from typing import Tuple
-from venv import EnvBuilder
 
 import subprocess
+
+import sys
 from git import Repo
 
 import arca
 from arca.task import Task
 from arca.result import Result
 from .base import BaseBackend
+
+
+def delete_folder(pth):
+    for sub in pth.iterdir():
+        if sub.is_dir():
+            delete_folder(sub)
+        else:
+            sub.unlink()
+    pth.rmdir()
 
 
 class VenvBackend(BaseBackend):
@@ -43,8 +53,24 @@ class VenvBackend(BaseBackend):
         if not venv_path.exists():
             if self.verbosity:
                 print(f"Creating a venv in {venv_path}")
-            builder = EnvBuilder(with_pip=True)
-            builder.create(venv_path)
+
+            venv_command = [sys.executable, "-m", "venv", "--copies", str(venv_path)]
+
+            if self.verbosity > 1:
+                print(" ".join(venv_command))
+
+            process = subprocess.Popen(venv_command,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            [out_stream, err_stream] = process.communicate()
+
+            if self.verbosity:
+                print(f"Return code is {process.returncode}")
+                print(out_stream.decode("utf-8"))
+                print(err_stream.decode("utf-8"))
+
+            if process.returncode:
+                raise ValueError("Couldn't create vevn")
 
             if requirements_file is not None:
 
@@ -54,17 +80,8 @@ class VenvBackend(BaseBackend):
                         print(requirements_file.read_text())
                     print(f"Installing requirements from {requirements_file}")
 
-                old_userbase = os.environ.get("PYTHONUSERBASE", None)
-
-                os.environ["PYTHONUSERBASE"] = str(venv_path)
-
-                pip_install_command = [str(venv_path / "bin" / "python3"), "-m", "pip", "install", "-vv", "--user",
+                pip_install_command = [str(venv_path / "bin" / "python3"), "-m", "pip", "install",
                                        "-r", str(requirements_file)]
-
-                if old_userbase is None:
-                    del os.environ["PYTHONUSERBASE"]
-                else:
-                    os.environ["PYTHONUSERBASE"] = old_userbase
 
                 if self.verbosity > 1:
                     print(" ".join(pip_install_command))
@@ -80,7 +97,7 @@ class VenvBackend(BaseBackend):
                     print(err_stream.decode("utf-8"))
 
                 if process.returncode:
-                    venv_path.rmdir()
+                    delete_folder(venv_path)
                     raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
 
                 if self.verbosity:
