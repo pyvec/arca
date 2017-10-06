@@ -49,7 +49,7 @@ def test_venv_backend(requirements_location, file_location):
     else:
         base_dir = "/tmp/arca/test"
 
-    backend = VenvBackend(base_dir=base_dir, **kwargs)
+    backend = VenvBackend(base_dir=base_dir, verbosity=2, **kwargs)
 
     arca = Arca(backend=backend)
 
@@ -119,6 +119,10 @@ def test_venv_backend(requirements_location, file_location):
         pass
     assert result.success
     assert result.result == "1.11.4"
+
+    # with pytest.raises(ModuleNotFoundError):
+    #     import django
+    #     print(django.__version__)
 
     with requirements_path.open("w") as fl:
         fl.write("django==1.11.5")

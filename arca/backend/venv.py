@@ -33,7 +33,11 @@ class VenvBackend(BaseBackend):
         if requirements_file is None:
             requirements_hash = "no_requirements_file"
         else:
-            requirements_hash = hashlib.md5(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
+            requirements_hash = hashlib.sha1(bytes(requirements_file.read_text() + arca.__version__,
+                                                  "utf-8")).hexdigest()
+
+            if self.verbosity > 1:
+                print("Hashing: " + requirements_file.read_text() + arca.__version__)
 
         venv_path = Path(self.base_dir) / "venvs" / requirements_hash
         if not venv_path.exists():
@@ -43,30 +47,25 @@ class VenvBackend(BaseBackend):
             builder.create(venv_path)
 
             if requirements_file is not None:
-                if self.verbosity:
-                    print(f"Ensuring pip exists in venv ")
 
-                process = subprocess.Popen([str(venv_path / "bin" / "python3"), "-m", "ensurepip", "--upgrade"],
+                if self.verbosity:
+                    if self.verbosity > 1:
+                        print("Requirements file:")
+                        print(requirements_file.read_text())
+                    print(f"Installing requirements from {requirements_file}")
+
+                process = subprocess.Popen([str(venv_path / "bin" / "python3"), "-m", "pip", "install", "-r",
+                                            str(requirements_file)],
                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 [out_stream, err_stream] = process.communicate()
 
                 if self.verbosity:
+                    print(f"Return code is {process.returncode}")
                     print(out_stream.decode("utf-8"))
                     print(err_stream.decode("utf-8"))
 
-                if self.verbosity:
-                    print(f"Installing requirements from {requirements_file}")
-
-                process = subprocess.Popen([str(venv_path / "bin" / "pip3"), "install", "-r", str(requirements_file)],
-                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-                [out_stream, err_stream] = process.communicate()
-
                 if process.returncode:
-                    if self.verbosity:
-                        print(out_stream.decode("utf-8"))
-                    print(err_stream.decode("utf-8"))
                     venv_path.rmdir()
                     raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
 
@@ -141,7 +140,7 @@ class VenvBackend(BaseBackend):
         script_path.chmod(st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
         try:
-            process = subprocess.Popen([str(script_path)],
+            process = subprocess.Popen([str(venv_path / "bin" / "python3"), str(script_path)],
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        cwd=str(self.get_path_to_environment(repo, branch) / self.cwd))
 
