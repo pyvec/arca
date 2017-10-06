@@ -61,7 +61,10 @@ class VenvBackend(BaseBackend):
                 pip_install_command = [str(venv_path / "bin" / "python3"), "-m", "pip", "install", "-vv", "--user",
                                        "-r", str(requirements_file)]
 
-                os.environ["PYTHONUSERBASE"] = old_userbase
+                if old_userbase is None:
+                    del os.environ
+                else:
+                    os.environ["PYTHONUSERBASE"] = old_userbase
 
                 if self.verbosity > 1:
                     print(" ".join(pip_install_command))
