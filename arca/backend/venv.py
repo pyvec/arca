@@ -62,7 +62,7 @@ class VenvBackend(BaseBackend):
                                        "-r", str(requirements_file)]
 
                 if old_userbase is None:
-                    del os.environ
+                    del os.environ["PYTHONUSERBASE"]
                 else:
                     os.environ["PYTHONUSERBASE"] = old_userbase
 
