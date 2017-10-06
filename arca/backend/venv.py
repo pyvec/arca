@@ -80,7 +80,7 @@ class VenvBackend(BaseBackend):
                         print(requirements_file.read_text())
                     print(f"Installing requirements from {requirements_file}")
 
-                pip_install_command = [str(venv_path / "bin" / "python3"), "-c", "'import sys; print(sys.path)'"]
+                pip_install_command = [str(venv_path / "bin" / "python3"), "-c", "\"import sys;print(sys.path)\""]
 
                 if self.verbosity > 1:
                     print(" ".join(pip_install_command))
@@ -99,9 +99,6 @@ class VenvBackend(BaseBackend):
                     delete_folder(venv_path)
                     raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
 
-                if self.verbosity:
-                    print(out_stream.decode("utf-8"))
-                    print(err_stream.decode("utf-8"))
             else:
                 if self.verbosity:
                     print("Requirements file not present in repo, empty venv it is.")

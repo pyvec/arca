@@ -30,9 +30,9 @@ def return_str_function():
     ["requirements_location", "file_location"],
     [
         (None, None),
-        ("requirements/requirements.txt", None),
-        (None, "test_package"),
-        ("requirements/requirements.txt", "test_package"),
+        # ("requirements/requirements.txt", None),
+        # (None, "test_package"),
+        # ("requirements/requirements.txt", "test_package"),
     ]
 )
 def test_venv_backend(requirements_location, file_location):
