@@ -34,7 +34,7 @@ class VenvBackend(BaseBackend):
             requirements_hash = "no_requirements_file"
         else:
             requirements_hash = hashlib.sha1(bytes(requirements_file.read_text() + arca.__version__,
-                                                  "utf-8")).hexdigest()
+                                                   "utf-8")).hexdigest()
 
             if self.verbosity > 1:
                 print("Hashing: " + requirements_file.read_text() + arca.__version__)
@@ -54,8 +54,13 @@ class VenvBackend(BaseBackend):
                         print(requirements_file.read_text())
                     print(f"Installing requirements from {requirements_file}")
 
-                process = subprocess.Popen([str(venv_path / "bin" / "python3"), "-m", "pip", "install", "-r",
-                                            str(requirements_file)],
+                pip_install_command = [str(venv_path / "bin" / "python3"), "-m", "pip", "install", "-r",
+                                       str(requirements_file)]
+
+                if self.verbosity > 1:
+                    print(" ".join(pip_install_command))
+
+                process = subprocess.Popen(pip_install_command,
                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 [out_stream, err_stream] = process.communicate()
