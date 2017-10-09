@@ -114,6 +114,21 @@ class VenvBackend(BaseBackend):
                     print(out_stream.decode("utf-8"))
                     print(err_stream.decode("utf-8"))
 
+                find_command = ["find", "~/virtualenv/"]
+
+                if self.verbosity > 1:
+                    print(" ".join(find_command))
+
+                process = subprocess.Popen(find_command,
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                [out_stream, err_stream] = process.communicate()
+
+                if self.verbosity:
+                    print(f"Return code is {process.returncode}")
+                    print(out_stream.decode("utf-8"))
+                    print(err_stream.decode("utf-8"))
+
             else:
                 if self.verbosity:
                     print("Requirements file not present in repo, empty venv it is.")
