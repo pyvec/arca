@@ -4,7 +4,7 @@ python:
 install:
 - python setup.py install
 script:
-- "python setup.py test |: "
+- "python setup.py test ||: "
 - "/home/travis/build/mikicz/arca/test_loc/venvs/c9be4c8c0b9851b19df984c022f885b602eb5e5e/bin/python -m site"
 notifications:
   email: false
