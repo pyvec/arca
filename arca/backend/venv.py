@@ -54,7 +54,7 @@ class VenvBackend(BaseBackend):
             if self.verbosity:
                 print(f"Creating a venv in {venv_path}")
 
-            venv_command = [sys.executable, "-m", "venv",  str(venv_path)]
+            venv_command = [sys.executable, "-m", "venv", "--copies", "--clear", str(venv_path)]
 
             if self.verbosity > 1:
                 print(" ".join(venv_command))
