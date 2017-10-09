@@ -5,6 +5,7 @@ class Result:
 
     def __init__(self, result: Dict[str, Union[bool, Any]]):
         self.success = result.get("success")
+        self.path = result.get("task")
         self._result = result.get("result")
         self._error = result.get("error")
 

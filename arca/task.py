@@ -62,9 +62,9 @@ class Task:
 
         result += f"""
     res = {self.build_function_call()}
-    print(json.dumps({{"success": True, "result": res}}))
+    print(json.dumps({{"success": True, "result": res, "path": sys.path}}))
 except:
-    print(json.dumps({{"success": False, "error": traceback.format_exc()}}))
+    print(json.dumps({{"success": False, "error": traceback.format_exc(), "path": sys.path}}))
 """
 
         return result

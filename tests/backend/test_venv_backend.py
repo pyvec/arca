@@ -72,9 +72,13 @@ def test_venv_backend(requirements_location, file_location):
     )
 
     result = arca.run(f"file://{git_dir}", "master", task)
-
+    try:
+        print(result.error)
+    except AttributeError:
+        pass
     assert result.success
     assert result.result == "Some string"
+    print(result.path)
 
     with filepath.open("w") as fl:
         fl.write(SECOND_RETURN_STR_FUNCTION)
@@ -85,13 +89,23 @@ def test_venv_backend(requirements_location, file_location):
     repo.index.commit("Updated function")
 
     result = arca.run(f"file://{git_dir}", "master", task)
+    try:
+        print(result.error)
+    except AttributeError:
+        pass
     assert result.success
     assert result.result == "Some other string"
+    print(result.path)
 
     # in the other branch there's still the original
     result = arca.run(f"file://{git_dir}", "new_branch", task)
+    try:
+        print(result.error)
+    except AttributeError:
+        pass
     assert result.success
     assert result.result == "Some string"
+    print(result.path)
 
     repo.branches.master.checkout()
 
