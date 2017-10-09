@@ -54,12 +54,7 @@ class VenvBackend(BaseBackend):
             if self.verbosity:
                 print(f"Creating a venv in {venv_path}")
 
-            if os.environ.get("TRAVIS"):
-                executable = "/opt/python/3.6.3/lib/python3.6"
-            else:
-                executable = sys.executable
-
-            venv_command = [executable, "-m", "venv", "--copies", "--clear", str(venv_path)]
+            venv_command = [sys.executable, "-m", "venv", "--copies", "--clear", str(venv_path)]
 
             if self.verbosity > 1:
                 print(" ".join(venv_command))
@@ -85,7 +80,7 @@ class VenvBackend(BaseBackend):
                         print(requirements_file.read_text())
                     print(f"Installing requirements from {requirements_file}")
 
-                pip_install_command = [str(venv_path / "bin" / "python3"), "-m", "site"]
+                pip_install_command = [str(venv_path / "bin" / "python"), "-m", "site"]
 
                 if self.verbosity > 1:
                     print(" ".join(pip_install_command))
@@ -119,7 +114,7 @@ class VenvBackend(BaseBackend):
                     print(out_stream.decode("utf-8"))
                     print(err_stream.decode("utf-8"))
 
-                find_command = ["cat", str(venv_path / "pyvenv.cfg")]
+                find_command = [str(venv_path / "bin" / "python"), "-c", "'import os;print(os.environ.get(\"PYTHONPATH\"))'"]
 
                 if self.verbosity > 1:
                     print(" ".join(find_command))
