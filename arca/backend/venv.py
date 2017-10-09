@@ -114,12 +114,27 @@ class VenvBackend(BaseBackend):
                     print(out_stream.decode("utf-8"))
                     print(err_stream.decode("utf-8"))
 
-                find_command = ["cat", str(venv_path / "pyvenv.cfg")]
+                find_command = ["rm", str(venv_path / "pyvenv.cfg")]
 
                 if self.verbosity > 1:
                     print(" ".join(find_command))
 
                 process = subprocess.Popen(find_command,
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                [out_stream, err_stream] = process.communicate()
+
+                if self.verbosity:
+                    print(f"Return code is {process.returncode}")
+                    print(out_stream.decode("utf-8"))
+                    print(err_stream.decode("utf-8"))
+
+                pip_install_command = [str(venv_path / "bin" / "python3"), "-m", "site"]
+
+                if self.verbosity > 1:
+                    print(" ".join(pip_install_command))
+
+                process = subprocess.Popen(pip_install_command,
                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 [out_stream, err_stream] = process.communicate()
