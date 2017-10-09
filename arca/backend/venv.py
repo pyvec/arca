@@ -114,7 +114,7 @@ class VenvBackend(BaseBackend):
                     print(out_stream.decode("utf-8"))
                     print(err_stream.decode("utf-8"))
 
-                find_command = ["find", "~/virtualenv/"]
+                find_command = ["find", "/home/travis/virtualenv/"]
 
                 if self.verbosity > 1:
                     print(" ".join(find_command))
