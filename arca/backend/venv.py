@@ -87,6 +87,9 @@ class VenvBackend(BaseBackend):
         # repo_base = self.get_path_to_environment_repo_base(repo)
         path = self.get_path_to_environment(repo, branch)
 
+        if self.verbosity:
+            logging.error(f"Cloning to {path}")
+
         # if repo_base.exists() and not repo.startswith("file://"):
         #     subdirectories = [x for x in repo_base.iterdir() if (x.is_dir() and x.name != branch)]
         #     if len(subdirectories) > 0:
@@ -94,7 +97,7 @@ class VenvBackend(BaseBackend):
         #
         # if clone_from_local_subdirectory is not None:
         #     if self.verbosity:
-        #         logging.info(f"Cloning from a local subdirectory {clone_from_local_subdirectory}")
+        #         logging.error(f"Cloning from a local subdirectory {clone_from_local_subdirectory}")
         #
         #     git_repo = clone_from_local_subdirectory.clone(str(path))
         #     git_repo.remote().set_url(repo)
@@ -110,6 +113,9 @@ class VenvBackend(BaseBackend):
 
     def update_environment(self, repo: str, branch: str) -> Tuple[Repo, Path]:
         path = self.get_path_to_environment(repo, branch)
+
+        if self.verbosity:
+            logging.error(f"Updating repo at {path}")
         git_repo = Repo.init(path)
         git_repo.remote().pull()
 
@@ -140,15 +146,18 @@ class VenvBackend(BaseBackend):
         st = os.stat(str(script_path))
         script_path.chmod(st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-        out_stream = ""
+        out_stream = b""
+        err_stream = b""
 
         try:
-            process = subprocess.Popen([str(venv_path.resolve() / "bin" / "python"), str(script_path)],
+            process = subprocess.Popen([str(venv_path.resolve() / "bin" / "python"), str(script_path.resolve())],
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        cwd=str(self.get_path_to_environment(repo, branch) / self.cwd))
 
-            out_stream, _ = process.communicate()
+            out_stream, err_stream = process.communicate()
 
-            return Result(json.loads(str(out_stream)))
+            return Result(json.loads(out_stream.decode("utf-8")))
         except:
-            return Result({"success": False, "error": traceback.format_exc() + "\n\n" + str(out_stream)})
+            return Result({"success": False, "error": traceback.format_exc() + "\n" +
+                                                      out_stream.decode("utf-8") + "\n\n" +
+                                                      err_stream.decode("utf-8")})
