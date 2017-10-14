@@ -103,7 +103,6 @@ class VenvBackend(BaseBackend):
             git_repo = Repo.clone_from(repo, str(path), branch=branch)
 
         git_repo.git.checkout(branch)
-        git_repo.remote().pull()
 
         venv_path = self.create_or_update_venv(path)
 
