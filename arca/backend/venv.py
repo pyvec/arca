@@ -34,7 +34,7 @@ class VenvBackend(BaseBackend):
             requirements_hash = "no_requirements_file"
         else:
             requirements_hash = hashlib.sha1(bytes(requirements_file.read_text() + arca.__version__,
-                                                  "utf-8")).hexdigest()
+                                                   "utf-8")).hexdigest()
 
             if self.verbosity > 1:
                 print("Hashing: " + requirements_file.read_text() + arca.__version__)

@@ -120,9 +120,9 @@ def test_venv_backend(requirements_location, file_location):
     assert result.success
     assert result.result == "1.11.4"
 
-    # with pytest.raises(ModuleNotFoundError):
-    #     import django
-    #     print(django.__version__)
+    with pytest.raises(ModuleNotFoundError):
+        import django
+        print(django.__version__)
 
     with requirements_path.open("w") as fl:
         fl.write("django==1.11.5")
