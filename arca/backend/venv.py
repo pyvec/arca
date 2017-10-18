@@ -27,7 +27,7 @@ class VenvBackend(BaseBackend):
         return Path(self.base_dir) / self.repo_id(repo)
 
     def get_path_to_environment(self, repo: str, branch: str) -> Path:
-        return (self.get_path_to_environment_repo_base(repo) / branch).resolve()
+        return self.get_path_to_environment_repo_base(repo).resolve() / branch
 
     def create_or_update_venv(self, path: Path):
         requirements_file = self.get_requirements_file(path)
@@ -83,29 +83,15 @@ class VenvBackend(BaseBackend):
         return venv_path
 
     def create_environment(self, repo: str, branch: str) -> Tuple[Repo, Path]:
-        # clone_from_local_subdirectory: Repo = None
-        # repo_base = self.get_path_to_environment_repo_base(repo)
         path = self.get_path_to_environment(repo, branch)
+
+        path.parent.mkdir(exist_ok=True, parents=True)
 
         if self.verbosity:
             logging.error(f"Cloning to {path}")
 
-        # if repo_base.exists() and not repo.startswith("file://"):
-        #     subdirectories = [x for x in repo_base.iterdir() if (x.is_dir() and x.name != branch)]
-        #     if len(subdirectories) > 0:
-        #         clone_from_local_subdirectory = Repo.init(subdirectories[0])
-        #
-        # if clone_from_local_subdirectory is not None:
-        #     if self.verbosity:
-        #         logging.error(f"Cloning from a local subdirectory {clone_from_local_subdirectory}")
-        #
-        #     git_repo = clone_from_local_subdirectory.clone(str(path))
-        #     git_repo.remote().set_url(repo)
-        #     git_repo.remote().pull()
-        # else:
-        git_repo = Repo.clone_from(repo, str(path), branch=branch)
-
-        git_repo.git.checkout(branch)
+        # we need the specific branch and we don't actually need history -- speeds things up massively
+        git_repo = Repo.clone_from(repo, str(path), branch=branch, depth=1)
 
         venv_path = self.create_or_update_venv(path)
 
@@ -116,6 +102,7 @@ class VenvBackend(BaseBackend):
 
         if self.verbosity:
             logging.error(f"Updating repo at {path}")
+
         git_repo = Repo.init(path)
         git_repo.remote().pull()
 
@@ -158,6 +145,6 @@ class VenvBackend(BaseBackend):
 
             return Result(json.loads(out_stream.decode("utf-8")))
         except:
-            return Result({"success": False, "error": traceback.format_exc() + "\n" +
-                                                      out_stream.decode("utf-8") + "\n\n" +
-                                                      err_stream.decode("utf-8")})
+            return Result({"success": False, "error": (traceback.format_exc() + "\n" +
+                                                       out_stream.decode("utf-8") + "\n\n" +
+                                                       err_stream.decode("utf-8"))})
