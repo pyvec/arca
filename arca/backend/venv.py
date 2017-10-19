@@ -5,7 +5,7 @@ import os
 import stat
 import traceback
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Union
 from venv import EnvBuilder
 
 import subprocess
@@ -82,7 +82,7 @@ class VenvBackend(BaseBackend):
 
         return venv_path
 
-    def create_environment(self, repo: str, branch: str) -> Tuple[Repo, Path]:
+    def create_environment(self, repo: str, branch: str, files_only: bool=False) -> Union[Tuple[Repo, Path], Repo]:
         path = self.get_path_to_environment(repo, branch)
 
         path.parent.mkdir(exist_ok=True, parents=True)
@@ -93,11 +93,14 @@ class VenvBackend(BaseBackend):
         # we need the specific branch and we don't actually need history -- speeds things up massively
         git_repo = Repo.clone_from(repo, str(path), branch=branch, depth=1)
 
+        if files_only:
+            return git_repo
+
         venv_path = self.create_or_update_venv(path)
 
         return git_repo, venv_path
 
-    def update_environment(self, repo: str, branch: str) -> Tuple[Repo, Path]:
+    def update_environment(self, repo: str, branch: str, files_only: bool=False) -> Union[Tuple[Repo, Path], Repo]:
         path = self.get_path_to_environment(repo, branch)
 
         if self.verbosity:
@@ -105,6 +108,9 @@ class VenvBackend(BaseBackend):
 
         git_repo = Repo.init(path)
         git_repo.remote().pull()
+
+        if files_only:
+            return git_repo
 
         venv_path = self.create_or_update_venv(path)
 
@@ -136,10 +142,15 @@ class VenvBackend(BaseBackend):
         out_stream = b""
         err_stream = b""
 
+        cwd = str(self.get_path_to_environment(repo, branch) / self.cwd)
+
+        if self.verbosity:
+            logging.info("Running at cwd %s", cwd)
+
         try:
             process = subprocess.Popen([str(venv_path.resolve() / "bin" / "python"), str(script_path.resolve())],
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                       cwd=str(self.get_path_to_environment(repo, branch) / self.cwd))
+                                       cwd=cwd)
 
             out_stream, err_stream = process.communicate()
 
@@ -148,3 +159,19 @@ class VenvBackend(BaseBackend):
             return Result({"success": False, "error": (traceback.format_exc() + "\n" +
                                                        out_stream.decode("utf-8") + "\n\n" +
                                                        err_stream.decode("utf-8"))})
+
+    def static_filename(self, repo: str, branch: str, relative_path: Path):
+        self.validate_repo_url(repo)
+
+        if self.environment_exists(repo, branch):
+            self.update_environment(repo, branch, files_only=True)
+        else:
+            self.update_environment(repo, branch, files_only=True)
+
+        path = self.get_path_to_environment(repo, branch)
+
+        result = path / relative_path
+
+        logging.info("Static path for %s is %s", relative_path, result)
+
+        return result

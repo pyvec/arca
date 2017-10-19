@@ -1,5 +1,6 @@
 from __future__ import unicode_literals, print_function
 
+from pathlib import Path
 from typing import Union
 
 from .backend import BaseBackend, VenvBackend
@@ -30,3 +31,8 @@ class Arca:
 
     def run(self, repo: str, branch: str, task: Task) -> Result:
         return self.backend.run(repo, branch, task)
+
+    def static_filename(self, repo: str, branch: str, relative_path: Union[str, Path]) -> Path:
+        if not isinstance(relative_path, Path):
+            relative_path = Path(relative_path)
+        return self.backend.static_filename(repo, branch, relative_path)

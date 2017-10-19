@@ -42,14 +42,17 @@ class BaseBackend:
             return None
         return requirements_file
 
-    def create_environment(self, repo: str, branch: str):
+    def create_environment(self, repo: str, branch: str, files_only: bool= False):
         raise NotImplementedError
 
-    def update_environment(self, repo: str, branch: str):
+    def update_environment(self, repo: str, branch: str, files_only: bool= False):
         raise NotImplementedError
 
     def environment_exists(self, repo: str, branch: str):
         raise NotImplementedError
 
     def run(self, repo: str, branch: str, task: Task):
+        raise NotImplementedError
+
+    def static_filename(self, repo: str, branch: str, relative_path: Path):
         raise NotImplementedError
