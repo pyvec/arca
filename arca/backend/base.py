@@ -3,17 +3,39 @@ from pathlib import Path
 from typing import Optional
 
 from arca.task import Task
+from arca.utils import NOT_SET
 
 
 class BaseBackend:
 
-    def __init__(self, *, verbosity=0, requirements_location="requirements.txt", cwd=None):
+    def __init__(self, *, verbosity=NOT_SET, requirements_location=NOT_SET, cwd=NOT_SET):
+        self._arca = None
         self.verbosity = verbosity
         self.requirements_location = requirements_location
-        if cwd is None:
-            self.cwd = ""
-        else:
-            self.cwd = cwd
+        self.cwd = cwd
+
+    def inject_arca(self, arca):
+        self._arca = arca
+
+        self.verbosity = self.get_setting("verbosity", 0) \
+            if self.verbosity is NOT_SET else self.verbosity
+
+        self.requirements_location = self.get_setting("requirements_location", "requirements.txt") \
+            if self.requirements_location is NOT_SET else self.requirements_location
+
+        self.cwd = self.get_setting("cwd", "") \
+            if self.cwd is NOT_SET else self.cwd
+
+    def get_backend_name(self):
+        # CamelCase -> camel_case
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', self.__class__.__name__)
+        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+    def get_settings_keys(self, key):
+        return f"{self.get_backend_name()}_{key}", f"backend_{key}"
+
+    def get_setting(self, key, default=NOT_SET):
+        return self._arca.settings.get(*self.get_settings_keys(key), default=default)
 
     def validate_repo_url(self, repo: str):
         # that should match valid git repos

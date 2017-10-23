@@ -14,14 +14,19 @@ from git import Repo
 import arca
 from arca.task import Task
 from arca.result import Result
+from arca.utils import NOT_SET
 from .base import BaseBackend
 
 
 class VenvBackend(BaseBackend):
 
-    def __init__(self, *, base_dir="venv_backend", **kwargs):
+    def __init__(self, *, base_dir=NOT_SET, **kwargs):
         super().__init__(**kwargs)
         self.base_dir = base_dir
+
+    def inject_arca(self, arca):
+        super(VenvBackend, self).inject_arca(arca)
+        self.base_dir = self.get_setting("base_dir", "venv_backend") if self.base_dir is NOT_SET else self.base_dir
 
     def get_path_to_environment_repo_base(self, repo: str) -> Path:
         return Path(self.base_dir) / self.repo_id(repo)
