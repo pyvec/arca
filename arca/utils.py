@@ -15,6 +15,22 @@ def load_class(location: str) -> type:
         raise ValueError(f"{module_name} does not have a {class_name} class")  # TODO: custom exception?
 
 
+class LazySettingProperty:
+    def __init__(self, *, key, default=NOT_SET):
+        self.key = key
+        self.default = default
+
+    def __set_name__(self, cls, name):
+        self.name = name
+
+    def __get__(self, instance, cls):
+        if instance is None or instance._arca is None:
+            return self
+        result = instance.get_setting(self.key, self.default)
+        setattr(instance, self.name, result)
+        return result
+
+
 class Settings:
 
     PREFIX = "ARCA"
@@ -28,7 +44,6 @@ class Settings:
 
         for option in options:
             key = f"{self.PREFIX}_{option.upper()}"
-            print(options, key)
             if key in self:
                 return self[key]
 

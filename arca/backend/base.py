@@ -3,28 +3,23 @@ from pathlib import Path
 from typing import Optional
 
 from arca.task import Task
-from arca.utils import NOT_SET
+from arca.utils import NOT_SET, LazySettingProperty
 
 
 class BaseBackend:
 
-    def __init__(self, *, verbosity=NOT_SET, requirements_location=NOT_SET, cwd=NOT_SET):
+    verbosity: int = LazySettingProperty(key="verbosity", default=0)
+    requirements_location: str = LazySettingProperty(key="requirements_location", default="requirements.txt")
+    cwd: str = LazySettingProperty(key="cwd", default="")
+
+    def __init__(self, **settings):
         self._arca = None
-        self.verbosity = verbosity
-        self.requirements_location = requirements_location
-        self.cwd = cwd
+        for key, val in settings.items():
+            if hasattr(self, key) and isinstance(getattr(self, key), LazySettingProperty) and val is not NOT_SET:
+                setattr(self, key, val)
 
     def inject_arca(self, arca):
         self._arca = arca
-
-        self.verbosity = self.get_setting("verbosity", 0) \
-            if self.verbosity is NOT_SET else self.verbosity
-
-        self.requirements_location = self.get_setting("requirements_location", "requirements.txt") \
-            if self.requirements_location is NOT_SET else self.requirements_location
-
-        self.cwd = self.get_setting("cwd", "") \
-            if self.cwd is NOT_SET else self.cwd
 
     def get_backend_name(self):
         # CamelCase -> camel_case
@@ -64,17 +59,17 @@ class BaseBackend:
             return None
         return requirements_file
 
-    def create_environment(self, repo: str, branch: str, files_only: bool= False):
+    def create_environment(self, repo: str, branch: str, files_only: bool=False):  # pragma: no cover
         raise NotImplementedError
 
-    def update_environment(self, repo: str, branch: str, files_only: bool= False):
+    def update_environment(self, repo: str, branch: str, files_only: bool=False):  # pragma: no cover
         raise NotImplementedError
 
-    def environment_exists(self, repo: str, branch: str):
+    def environment_exists(self, repo: str, branch: str):  # pragma: no cover
         raise NotImplementedError
 
-    def run(self, repo: str, branch: str, task: Task):
+    def run(self, repo: str, branch: str, task: Task):  # pragma: no cover
         raise NotImplementedError
 
-    def static_filename(self, repo: str, branch: str, relative_path: Path):
+    def static_filename(self, repo: str, branch: str, relative_path: Path):  # pragma: no cover
         raise NotImplementedError

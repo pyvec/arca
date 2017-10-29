@@ -42,5 +42,5 @@ setup(
         "Topic :: Software Development :: Version Control :: Git"
     ],
     setup_requires=["pytest-runner"],
-    tests_require=["pytest", "pytest-flake8"],
+    tests_require=["pytest", "pytest-flake8", "pytest-cov"],
 )

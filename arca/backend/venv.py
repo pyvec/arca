@@ -14,19 +14,13 @@ from git import Repo
 import arca
 from arca.task import Task
 from arca.result import Result
-from arca.utils import NOT_SET
+from arca.utils import LazySettingProperty
 from .base import BaseBackend
 
 
 class VenvBackend(BaseBackend):
 
-    def __init__(self, *, base_dir=NOT_SET, **kwargs):
-        super().__init__(**kwargs)
-        self.base_dir = base_dir
-
-    def inject_arca(self, arca):
-        super(VenvBackend, self).inject_arca(arca)
-        self.base_dir = self.get_setting("base_dir", "venv_backend") if self.base_dir is NOT_SET else self.base_dir
+    base_dir: str = LazySettingProperty(key="base_dir", default="venv_backend")
 
     def get_path_to_environment_repo_base(self, repo: str) -> Path:
         return Path(self.base_dir) / self.repo_id(repo)
@@ -71,7 +65,7 @@ class VenvBackend(BaseBackend):
                     logging.info(out_stream.decode("utf-8"))
                     logging.info(err_stream.decode("utf-8"))
 
-                if process.returncode:
+                if process.returncode:  # pragma: no cover
                     venv_path.rmdir()
                     raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
 
@@ -160,7 +154,7 @@ class VenvBackend(BaseBackend):
             out_stream, err_stream = process.communicate()
 
             return Result(json.loads(out_stream.decode("utf-8")))
-        except:
+        except:  # pragma: no cover
             return Result({"success": False, "error": (traceback.format_exc() + "\n" +
                                                        out_stream.decode("utf-8") + "\n\n" +
                                                        err_stream.decode("utf-8"))})
@@ -171,7 +165,7 @@ class VenvBackend(BaseBackend):
         if self.environment_exists(repo, branch):
             self.update_environment(repo, branch, files_only=True)
         else:
-            self.update_environment(repo, branch, files_only=True)
+            self.create_environment(repo, branch, files_only=True)
 
         path = self.get_path_to_environment(repo, branch)
 

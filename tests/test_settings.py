@@ -15,6 +15,9 @@ def test_settings():
     assert settings.get("test_one", "test_two") == 1
     assert settings.get("test_two", "test_one") == 2
 
+    with pytest.raises(Exception):
+        settings.get()
+
     with pytest.raises(KeyError):
         settings.get("test_non")
 

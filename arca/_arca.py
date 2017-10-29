@@ -8,20 +8,23 @@ import os
 from .backend import BaseBackend, VenvBackend
 from .result import Result
 from .task import Task
-from .utils import load_class, Settings
+from .utils import load_class, Settings, NOT_SET
 
 BackendDefinitionType = Union[type, BaseBackend, str]
 
 
 class Arca:
 
-    def __init__(self, backend: BackendDefinitionType=VenvBackend, settings=None):
+    def __init__(self, backend: BackendDefinitionType=NOT_SET, settings=None):
         self.settings: Settings = self._get_settings(settings)
 
         self.backend: BaseBackend = self._get_backend_instance(backend)
         self.backend.inject_arca(self)
 
     def _get_backend_instance(self, backend: BackendDefinitionType) -> BaseBackend:
+        if backend is NOT_SET:
+            backend = self.get_setting("backend", "arca.backend.VenvBackend")
+
         if isinstance(backend, str):
             backend = load_class(backend)
 
@@ -40,9 +43,13 @@ class Arca:
             settings = Settings()
 
         for key, val in os.environ.items():
-            settings[key] = val
+            if key.startswith(Settings.PREFIX):
+                settings[key] = val
 
         return settings
+
+    def get_setting(self, key, default=NOT_SET):
+        return self.settings.get(key, default=default)
 
     def run(self, repo: str, branch: str, task: Task) -> Result:
         return self.backend.run(repo, branch, task)
