@@ -15,4 +15,6 @@ before_script:
   - chmod +x ./cc-test-reporter
   - ./cc-test-reporter before-build
 after_script:
-  - ./cc-test-reporter after-build -t coverage.py -p arca
+  - cp coverage.xml arca
+  - cd arca
+  - ./cc-test-reporter after-build -t coverage.py
