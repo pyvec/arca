@@ -12,6 +12,7 @@ from git import Repo
 from arca import Arca, VenvBackend, Task
 
 
+@pytest.mark.skipif(bool(os.environ.get("TRAVIS", False)), reason="Venv backend doesn't work on Travis")
 @pytest.mark.parametrize(["cache_backend", "arguments"], [
     ("dogpile.cache.dbm", lambda base_dir: {
         "filename": str(base_dir / "cachefile.dbm")

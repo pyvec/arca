@@ -26,6 +26,7 @@ def return_str_function():
 """
 
 
+@pytest.mark.skipif(bool(os.environ.get("TRAVIS", False)), reason="Venv backend doesn't work on Travis")
 @pytest.mark.parametrize(
     ["requirements_location", "file_location"],
     [
