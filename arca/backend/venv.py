@@ -152,7 +152,7 @@ class VenvBackend(BaseBackend):
             out_stream, err_stream = process.communicate()
 
             return Result(json.loads(out_stream.decode("utf-8")))
-        except:  # noqa: E722
+        except Exception:
             return Result({"success": False, "error": (traceback.format_exc() + "\n" +
                                                        out_stream.decode("utf-8") + "\n\n" +
                                                        err_stream.decode("utf-8"))})

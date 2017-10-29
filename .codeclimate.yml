@@ -1,6 +1,6 @@
 engines:
-  pep8:
-    enable: true
+  fixme:
+    enabled: true
   radon:
     enabled: true
   duplication:
