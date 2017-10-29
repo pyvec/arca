@@ -17,4 +17,4 @@ before_script:
 after_script:
   - cp coverage.xml arca
   - cd arca
-  - ./cc-test-reporter after-build -t coverage.py
+  - ../cc-test-reporter after-build -t coverage.py
