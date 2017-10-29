@@ -65,7 +65,7 @@ class VenvBackend(BaseBackend):
                     logging.info(out_stream.decode("utf-8"))
                     logging.info(err_stream.decode("utf-8"))
 
-                if process.returncode:  # pragma: no cover
+                if process.returncode:
                     venv_path.rmdir()
                     raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
 
@@ -118,9 +118,7 @@ class VenvBackend(BaseBackend):
     def environment_exists(self, repo: str, branch: str):
         return self.get_path_to_environment(repo, branch).is_dir()
 
-    def run(self, repo: str, branch: str, task: Task) -> Result:
-        self.validate_repo_url(repo)
-
+    def _run(self, repo: str, branch: str, task: Task) -> Result:
         if self.environment_exists(repo, branch):
             git_repo, venv_path = self.update_environment(repo, branch)
         else:
@@ -154,12 +152,20 @@ class VenvBackend(BaseBackend):
             out_stream, err_stream = process.communicate()
 
             return Result(json.loads(out_stream.decode("utf-8")))
-        except:  # pragma: no cover
+        except:
             return Result({"success": False, "error": (traceback.format_exc() + "\n" +
                                                        out_stream.decode("utf-8") + "\n\n" +
                                                        err_stream.decode("utf-8"))})
 
-    def static_filename(self, repo: str, branch: str, relative_path: Path):
+    def current_git_hash(self, repo: str, branch: str) -> str:
+        if self.environment_exists(repo, branch):
+            git_repo = self.update_environment(repo, branch, files_only=True)
+        else:
+            git_repo = self.create_environment(repo, branch, files_only=True)
+
+        return git_repo.head.object.hexsha
+
+    def _static_filename(self, repo: str, branch: str, relative_path: Path):
         self.validate_repo_url(repo)
 
         if self.environment_exists(repo, branch):

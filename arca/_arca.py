@@ -1,9 +1,11 @@
 from __future__ import unicode_literals, print_function
 
+import json
+import os
 from pathlib import Path
 from typing import Union, Optional, Dict, Any
 
-import os
+from dogpile.cache import make_region, CacheRegion
 
 from .backend import BaseBackend, VenvBackend
 from .result import Result
@@ -17,6 +19,8 @@ class Arca:
 
     def __init__(self, backend: BackendDefinitionType=NOT_SET, settings=None):
         self.settings: Settings = self._get_settings(settings)
+
+        self.region: CacheRegion = self._make_region()
 
         self.backend: BaseBackend = self._get_backend_instance(backend)
         self.backend.inject_arca(self)
@@ -47,6 +51,18 @@ class Arca:
                 settings[key] = val
 
         return settings
+
+    def _make_region(self) -> CacheRegion:
+        arguments = self.get_setting("cache_backend_arguments", None)
+
+        if isinstance(arguments, str):
+            arguments = json.loads(arguments)
+
+        return make_region().configure(
+            self.get_setting("cache_backend", "dogpile.cache.null"),
+            expiration_time=self.get_setting("cache_expiration_time", None),
+            arguments=arguments
+        )
 
     def get_setting(self, key, default=NOT_SET):
         return self.settings.get(key, default=default)

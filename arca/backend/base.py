@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from arca.result import Result
 from arca.task import Task
 from arca.utils import NOT_SET, LazySettingProperty
 
@@ -13,7 +14,9 @@ class BaseBackend:
     cwd: str = LazySettingProperty(key="cwd", default="")
 
     def __init__(self, **settings):
-        self._arca = None
+        from .._arca import Arca  # noqa
+
+        self._arca: Arca = None
         for key, val in settings.items():
             if hasattr(self, key) and isinstance(getattr(self, key), LazySettingProperty) and val is not NOT_SET:
                 setattr(self, key, val)
@@ -59,6 +62,32 @@ class BaseBackend:
             return None
         return requirements_file
 
+    def cache_key(self, repo: str, branch: str, task: Task) -> str:
+        return "{repo}_{branch}_{hash}_{task}".format(repo=self.repo_id(repo), branch=branch,
+                                                      hash=self.current_git_hash(repo, branch),
+                                                      task=task.serialize())
+
+    def run(self, repo: str, branch: str, task: Task) -> Result:
+        self.validate_repo_url(repo)
+
+        def create_value():
+            return self._run(repo, branch, task)
+
+        def should_cache(value: Result):
+            return value.success
+
+        return self._arca.region.get_or_create(
+            self.cache_key(repo, branch, task),
+            create_value,
+            should_cache_fn=should_cache
+        )
+
+    def _run(self, repo: str, branch: str, task: Task) -> Result:  # pragma: no cover
+        raise NotImplementedError
+
+    def current_git_hash(self, repo: str, branch: str) -> str:  # pragma: no cover
+        raise NotImplementedError
+
     def create_environment(self, repo: str, branch: str, files_only: bool=False):  # pragma: no cover
         raise NotImplementedError
 
@@ -68,8 +97,9 @@ class BaseBackend:
     def environment_exists(self, repo: str, branch: str):  # pragma: no cover
         raise NotImplementedError
 
-    def run(self, repo: str, branch: str, task: Task):  # pragma: no cover
-        raise NotImplementedError
+    def static_filename(self, repo: str, branch: str, relative_path: Path) -> Path:
+        self.validate_repo_url(repo)
+        return self._static_filename(repo, branch, relative_path)
 
-    def static_filename(self, repo: str, branch: str, relative_path: Path):  # pragma: no cover
+    def _static_filename(self, repo: str, branch: str, relative_path: Path) -> Path:  # pragma: no cover
         raise NotImplementedError

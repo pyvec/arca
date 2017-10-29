@@ -26,6 +26,7 @@ setup(
     long_description=read("README.rst"),
     install_requires=[
         "gitpython==2.1.7",
+        "dogpile.cache==0.6.4",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",  # TODO: update when ready

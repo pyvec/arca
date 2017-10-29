@@ -1,3 +1,5 @@
+import hashlib
+import json
 import re
 
 from pathlib import Path
@@ -68,3 +70,12 @@ except:
 """
 
         return result
+
+    def serialize(self):
+        return hashlib.md5(bytes(json.dumps({
+            "function_call": self.function_call,
+            "imports": self.imports,
+            "from_imports": self.from_imports,
+            "args": self.args,
+            "kwargs": self.kwargs,
+        }), "utf-8")).hexdigest()
