@@ -1,0 +1,18 @@
+engines:
+  pep8:
+    enable: true
+  radon:
+    enabled: true
+    config:
+      python_version: 3
+  duplication:
+    enabled: true
+    config:
+      languages:
+        python:
+          python_version: 3
+
+ratings:
+  paths:
+  - arca/**
+  - "**.py"
