@@ -106,3 +106,4 @@ ENV/
 # data
 venv_backend
 arca/venv_backend
+coverage.xml

@@ -1,3 +1,6 @@
+env:
+  global:
+    - CC_TEST_REPORTER_ID=787a2f89b15c637323c7340d65ec17e898ac44480706b4b4122ea040c2a88f1d
 language: python
 python:
 - '3.6'
@@ -7,3 +10,11 @@ script:
 - python setup.py test
 notifications:
   email: false
+before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+after_script:
+  - cp coverage.xml arca
+  - cd arca
+  - ../cc-test-reporter after-build -t coverage.py

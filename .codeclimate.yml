@@ -1,0 +1,16 @@
+engines:
+  fixme:
+    enabled: true
+  radon:
+    enabled: true
+  duplication:
+    enabled: true
+    config:
+      languages:
+        python:
+          python_version: 3
+
+ratings:
+  paths:
+  - arca/**
+  - "**.py"
