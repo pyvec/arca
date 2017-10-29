@@ -1,5 +1,3 @@
-from __future__ import unicode_literals, print_function
-
 import json
 import os
 from pathlib import Path
@@ -35,7 +33,7 @@ class Arca:
         if isinstance(backend, type):
             backend = backend()
 
-        if not issubclass(backend.__class__, VenvBackend):
+        if not issubclass(backend.__class__, BaseBackend):
             raise ValueError(f"{backend.__class__} is not an subclass of BaseBackend")
 
         return backend
