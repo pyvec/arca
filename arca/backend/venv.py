@@ -14,16 +14,13 @@ from git import Repo
 import arca
 from arca.task import Task
 from arca.result import Result
-from arca.utils import LazySettingProperty
 from .base import BaseBackend
 
 
 class VenvBackend(BaseBackend):
 
-    base_dir: str = LazySettingProperty(key="base_dir", default="venv_backend")
-
     def get_path_to_environment_repo_base(self, repo: str) -> Path:
-        return Path(self.base_dir) / self.repo_id(repo)
+        return Path(self.base_dir) / self._arca.repo_id(repo)
 
     def get_path_to_environment(self, repo: str, branch: str) -> Path:
         return self.get_path_to_environment_repo_base(repo).resolve() / branch
@@ -166,8 +163,6 @@ class VenvBackend(BaseBackend):
         return git_repo.head.object.hexsha
 
     def _static_filename(self, repo: str, branch: str, relative_path: Path):
-        self.validate_repo_url(repo)
-
         if self.environment_exists(repo, branch):
             self.update_environment(repo, branch, files_only=True)
         else:

@@ -154,7 +154,7 @@ def test_venv_backend(requirements_location, file_location):
 
 @pytest.mark.parametrize(
     "file_location", [
-        # "",
+        "",
         "test_location"
     ]
 )

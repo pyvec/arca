@@ -12,11 +12,10 @@ class BaseBackend:
     verbosity: int = LazySettingProperty(key="verbosity", default=0)
     requirements_location: str = LazySettingProperty(key="requirements_location", default="requirements.txt")
     cwd: str = LazySettingProperty(key="cwd", default="")
+    base_dir: str = LazySettingProperty(key="base_dir", default=".arca")
 
     def __init__(self, **settings):
-        from .._arca import Arca  # noqa
-
-        self._arca: Arca = None
+        self._arca = None
         for key, val in settings.items():
             if hasattr(self, key) and isinstance(getattr(self, key), LazySettingProperty) and val is not NOT_SET:
                 setattr(self, key, val)
@@ -35,26 +34,6 @@ class BaseBackend:
     def get_setting(self, key, default=NOT_SET):
         return self._arca.settings.get(*self.get_settings_keys(key), default=default)
 
-    def validate_repo_url(self, repo: str):
-        # that should match valid git repos
-        if not isinstance(repo, str) or not re.match(r"^(https?|file)://[\w._\-\/~]*[\.git]?\/?$", repo):
-            # TODO: probably a custom exception would be better
-            raise ValueError(f"{repo} is not a valid http[s] or file:// git repo")
-
-    def repo_id(self, repo: str) -> str:
-        if repo.startswith("http"):
-            repo = re.sub(r"https?://(.www)?", "", repo)
-            repo = re.sub(r"\.git/?$", "", repo)
-
-            return "_".join(repo.split("/"))
-        else:
-            repo = repo.replace("file://", "")
-            repo = re.sub(r"\.git/?$", "", repo)
-            if repo.startswith("~"):
-                repo = str(Path(repo).resolve())
-
-            return "_".join(repo.split("/"))
-
     def get_requirements_file(self, path: Path) -> Optional[Path]:
         requirements_file = path / self.requirements_location
 
@@ -62,25 +41,8 @@ class BaseBackend:
             return None
         return requirements_file
 
-    def cache_key(self, repo: str, branch: str, task: Task) -> str:
-        return "{repo}_{branch}_{hash}_{task}".format(repo=self.repo_id(repo), branch=branch,
-                                                      hash=self.current_git_hash(repo, branch),
-                                                      task=task.serialize())
-
     def run(self, repo: str, branch: str, task: Task) -> Result:
-        self.validate_repo_url(repo)
-
-        def create_value():
-            return self._run(repo, branch, task)
-
-        def should_cache(value: Result):
-            return value.success
-
-        return self._arca.region.get_or_create(
-            self.cache_key(repo, branch, task),
-            create_value,
-            should_cache_fn=should_cache
-        )
+        return self._run(repo, branch, task)
 
     def _run(self, repo: str, branch: str, task: Task) -> Result:  # pragma: no cover
         raise NotImplementedError
@@ -98,7 +60,6 @@ class BaseBackend:
         raise NotImplementedError
 
     def static_filename(self, repo: str, branch: str, relative_path: Path) -> Path:
-        self.validate_repo_url(repo)
         return self._static_filename(repo, branch, relative_path)
 
     def _static_filename(self, repo: str, branch: str, relative_path: Path) -> Path:  # pragma: no cover

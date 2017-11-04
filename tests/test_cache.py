@@ -55,14 +55,20 @@ def test_cache(cache_backend, arguments):
         imports=["django"]
     )
 
-    arca.region.delete(arca.backend.cache_key(f"file://{git_dir}", "master", django_task))
+    arca.region.delete(arca.cache_key(f"file://{git_dir}", "master", django_task))
 
     result = arca.run(f"file://{git_dir}", "master", django_task)
+
+    try:
+        print(result.error)
+    except AttributeError:
+        pass
+
     assert result.success
     assert result.result == "1.11.5"
 
     cached_result = arca.region.get(
-        arca.backend.cache_key(f"file://{git_dir}", "master", django_task)
+        arca.cache_key(f"file://{git_dir}", "master", django_task)
     )
 
     assert cached_result is not NO_VALUE
