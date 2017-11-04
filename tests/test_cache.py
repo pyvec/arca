@@ -88,10 +88,10 @@ def test_cache(mocker, cache_backend, arguments):
 
     arca.pull_again(repo, branch)
 
-    mocker.spy(arca.backend, "update_environment")
+    mocker.spy(arca.backend, "get_files")
 
     result = arca.run(repo, branch, django_task)
     assert result.success
     assert result.result == "1.11.5"
 
-    assert arca.backend.update_environment.call_count == 1  # check that the repo was pulled
+    assert arca.backend.get_files.call_count == 1  # check that the repo was pulled

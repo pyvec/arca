@@ -5,7 +5,7 @@ import os
 import stat
 import traceback
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Tuple
 from venv import EnvBuilder
 
 import subprocess
@@ -19,13 +19,7 @@ from .base import BaseBackend
 
 class VenvBackend(BaseBackend):
 
-    def get_path_to_environment_repo_base(self, repo: str) -> Path:
-        return Path(self.base_dir) / self._arca.repo_id(repo)
-
-    def get_path_to_environment(self, repo: str, branch: str) -> Path:
-        return self.get_path_to_environment_repo_base(repo).resolve() / branch
-
-    def create_or_update_venv(self, path: Path):
+    def create_or_get_venv(self, path: Path):
         requirements_file = self.get_requirements_file(path)
         if requirements_file is None:
             requirements_hash = "no_requirements_file"
@@ -78,48 +72,28 @@ class VenvBackend(BaseBackend):
 
         return venv_path
 
-    def create_environment(self, repo: str, branch: str, files_only: bool=False) -> Union[Tuple[Repo, Path], Repo]:
-        path = self.get_path_to_environment(repo, branch)
+    def create_environment(self, repo: str, branch: str) -> Tuple[Repo, Path, Path]:
+        git_repo, repo_path = self.get_files(repo, branch)
 
-        path.parent.mkdir(exist_ok=True, parents=True)
+        venv_path = self.create_or_get_venv(repo_path)
 
-        if self.verbosity:
-            logging.error(f"Cloning to {path}")
+        return git_repo, repo_path, venv_path
 
-        # we need the specific branch and we don't actually need history -- speeds things up massively
-        git_repo = Repo.clone_from(repo, str(path), branch=branch, depth=1)
+    def update_environment(self, repo: str, branch: str) -> Tuple[Repo, Path, Path]:
+        git_repo, repo_path = self.get_files(repo, branch)
 
-        if files_only:
-            return git_repo
+        venv_path = self.create_or_get_venv(repo_path)
 
-        venv_path = self.create_or_update_venv(path)
-
-        return git_repo, venv_path
-
-    def update_environment(self, repo: str, branch: str, files_only: bool=False) -> Union[Tuple[Repo, Path], Repo]:
-        path = self.get_path_to_environment(repo, branch)
-
-        if self.verbosity:
-            logging.error(f"Updating repo at {path}")
-
-        git_repo = Repo.init(path)
-        git_repo.remote().pull()
-
-        if files_only:
-            return git_repo
-
-        venv_path = self.create_or_update_venv(path)
-
-        return git_repo, venv_path
+        return git_repo, repo_path, venv_path
 
     def environment_exists(self, repo: str, branch: str):
-        return self.get_path_to_environment(repo, branch).is_dir()
+        return self.get_path_to_repo(repo, branch).is_dir()
 
-    def _run(self, repo: str, branch: str, task: Task) -> Result:
+    def run(self, repo: str, branch: str, task: Task) -> Result:
         if self.environment_exists(repo, branch):
-            git_repo, venv_path = self.update_environment(repo, branch)
+            git_repo, repo_path, venv_path = self.update_environment(repo, branch)
         else:
-            git_repo, venv_path = self.create_environment(repo, branch)
+            git_repo, repo_path, venv_path = self.create_environment(repo, branch)
 
         script = task.build_script(venv_path)
         script_hash = hashlib.md5(bytes(script, "utf-8")).hexdigest()
@@ -136,7 +110,7 @@ class VenvBackend(BaseBackend):
         out_stream = b""
         err_stream = b""
 
-        cwd = str(self.get_path_to_environment(repo, branch) / self.cwd)
+        cwd = str(repo_path / self.cwd)
 
         if self.verbosity:
             logging.info("Running at cwd %s", cwd)
@@ -153,29 +127,3 @@ class VenvBackend(BaseBackend):
             return Result({"success": False, "error": (traceback.format_exc() + "\n" +
                                                        out_stream.decode("utf-8") + "\n\n" +
                                                        err_stream.decode("utf-8"))})
-
-    def _current_git_hash(self, repo: str, branch: str, no_pull: bool=False) -> str:
-        if self.environment_exists(repo, branch):
-            if no_pull:
-                path = self.get_path_to_environment(repo, branch)
-                git_repo = Repo.init(path)
-            else:
-                git_repo = self.update_environment(repo, branch, files_only=True)
-        else:
-            git_repo = self.create_environment(repo, branch, files_only=True)
-
-        return git_repo.head.object.hexsha
-
-    def _static_filename(self, repo: str, branch: str, relative_path: Path):
-        if self.environment_exists(repo, branch):
-            self.update_environment(repo, branch, files_only=True)
-        else:
-            self.create_environment(repo, branch, files_only=True)
-
-        path = self.get_path_to_environment(repo, branch)
-
-        result = path / relative_path
-
-        logging.info("Static path for %s is %s", relative_path, result)
-
-        return result
