@@ -23,13 +23,13 @@ from arca import Arca, VenvBackend, Task
     ('dogpile.cache.memory', lambda base_dir: None),
     ('dogpile.cache.memory_pickle', lambda base_dir: None),
 ])
-def test_cache(cache_backend, arguments):
+def test_cache(mocker, cache_backend, arguments):
     if os.environ.get("TRAVIS", False):
         base_dir = Path("/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca")))
     else:
         base_dir = Path("/tmp/arca/test")
 
-    backend = VenvBackend(base_dir=base_dir, verbosity=2)
+    backend = VenvBackend(base_dir=base_dir, verbosity=2, single_pull=True)
 
     base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -55,9 +55,13 @@ def test_cache(cache_backend, arguments):
         imports=["django"]
     )
 
-    arca.region.delete(arca.cache_key(f"file://{git_dir}", "master", django_task))
+    arca.region.delete(arca.cache_key(f"file://{git_dir}", "master", django_task))  # delete from previous tests
+    mocker.spy(arca.backend, "run")
 
-    result = arca.run(f"file://{git_dir}", "master", django_task)
+    repo = f"file://{git_dir}"
+    branch = "master"
+
+    result = arca.run(repo, branch, django_task)
 
     try:
         print(result.error)
@@ -67,12 +71,27 @@ def test_cache(cache_backend, arguments):
     assert result.success
     assert result.result == "1.11.5"
 
+    assert arca.backend.run.call_count == 1
+
     cached_result = arca.region.get(
-        arca.cache_key(f"file://{git_dir}", "master", django_task)
+        arca.cache_key(repo, branch, django_task)
     )
 
     assert cached_result is not NO_VALUE
 
-    result = arca.run(f"file://{git_dir}", "master", django_task)
+    result = arca.run(repo, branch, django_task)
     assert result.success
     assert result.result == "1.11.5"
+
+    # check that the result was actually from cache, that run wasn't called again
+    assert arca.backend.run.call_count == 1
+
+    arca.pull_again(repo, branch)
+
+    mocker.spy(arca.backend, "update_environment")
+
+    result = arca.run(repo, branch, django_task)
+    assert result.success
+    assert result.result == "1.11.5"
+
+    assert arca.backend.update_environment.call_count == 1  # check that the repo was pulled

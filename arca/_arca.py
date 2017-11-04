@@ -112,3 +112,6 @@ class Arca:
         if not isinstance(relative_path, Path):
             relative_path = Path(relative_path)
         return self.backend.static_filename(repo, branch, relative_path)
+
+    def pull_again(self, repo: Optional[str]=None, branch: Optional[str]=None):
+        return self.backend.pull_again(repo, branch)

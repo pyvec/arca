@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
@@ -13,12 +14,15 @@ class BaseBackend:
     requirements_location: str = LazySettingProperty(key="requirements_location", default="requirements.txt")
     cwd: str = LazySettingProperty(key="cwd", default="")
     base_dir: str = LazySettingProperty(key="base_dir", default=".arca")
+    single_pull: str = LazySettingProperty(key="single_pull", default=False)
 
     def __init__(self, **settings):
         self._arca = None
         for key, val in settings.items():
             if hasattr(self, key) and isinstance(getattr(self, key), LazySettingProperty) and val is not NOT_SET:
                 setattr(self, key, val)
+
+        self._current_hash = defaultdict(lambda: {})
 
     def inject_arca(self, arca):
         self._arca = arca
@@ -41,13 +45,28 @@ class BaseBackend:
             return None
         return requirements_file
 
+    def save_hash(self, repo: str, branch: str):
+        if self.single_pull:
+            repo_id = self._arca.repo_id(repo)
+            self._current_hash[repo_id][branch] = self.current_git_hash(repo, branch, no_pull=True)
+
     def run(self, repo: str, branch: str, task: Task) -> Result:
-        return self._run(repo, branch, task)
+        res = self._run(repo, branch, task)
+        self.save_hash(repo, branch)
+        return res
 
     def _run(self, repo: str, branch: str, task: Task) -> Result:  # pragma: no cover
         raise NotImplementedError
 
-    def current_git_hash(self, repo: str, branch: str) -> str:  # pragma: no cover
+    def current_git_hash(self, repo: str, branch: str, no_pull: bool=False) -> str:
+        current_hash = self._current_hash[self._arca.repo_id(repo)].get(branch)
+
+        if current_hash is not None:
+            return current_hash
+
+        return self._current_git_hash(repo, branch, no_pull=no_pull)
+
+    def _current_git_hash(self, repo: str, branch: str, no_pull: bool=False) -> str:  # pragma: no cover
         raise NotImplementedError
 
     def create_environment(self, repo: str, branch: str, files_only: bool=False):  # pragma: no cover
@@ -60,7 +79,20 @@ class BaseBackend:
         raise NotImplementedError
 
     def static_filename(self, repo: str, branch: str, relative_path: Path) -> Path:
-        return self._static_filename(repo, branch, relative_path)
+        res = self._static_filename(repo, branch, relative_path)
+        self.save_hash(repo, branch)
+        return res
 
     def _static_filename(self, repo: str, branch: str, relative_path: Path) -> Path:  # pragma: no cover
         raise NotImplementedError
+
+    def pull_again(self, repo: Optional[str]=None, branch: Optional[str]=None) -> None:
+        if repo is None and branch is None:
+            self._current_hash = {}
+        elif repo is None:
+            raise ValueError("You can't define just the branch to pull again.")  # TODO: custom exception
+        elif branch is None:
+            self._current_hash.pop(self._arca.repo_id(repo), None)
+        else:
+            repo_id = self._arca.repo_id(repo)
+            self._current_hash[repo_id].pop(branch)

@@ -154,9 +154,13 @@ class VenvBackend(BaseBackend):
                                                        out_stream.decode("utf-8") + "\n\n" +
                                                        err_stream.decode("utf-8"))})
 
-    def current_git_hash(self, repo: str, branch: str) -> str:
+    def _current_git_hash(self, repo: str, branch: str, no_pull: bool=False) -> str:
         if self.environment_exists(repo, branch):
-            git_repo = self.update_environment(repo, branch, files_only=True)
+            if no_pull:
+                path = self.get_path_to_environment(repo, branch)
+                git_repo = Repo.init(path)
+            else:
+                git_repo = self.update_environment(repo, branch, files_only=True)
         else:
             git_repo = self.create_environment(repo, branch, files_only=True)
 
