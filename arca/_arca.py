@@ -9,7 +9,7 @@ from dogpile.cache import make_region, CacheRegion
 from .backend import BaseBackend
 from .result import Result
 from .task import Task
-from .utils import load_class, Settings, NOT_SET
+from .utils import load_class, Settings, NOT_SET, logger
 
 BackendDefinitionType = Union[type, BaseBackend, str]
 
@@ -93,6 +93,8 @@ class Arca:
 
     def run(self, repo: str, branch: str, task: Task) -> Result:
         self.validate_repo_url(repo)
+
+        logger.info("Running Arca task %r for repo '%s' in branch '%s'", task, repo, branch)
 
         def create_value():
             return self.backend.run(repo, branch, task)

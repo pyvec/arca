@@ -1,7 +1,10 @@
 import importlib
+import logging
 from typing import Any, Dict, Optional
 
 NOT_SET = object()
+logger = logging.getLogger("arca")
+logger.setLevel(logging.DEBUG)
 
 
 def load_class(location: str) -> type:

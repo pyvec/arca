@@ -1,6 +1,5 @@
 import hashlib
 import json
-import logging
 import os
 import stat
 import traceback
@@ -14,6 +13,7 @@ from git import Repo
 import arca
 from arca.task import Task
 from arca.result import Result
+from arca.utils import logger
 from .base import BaseBackend
 
 
@@ -27,23 +27,19 @@ class VenvBackend(BaseBackend):
             requirements_hash = hashlib.sha1(bytes(requirements_file.read_text() + arca.__version__,
                                                    "utf-8")).hexdigest()
 
-            if self.verbosity > 1:
-                logging.info("Hashing: " + requirements_file.read_text() + arca.__version__)
+            logger.debug("Hashing: " + requirements_file.read_text() + arca.__version__)
 
         venv_path = Path(self.base_dir) / "venvs" / requirements_hash
         if not venv_path.exists():
-            if self.verbosity:
-                logging.info(f"Creating a venv in {venv_path}")
+            logger.info(f"Creating a venv in {venv_path}")
             builder = EnvBuilder(with_pip=True)
             builder.create(venv_path)
 
             if requirements_file is not None:
 
-                if self.verbosity:
-                    if self.verbosity > 1:
-                        logging.info("Requirements file:")
-                        logging.info(requirements_file.read_text())
-                    logging.info(f"Installing requirements from {requirements_file}")
+                logger.debug("Requirements file:")
+                logger.debug(requirements_file.read_text())
+                logger.info("Installing requirements from %s", requirements_file)
 
                 process = subprocess.Popen([str(venv_path / "bin" / "python3"), "-m", "pip", "install", "-r",
                                             str(requirements_file)],
@@ -51,24 +47,20 @@ class VenvBackend(BaseBackend):
 
                 [out_stream, err_stream] = process.communicate()
 
-                if self.verbosity:
-                    logging.info(f"Return code is {process.returncode}")
-                    logging.info(out_stream.decode("utf-8"))
-                    logging.info(err_stream.decode("utf-8"))
+                logger.debug("Return code is %s", process.returncode)
+                logger.debug(out_stream.decode("utf-8"))
+                logger.debug(err_stream.decode("utf-8"))
 
                 if process.returncode:
                     venv_path.rmdir()
                     raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
 
-                if self.verbosity:
-                    logging.info(out_stream.decode("utf-8"))
-                    logging.info(err_stream.decode("utf-8"))
+                logger.debug(out_stream.decode("utf-8"))
+                logger.debug(err_stream.decode("utf-8"))
             else:
-                if self.verbosity:
-                    logging.info("Requirements file not present in repo, empty venv it is.")
+                logger.info("Requirements file not present in repo, empty venv it is.")
         else:
-            if self.verbosity:
-                logging.info(f"Venv already eixsts in {venv_path}")
+            logger.info(f"Venv already eixsts in {venv_path}")
 
         return venv_path
 
@@ -112,8 +104,7 @@ class VenvBackend(BaseBackend):
 
         cwd = str(repo_path / self.cwd)
 
-        if self.verbosity:
-            logging.info("Running at cwd %s", cwd)
+        logger.info("Running at cwd %s", cwd)
 
         try:
             process = subprocess.Popen([str(venv_path.resolve() / "bin" / "python"), str(script_path.resolve())],

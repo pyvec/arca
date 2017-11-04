@@ -22,6 +22,9 @@ class Task:
         self.args = list(args or [])
         self.kwargs = dict(kwargs or {})
 
+    def __repr__(self):
+        return f"Task({self.function_call})"
+
     def build_imports(self):
         return "\n".join([f"    import {x}" for x in self.imports])
 

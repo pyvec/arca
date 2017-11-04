@@ -1,4 +1,3 @@
-import logging
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -8,7 +7,7 @@ from git import Repo
 
 from arca.result import Result
 from arca.task import Task
-from arca.utils import NOT_SET, LazySettingProperty
+from arca.utils import NOT_SET, LazySettingProperty, logger
 
 
 class BaseBackend:
@@ -62,13 +61,19 @@ class BaseBackend:
     def get_files(self, repo: str, branch: str) -> Tuple[Repo, Path]:
         repo_path = self.get_path_to_repo(repo, branch)
 
+        logger.info("Repo is stored at %s", repo_path)
+
         if repo_path.exists():
             git_repo = Repo.init(repo_path)
             repo_id = self._arca.repo_id(repo)
             if not self.single_pull or self._current_hash[repo_id].get(branch) is None:
+                logger.info("Single pull not enabled, no pull hasn't been done yet or pull forced, pulling")
                 git_repo.remote().pull()
+            else:
+                logger.info("Single pull enabled and already pulled in this initialization of backend")
         else:
             repo_path.parent.mkdir(exist_ok=True, parents=True)
+            logger.info("Initial pull")
             git_repo = Repo.clone_from(repo, str(repo_path), branch=branch, depth=1)
 
         self.save_hash(repo, branch, git_repo)
@@ -89,7 +94,7 @@ class BaseBackend:
 
         result = repo_path / relative_path
 
-        logging.info("Static path for %s is %s", relative_path, result)
+        logger.info("Static path for %s is %s", relative_path, result)
 
         return result
 
