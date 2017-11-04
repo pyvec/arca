@@ -3,7 +3,7 @@ from typing import Dict, Union, Any
 
 class Result:
 
-    def __init__(self, result: Dict[str, Union[bool, Any]]):
+    def __init__(self, result: Dict[str, Union[bool, str, Any]]) -> None:
         self.success = result.get("success")
         self._result = result.get("result")
         self._error = result.get("error")

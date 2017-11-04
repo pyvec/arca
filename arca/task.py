@@ -12,7 +12,7 @@ class Task:
                  imports: Optional[Iterable[str]]=None,
                  from_imports: Optional[Iterable[Tuple[str, str]]]=None,
                  args: Optional[Iterable[Any]]=None,
-                 kwargs: Optional[Dict[str, Any]]=None):
+                 kwargs: Optional[Dict[str, Any]]=None) -> None:
         if re.match(r".*\s.*", function_call):
             raise ValueError("function_call contains a whitespace")  # TODO: custom exception
 

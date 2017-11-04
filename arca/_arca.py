@@ -16,7 +16,7 @@ BackendDefinitionType = Union[type, BaseBackend, str]
 
 class Arca:
 
-    def __init__(self, backend: BackendDefinitionType=NOT_SET, settings=None):
+    def __init__(self, backend: BackendDefinitionType=NOT_SET, settings=None) -> None:
         self.settings: Settings = self._get_settings(settings)
 
         self.region: CacheRegion = self._make_region()
@@ -55,7 +55,7 @@ class Arca:
         arguments = self.get_setting("cache_backend_arguments", None)
 
         if isinstance(arguments, str):
-            arguments = json.loads(arguments)
+            arguments = json.loads(arguments)  # TODO: catch errors and raise custom exception
 
         return make_region().configure(
             self.get_setting("cache_backend", "dogpile.cache.null"),
@@ -83,7 +83,7 @@ class Arca:
 
             return "_".join(repo.split("/"))
 
-    def get_setting(self, key, default=NOT_SET):
+    def get_setting(self, key: str, default=NOT_SET):
         return self.settings.get(key, default=default)
 
     def cache_key(self, repo: str, branch: str, task: Task) -> str:

@@ -1,5 +1,5 @@
 import importlib
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 NOT_SET = object()
 
@@ -16,7 +16,7 @@ def load_class(location: str) -> type:
 
 
 class LazySettingProperty:
-    def __init__(self, *, key, default=NOT_SET):
+    def __init__(self, *, key, default=NOT_SET) -> None:
         self.key = key
         self.default = default
 
@@ -35,7 +35,7 @@ class Settings:
 
     PREFIX = "ARCA"
 
-    def __init__(self, data: Dict[str, Any]=None):
+    def __init__(self, data: Optional[Dict[str, Any]]=None) -> None:
         self.data = data or {}
 
     def get(self, *options: str, default: Any=NOT_SET) -> Any:
