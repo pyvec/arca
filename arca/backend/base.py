@@ -1,3 +1,4 @@
+import hashlib
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -80,14 +81,18 @@ class BaseBackend:
 
         return git_repo, repo_path
 
-    def current_git_hash(self, repo: str, branch: str) -> str:
+    def current_git_hash(self, repo: str, branch: str, short: bool=False) -> str:
         current_hash = self._current_hash[self._arca.repo_id(repo)].get(branch)
 
         if current_hash is not None:
             return current_hash
 
         git_repo, repo_path = self.get_files(repo, branch)
-        return git_repo.head.object.hexsha
+
+        if short:
+            return git_repo.git.rev_parse(git_repo.head.object.hexsha, short=7)
+        else:
+            return git_repo.head.object.hexsha
 
     def static_filename(self, repo: str, branch: str, relative_path: Path) -> Path:
         _, repo_path = self.get_files(repo, branch)
@@ -108,6 +113,12 @@ class BaseBackend:
         else:
             repo_id = self._arca.repo_id(repo)
             self._current_hash[repo_id].pop(branch)
+
+    def create_script(self, task: Task, venv_path: Path=None) -> Tuple[str, str]:
+        script = task.build_script(venv_path)
+        script_hash = hashlib.md5(bytes(script, "utf-8")).hexdigest()
+
+        return f"{script_hash}.py", script
 
     def run(self, repo: str, branch: str, task: Task) -> Result:  # pragma: no cover
         raise NotImplementedError
