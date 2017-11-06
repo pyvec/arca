@@ -87,10 +87,8 @@ class VenvBackend(BaseBackend):
         else:
             git_repo, repo_path, venv_path = self.create_environment(repo, branch)
 
-        script = task.build_script(venv_path)
-        script_hash = hashlib.md5(bytes(script, "utf-8")).hexdigest()
-
-        script_path = Path(self.base_dir, "scripts", f"{script_hash}.py")
+        script_name, script = self.create_script(task, venv_path)
+        script_path = Path(self.base_dir, "scripts", script_name)
         script_path.parent.mkdir(parents=True, exist_ok=True)
 
         with script_path.open("w") as f:

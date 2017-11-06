@@ -2,11 +2,11 @@ from pathlib import Path
 from uuid import uuid4
 import os
 
+import itertools
 import pytest
 from git import Repo
 
-from arca import Arca, VenvBackend, Task
-
+from arca import Arca, VenvBackend, DockerBackend, Task
 
 RETURN_STR_FUNCTION = """
 def return_str_function():
@@ -26,17 +26,17 @@ def return_str_function():
 """
 
 
-@pytest.mark.skipif(bool(os.environ.get("TRAVIS", False)), reason="Venv backend doesn't work on Travis")
 @pytest.mark.parametrize(
-    ["requirements_location", "file_location"],
-    [
-        (None, None),
-        ("requirements/requirements.txt", None),
+    ["backend", "requirements_location", "file_location"], list(itertools.product(
+        (VenvBackend, DockerBackend),
+        (None, "requirements/requirements.txt"),
         (None, "test_package"),
-        ("requirements/requirements.txt", "test_package"),
-    ]
+    ))
 )
-def test_venv_backend(requirements_location, file_location):
+def test_venv_backend(backend, requirements_location, file_location):
+    if os.environ.get("TRAVIS", False) and backend == VenvBackend:
+        raise pytest.skip("Venv Backend doesn't work on Travis")
+
     kwargs = {}
 
     if requirements_location is not None:
@@ -50,7 +50,7 @@ def test_venv_backend(requirements_location, file_location):
     else:
         base_dir = "/tmp/arca/test"
 
-    backend = VenvBackend(base_dir=base_dir, verbosity=2, **kwargs)
+    backend = backend(base_dir=base_dir, verbosity=2, **kwargs)
 
     arca = Arca(backend=backend)
 
@@ -96,10 +96,7 @@ def test_venv_backend(requirements_location, file_location):
 
     repo.branches.master.checkout()
 
-    if requirements_location is None:
-        requirements_path = git_dir / "requirements.txt"
-    else:
-        requirements_path = git_dir / requirements_location
+    requirements_path = git_dir / backend.requirements_location
 
     with filepath.open("w") as fl:
         fl.write(RETURN_DJANGO_VERSION_FUNCTION)
@@ -153,18 +150,18 @@ def test_venv_backend(requirements_location, file_location):
 
 
 @pytest.mark.parametrize(
-    "file_location", [
-        "",
-        "test_location"
-    ]
+    "backend,file_location", list(itertools.product(
+        (VenvBackend, DockerBackend),
+        ("", "test_location"),
+    ))
 )
-def test_venv_backend_static(file_location):
+def test_venv_backend_static(backend, file_location):
     if os.environ.get("TRAVIS", False):
         base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
     else:
         base_dir = "/tmp/arca/test"
 
-    backend = VenvBackend(base_dir=base_dir, verbosity=2)
+    backend = backend(base_dir=base_dir, verbosity=2)
 
     arca = Arca(backend=backend)
 

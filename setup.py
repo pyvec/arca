@@ -27,6 +27,8 @@ setup(
     install_requires=[
         "gitpython==2.1.7",
         "dogpile.cache==0.6.4",
+        "requests",
+        "docker",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",  # TODO: update when ready

@@ -51,10 +51,14 @@ class Task:
         else:
             return f"{self.function_call}()"
 
-    def build_script(self, venv_path: Path) -> str:
+    def build_script(self, venv_path: Path=None) -> str:
         result = ""
 
-        result += "#!" + str(venv_path.resolve() / "bin" / "python3") + "\n\n"
+        if venv_path is not None:
+            result += "#!" + str(venv_path.resolve() / "bin" / "python3") + "\n\n"
+        else:
+            result += "#!python3\n\n"
+
         result += "import json\n"
         result += "import traceback\n"
         result += "import sys\n"
