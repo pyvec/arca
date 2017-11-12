@@ -33,7 +33,7 @@ def return_str_function():
         (None, "test_package"),
     ))
 )
-def test_venv_backend(backend, requirements_location, file_location):
+def test_backends(backend, requirements_location, file_location):
     if os.environ.get("TRAVIS", False) and backend == VenvBackend:
         raise pytest.skip("Venv Backend doesn't work on Travis")
 
@@ -155,7 +155,7 @@ def test_venv_backend(backend, requirements_location, file_location):
         ("", "test_location"),
     ))
 )
-def test_venv_backend_static(backend, file_location):
+def test_backends_static(backend, file_location):
     if os.environ.get("TRAVIS", False):
         base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
     else:

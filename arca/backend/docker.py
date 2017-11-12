@@ -6,10 +6,12 @@ import time
 
 from io import BytesIO
 from pathlib import Path
+from typing import Optional
 
 import docker
-from docker.errors import BuildError
+from docker.errors import BuildError, APIError
 from docker.models.containers import Container
+from docker.models.images import Image
 from requests.exceptions import ConnectionError
 
 import arca
@@ -22,14 +24,18 @@ from .base import BaseBackend
 class DockerBackend(BaseBackend):
 
     python_version = LazySettingProperty(key="python_version", default=None)
+    keep_container_running = LazySettingProperty(key="keep_container_running", default=False)
 
     def __init__(self, **kwargs):
         super(DockerBackend, self).__init__(**kwargs)
+
+        self._containers = []
 
         try:
             self.client = docker.from_env()
             self.client.ping()  # check that docker is running and user is permitted to access it
         except ConnectionError:
+            # TODO: Custom exception
             raise ValueError("Docker is not running or the current user doesn't have permissions to access docker.")
 
     def get_python_version(self):
@@ -152,7 +158,7 @@ class DockerBackend(BaseBackend):
         return f"{image_name}:{image_tag}" in itertools.chain(*[image.tags
                                                                 for image in self.client.images.list()])
 
-    def get_or_create_environment(self, repo: str, branch: str):
+    def get_or_create_environment(self, repo: str, branch: str) -> Image:
         image_name = self.get_image_name(repo, branch)
         image_tag = self.get_image_tag(repo, branch)
 
@@ -161,13 +167,13 @@ class DockerBackend(BaseBackend):
 
         return self.create_image(repo, branch, image_name, image_tag)
 
-    def container_running(self, image):
+    def container_running(self, image) -> Optional[Container]:
         for container in self.client.containers.list():
             if image == container.image:
                 return container
         return None
 
-    def start_container(self, image):
+    def start_container(self, image) -> Container:
         return self.client.containers.run(image, command="bash -i", detach=True, tty=True)
 
     def tar_file(self, name, script):
@@ -185,7 +191,7 @@ class DockerBackend(BaseBackend):
     def run(self, repo: str, branch: str, task: Task) -> Result:
         image = self.get_or_create_environment(repo, branch)
 
-        container: Container = self.container_running(image)
+        container = self.container_running(image)
         if container is None:
             container = self.start_container(image)
 
@@ -202,4 +208,14 @@ class DockerBackend(BaseBackend):
             logger.exception(e)
             return Result({"success": False, "error": str(e)})
         finally:
-            container.kill("9")
+            if not self.keep_container_running:
+                container.kill("9")
+            else:
+                self._containers.append(container)
+
+    def stop_containers(self):
+        for container in self._containers:
+            try:
+                container.kill("9")
+            except APIError:  # probably doesn't exist anymore
+                pass
