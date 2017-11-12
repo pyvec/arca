@@ -123,5 +123,5 @@ class BaseBackend:
     def run(self, repo: str, branch: str, task: Task) -> Result:  # pragma: no cover
         raise NotImplementedError
 
-    def get_or_create_environment(self, repo: str, branch: str):  # pragma: no covoer
+    def get_or_create_environment(self, repo: str, branch: str):  # pragma: no cover
         raise NotImplementedError
