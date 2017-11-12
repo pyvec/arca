@@ -116,18 +116,12 @@ class BaseBackend:
 
     def create_script(self, task: Task, venv_path: Path=None) -> Tuple[str, str]:
         script = task.build_script(venv_path)
-        script_hash = hashlib.md5(bytes(script, "utf-8")).hexdigest()
+        script_hash = hashlib.sha256(bytes(script, "utf-8")).hexdigest()
 
         return f"{script_hash}.py", script
 
     def run(self, repo: str, branch: str, task: Task) -> Result:  # pragma: no cover
         raise NotImplementedError
 
-    def create_environment(self, repo: str, branch: str):  # pragma: no cover
-        raise NotImplementedError
-
-    def update_environment(self, repo: str, branch: str):  # pragma: no cover
-        raise NotImplementedError
-
-    def environment_exists(self, repo: str, branch: str):  # pragma: no cover
+    def get_or_create_environment(self, repo: str, branch: str):  # pragma: no covoer
         raise NotImplementedError

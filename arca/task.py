@@ -79,7 +79,7 @@ except:
         return result
 
     def serialize(self):
-        return hashlib.md5(bytes(json.dumps({
+        return hashlib.sha256(bytes(json.dumps({
             "function_call": self.function_call,
             "imports": self.imports,
             "from_imports": self.from_imports,

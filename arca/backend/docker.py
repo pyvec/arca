@@ -104,13 +104,11 @@ class DockerBackend(BaseBackend):
 
         return name, tag
 
-    def create_environment(self, repo: str, branch: str):
+    def create_image(self, repo: str, branch: str, image_name: str, image_tag: str):
         python_version = self.get_python_version()
 
         base_name, base_tag = self.get_docker_base(python_version)
 
-        image_name = self.get_image_name(repo, branch)
-        image_tag = self.get_image_tag(repo, branch)
         git_repo, repo_path = self.get_files(repo, branch)
 
         requirements_file = self.get_requirements_file(repo_path)
@@ -150,20 +148,18 @@ class DockerBackend(BaseBackend):
 
         return image
 
-    def update_environment(self, repo: str, branch: str):
-        image_name = self.get_image_name(repo, branch)
-        image_tag = self.get_image_tag(repo, branch)
-        return self.client.images.get(f"{image_name}:{image_tag}")
-
     def image_exists(self, image_name, image_tag):
         return f"{image_name}:{image_tag}" in itertools.chain(*[image.tags
                                                                 for image in self.client.images.list()])
 
-    def environment_exists(self, repo: str, branch: str):
+    def get_or_create_environment(self, repo: str, branch: str):
         image_name = self.get_image_name(repo, branch)
         image_tag = self.get_image_tag(repo, branch)
 
-        return self.image_exists(image_name, image_tag)
+        if self.image_exists(image_name, image_tag):
+            return self.client.images.get(f"{image_name}:{image_tag}")
+
+        return self.create_image(repo, branch, image_name, image_tag)
 
     def container_running(self, image):
         for container in self.client.containers.list():
@@ -187,10 +183,7 @@ class DockerBackend(BaseBackend):
         return tarstream.getvalue()
 
     def run(self, repo: str, branch: str, task: Task) -> Result:
-        if not self.environment_exists(repo, branch):
-            image = self.create_environment(repo, branch)
-        else:
-            image = self.update_environment(repo, branch)
+        image = self.get_or_create_environment(repo, branch)
 
         container: Container = self.container_running(image)
         if container is None:

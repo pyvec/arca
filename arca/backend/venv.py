@@ -24,12 +24,13 @@ class VenvBackend(BaseBackend):
         if requirements_file is None:
             requirements_hash = "no_requirements_file"
         else:
-            requirements_hash = hashlib.sha1(bytes(requirements_file.read_text() + arca.__version__,
-                                                   "utf-8")).hexdigest()
+            requirements_hash = hashlib.sha256(bytes(requirements_file.read_text() + arca.__version__,
+                                                     "utf-8")).hexdigest()
 
             logger.debug("Hashing: " + requirements_file.read_text() + arca.__version__)
 
         venv_path = Path(self.base_dir) / "venvs" / requirements_hash
+
         if not venv_path.exists():
             logger.info(f"Creating a venv in {venv_path}")
             builder = EnvBuilder(with_pip=True)
@@ -64,28 +65,15 @@ class VenvBackend(BaseBackend):
 
         return venv_path
 
-    def create_environment(self, repo: str, branch: str) -> Tuple[Repo, Path, Path]:
+    def get_or_create_environment(self, repo: str, branch: str) -> Tuple[Repo, Path, Path]:
         git_repo, repo_path = self.get_files(repo, branch)
 
         venv_path = self.create_or_get_venv(repo_path)
 
         return git_repo, repo_path, venv_path
-
-    def update_environment(self, repo: str, branch: str) -> Tuple[Repo, Path, Path]:
-        git_repo, repo_path = self.get_files(repo, branch)
-
-        venv_path = self.create_or_get_venv(repo_path)
-
-        return git_repo, repo_path, venv_path
-
-    def environment_exists(self, repo: str, branch: str):
-        return self.get_path_to_repo(repo, branch).is_dir()
 
     def run(self, repo: str, branch: str, task: Task) -> Result:
-        if self.environment_exists(repo, branch):
-            git_repo, repo_path, venv_path = self.update_environment(repo, branch)
-        else:
-            git_repo, repo_path, venv_path = self.create_environment(repo, branch)
+        git_repo, repo_path, venv_path = self.get_or_create_environment(repo, branch)
 
         script_name, script = self.create_script(task, venv_path)
         script_path = Path(self.base_dir, "scripts", script_name)
@@ -106,13 +94,15 @@ class VenvBackend(BaseBackend):
 
         try:
             process = subprocess.Popen([str(venv_path.resolve() / "bin" / "python"), str(script_path.resolve())],
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
                                        cwd=cwd)
 
             out_stream, err_stream = process.communicate()
 
             return Result(json.loads(out_stream.decode("utf-8")))
-        except Exception:
+        except Exception as e:
+            logger.exception(e)
             return Result({"success": False, "error": (traceback.format_exc() + "\n" +
                                                        out_stream.decode("utf-8") + "\n\n" +
                                                        err_stream.decode("utf-8"))})
