@@ -50,6 +50,9 @@ def test_backends(backend, requirements_location, file_location):
     else:
         base_dir = "/tmp/arca/test"
 
+    if backend == DockerBackend:
+        kwargs["disable_pull"] = True
+
     backend = backend(base_dir=base_dir, verbosity=2, **kwargs)
 
     arca = Arca(backend=backend)

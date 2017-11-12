@@ -25,11 +25,12 @@ class DockerBackend(BaseBackend):
 
     python_version = LazySettingProperty(key="python_version", default=None)
     keep_container_running = LazySettingProperty(key="keep_container_running", default=False)
+    disable_pull = LazySettingProperty(key="disable_pull", default=False)  # so the build can be tested
 
     def __init__(self, **kwargs):
         super(DockerBackend, self).__init__(**kwargs)
 
-        self._containers = []
+        self._containers = set()
 
         try:
             self.client = docker.from_env()
@@ -57,17 +58,45 @@ class DockerBackend(BaseBackend):
     def get_image_tag(self, repo: str, branch: str) -> str:
         return self.current_git_hash(repo, branch, short=True)
 
-    def get_docker_base(self, python_version):
-        name = "arca_{python_version}".format(
-            python_version=python_version
-        )
-        tag = str(arca.__version__)
+    def get_docker_base_name(self):
+        return "docker.io/mikicz/arca"
 
+    def get_docker_base_tag(self, python_version):
+        return f"{arca.__version__}_{python_version}"
+
+    def get_or_build_image(self, name, tag, dockerfile, pull=True):
         if self.image_exists(name, tag):
-            logger.info("Docker base %s:%s does exist", name, tag)
+            logger.info("Image %s:%s exists", name, tag)
             return name, tag
 
-        logger.info("Docker base %s:%s doesn't exist, building", name, tag)
+        elif pull:
+            logger.info("Trying to pull image %s:%s", name, tag)
+
+            try:
+                self.client.images.pull(name, tag=tag)
+                logger.info("The image %s:%s was pulled from repository", name, tag)
+                return name, tag
+            except APIError:
+                logger.info("The image %s:%s can't be pulled, building locally.", name, tag)
+
+        if callable(dockerfile):
+            dockerfile = dockerfile()
+
+        try:
+            self.client.images.build(
+                fileobj=dockerfile,
+                pull=True,
+                tag=f"{name}:{tag}"
+            )
+        except BuildError as e:
+            logger.exception(e)
+            raise
+
+        return name, tag
+
+    def get_arca_base(self, pull=True):
+        name = self.get_docker_base_name()
+        tag = arca.__version__
 
         pyenv_installer = "https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer"
         dockerfile = BytesIO(bytes(f"""
@@ -89,31 +118,32 @@ class DockerBackend(BaseBackend):
             ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 
             SHELL ["bash", "-lc"]
-            RUN pyenv update
-            RUN pyenv install {python_version}
-
-            ENV PYENV_VERSION {python_version}
             CMD bash -i
             """, encoding="utf-8"))
 
-        try:
-            self.client.images.build(
-                fileobj=dockerfile,
-                pull=True,
-                tag=f"{name}:{tag}"
-            )
-        except BuildError as e:
-            logger.exception(e)
-            raise
+        return self.get_or_build_image(name, tag, dockerfile, pull=pull)
 
-        logger.info("Docker base %s:%s created", name, tag)
+    def get_python_base(self, python_version, pull=True):
+        name = self.get_docker_base_name()
+        tag = self.get_docker_base_tag(python_version)
 
-        return name, tag
+        def get_dockerfile():
+            base_arca_name, base_arca_tag = self.get_arca_base(pull)
+
+            return BytesIO(bytes(f"""
+                FROM {base_arca_name}:{base_arca_tag}
+                RUN pyenv update
+                RUN pyenv install {python_version}
+                ENV PYENV_VERSION {python_version}
+                CMD bash -i
+                """, encoding="utf-8"))
+
+        return self.get_or_build_image(name, tag, get_dockerfile, pull=pull)
 
     def create_image(self, repo: str, branch: str, image_name: str, image_tag: str):
         python_version = self.get_python_version()
 
-        base_name, base_tag = self.get_docker_base(python_version)
+        base_name, base_tag = self.get_python_base(python_version, pull=not self.disable_pull)
 
         git_repo, repo_path = self.get_files(repo, branch)
 
@@ -211,10 +241,11 @@ class DockerBackend(BaseBackend):
             if not self.keep_container_running:
                 container.kill("9")
             else:
-                self._containers.append(container)
+                self._containers.add(container)
 
     def stop_containers(self):
-        for container in self._containers:
+        while len(self._containers):
+            container = self._containers.pop()
             try:
                 container.kill("9")
             except APIError:  # probably doesn't exist anymore

@@ -5,6 +5,8 @@ from pathlib import Path
 
 from setuptools import setup, find_packages
 
+from utils import DeployDockerBasesCommand
+
 if sys.version_info < (3, 6):
     raise RuntimeError('Arca requires Python 3.6 or greater')
 
@@ -46,4 +48,7 @@ setup(
     ],
     setup_requires=["pytest-runner"],
     tests_require=["pytest", "pytest-flake8", "pytest-cov", "pytest-mock"],
+    cmdclass={
+        "deploy_docker_bases": DeployDockerBasesCommand
+    }
 )

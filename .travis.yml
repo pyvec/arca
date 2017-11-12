@@ -1,21 +1,36 @@
 env:
   global:
-    - CC_TEST_REPORTER_ID=787a2f89b15c637323c7340d65ec17e898ac44480706b4b4122ea040c2a88f1d
+  - CC_TEST_REPORTER_ID=787a2f89b15c637323c7340d65ec17e898ac44480706b4b4122ea040c2a88f1d
+  - DOCKER_HUB_USERNAME=mikicz
+  - secure: g80a90m7rMFm1+sYNRcu34TJ+eqD5hOeiWNTGQg5mNa46mC/XtAyAIR1JTmRR0cTiW1agcTdZ9GiFrNhxskf2kHd8T9UrKGXUGpg47SLMjQgqE4XS0QFtqftFESmEQk5FEQzPKqbm+tF7D05Bt8FcgqGfqPQwOqliooUdxkbJ0FAvd8MlbmmyCG9E3zq7pAURoAFKOJ854x5zYLF3JptOPACz4hEh3nQNFEF8xFwQFRVxdg6/zKD9ubxuqc3EDCmv/yjcWXfQExBct1+kUpFhzWa1QzYZE3vr+MGBcBEo+jw34bHDT7cQTywfsjQXDeZa0nt3/ieR1oAbNdscZp8PWRGvKjWRVWU62x6VpmETQUWIoU7S0Rlqosy9Y+oqR3yl69ByjOuvZAGeso2CKj+SR+TFvGM+YItMXQhmA9KXhvuxnddxwOvZlqZ5cLF8tTeDEvI9uIDoeEG0lFmmcvt5o3MQ7jLAXfQMP0I740TXY7CCqa1oh3Bv7bvs9UcjNXTm4RrxVsZcCHOhlD4RoUWcZ7R7fQ048yrbaT3XvuY9NPBdFJyTIkYEMNqvdpXNhzTFOgaXr6GyQsZn8GGlkqqq2Ldp0NgLTR+0FTa1v8Y7Ef6YBWMCqC5WJkoEekdI6dyOOIJUlKMd3IDyu6mfaUnF1HG/kqUNGV+PLV47l/oo1c=
 language: python
 python:
 - '3.6'
-install:
-- python setup.py install
-script:
-- python setup.py test
+
+cache:
+- pip
 notifications:
   email: false
-before_script:
-  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-  - chmod +x ./cc-test-reporter
-  - ./cc-test-reporter before-build
-after_script:
-  - ./cc-test-reporter after-build -t coverage.py
 sudo: required
 services:
-  - docker
+- docker
+
+install:
+- python setup.py install
+before_script:
+- curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64
+  > ./cc-test-reporter
+- chmod +x ./cc-test-reporter
+- "./cc-test-reporter before-build"
+script:
+- python setup.py test
+after_script:
+- "./cc-test-reporter after-build -t coverage.py"
+
+deploy:
+  provider: script
+  skip_cleanup: true
+  script: scripts/deploy.sh
+  on:
+    branch: master
+    repo: mikicz/arca
