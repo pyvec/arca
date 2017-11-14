@@ -39,6 +39,8 @@ def test_keep_container_running():
         from_imports=[("test_file", "return_str_function")]
     )
 
+    backend.check_docker_access()   # init docker client
+
     container_count = len(backend.client.containers.list())
 
     result = arca.run(f"file://{git_dir}", "master", task)

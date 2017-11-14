@@ -25,17 +25,22 @@ class DockerBackend(BaseBackend):
 
     python_version = LazySettingProperty(key="python_version", default=None)
     keep_container_running = LazySettingProperty(key="keep_container_running", default=False)
+    apk_dependencies = LazySettingProperty(key="apk_dependencies", default=None)
     disable_pull = LazySettingProperty(key="disable_pull", default=False)  # so the build can be tested
 
     def __init__(self, **kwargs):
         super(DockerBackend, self).__init__(**kwargs)
 
         self._containers = set()
+        self.client = None
 
+    def check_docker_access(self):
         try:
-            self.client = docker.from_env()
+            if self.client is None:
+                self.client = docker.from_env()
             self.client.ping()  # check that docker is running and user is permitted to access it
-        except ConnectionError:
+        except ConnectionError as e:
+            logger.exception(e)
             # TODO: Custom exception
             raise ValueError("Docker is not running or the current user doesn't have permissions to access docker.")
 
@@ -102,7 +107,8 @@ class DockerBackend(BaseBackend):
         dockerfile = BytesIO(bytes(f"""
             FROM alpine:3.5
             RUN apk add --no-cache curl bash git nano g++ make jpeg-dev zlib-dev ca-certificates openssl-dev \
-                                   readline-dev bzip2-dev sqlite-dev ncurses-dev linux-headers build-base
+                                   readline-dev bzip2-dev sqlite-dev ncurses-dev linux-headers build-base \
+                                   openssh
 
             RUN curl -L {pyenv_installer} -o /pyenv-installer && \
                   touch /root/.bashrc && \
@@ -157,11 +163,22 @@ class DockerBackend(BaseBackend):
 
         workdir = Path("/srv/data") / self.cwd
 
+        if self.apk_dependencies is not None:
+            try:
+                dependencies = list(self.apk_dependencies)
+            except TypeError:
+                raise TypeError()  # TODO: Custom exception
+
+            dependencies = "apk add --no-cache {}".format(" ".join(dependencies))
+        else:
+            dependencies = ""
+
         dockerfile_path = repo_path.parent / f"docker_{branch}"
         dockerfile_path.write_text(f"""
             FROM {base_name}:{base_tag}
             RUN mkdir /srv/scripts/
             COPY {branch} /srv/data/
+            {dependencies}
             {requirements_file}
 
             WORKDIR {workdir.resolve()}
@@ -219,6 +236,8 @@ class DockerBackend(BaseBackend):
         return tarstream.getvalue()
 
     def run(self, repo: str, branch: str, task: Task) -> Result:
+        self.check_docker_access()
+
         image = self.get_or_create_environment(repo, branch)
 
         container = self.container_running(image)
