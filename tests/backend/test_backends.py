@@ -35,7 +35,7 @@ def return_str_function():
 )
 def test_backends(backend, requirements_location, file_location):
     if os.environ.get("TRAVIS", False) and backend == VenvBackend:
-        raise pytest.skip("Venv Backend doesn't work on Travis")
+        pytest.skip("Venv Backend doesn't work on Travis")
 
     kwargs = {}
 
