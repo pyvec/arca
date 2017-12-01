@@ -31,6 +31,7 @@ class DockerBackend(BaseBackend):
     disable_pull = LazySettingProperty(key="disable_pull", default=False)  # so the build can be tested
 
     NO_REQUIREMENTS_HASH = "no_req"
+    NO_DEPENDENCIES_HASH = "no_dep"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -87,27 +88,32 @@ class DockerBackend(BaseBackend):
             python_version=self.get_python_version()
         )
 
+    def get_dependencies_hash(self, dependencies):
+        return hashlib.sha256(bytes(",".join(dependencies), "utf-8")).hexdigest()
+
     def get_image_tag(self, requirements_file: Optional[Path], dependencies: Optional[List[str]]) -> str:
         """ Returns the tag for images with proper requirements and dependencies installed
             Possible outputs:
-                - `no_req`
-                - `no_req_<dependencies_hash>`
-                - `<requirements_hash>`
-                - `<requirements_hash>_<dependencies_hash>`
+                - `no_dep_no_req`
+                - `<dependencies_hash>_no_req`
+                - `no_dep_<requirements_hash>`
+                - `<dependencies_hash>_<requirements_hash>`
         """
+
+        if dependencies is None:
+            dependencies_hash = self.NO_DEPENDENCIES_HASH
+        else:
+            dependencies_hash = self.get_dependencies_hash(dependencies)
 
         if requirements_file is None:
             requirements_hash = self.NO_REQUIREMENTS_HASH
         else:
             requirements_hash = self.get_requirements_hash(requirements_file)
 
-        if dependencies is not None:
-            return "{}_{}".format(
-                requirements_hash,
-                hashlib.sha256(bytes(",".join(dependencies), "utf-8")).hexdigest()
-            )
-        else:
-            return requirements_hash
+        if dependencies is not None and requirements_file is not None:
+            return f"{dependencies_hash[:59]}_{requirements_hash[:59]}"
+
+        return f"{dependencies_hash}_{requirements_hash}"
 
     def get_arca_base_name(self):
         return "docker.io/mikicz/arca"
@@ -224,18 +230,20 @@ class DockerBackend(BaseBackend):
 
         if requirements_file is None:  # requirements file doesn't exist in the repo
             base_name, base_tag = self.get_python_base(python_version, pull=not self.disable_pull)
-            image = self.get_image(base_name, base_tag)
-            image.tag(image_name, image_tag)  # so `create_image` doesn't have to be called next time
 
             # no requirements and no dependencies, just return the basic image with the correct python installed
-            if image_tag == self.NO_REQUIREMENTS_HASH:
+            if dependencies is None:
+                image = self.get_image(base_name, base_tag)
+                image.tag(image_name, image_tag)  # so `create_image` doesn't have to be called next time
+
                 return image
 
             serialized_dependencies = " ".join(dependencies)
 
-            # extend the image with corrent python by installing the dependencies
+            # extend the image with correct python by installing the dependencies
             install_dependencies = BytesIO(bytes(f"""
-                FROM {image_name}:{self.NO_REQUIREMENTS_HASH}
+                FROM {base_name}:{base_tag}
+                RUN apk update
                 RUN apk add --no-cache {serialized_dependencies}
                 CMD bash -i
             """, encoding="utf-8"))
@@ -244,35 +252,42 @@ class DockerBackend(BaseBackend):
 
             return self.get_image(image_name, image_tag)
 
-        # there are some requirements
-        requirements_hash = self.get_requirements_hash(requirements_file)
+        def get_installed_dependencies():
+            """ Returns the image_name and image_tag for either an image with all the dependencies installed
+                or just an image with python installed if there aren't any dependencies.
+            """
+            if dependencies is not None:
+
+                def install_dependencies():
+                    python_name, python_tag = self.get_python_base(python_version, pull=not self.disable_pull)
+                    dependencies_serialized = " ".join(self.get_dependencies())
+
+                    return BytesIO(bytes(f"""
+                        FROM {python_name}:{python_tag}
+                        RUN apk update
+                        RUN apk add --no-cache {dependencies_serialized}
+                        CMD bash -i
+                    """, encoding="utf-8"))
+
+                return self.get_or_build_image(image_name, self.get_image_tag(None, dependencies),
+                                               install_dependencies, pull=not self.disable_pull)
+            else:
+                return self.get_python_base(python_version, pull=not self.disable_pull)
 
         def install_requirements():
-            python_name, python_tag = self.get_python_base(python_version, pull=not self.disable_pull)
+            for_req_name, for_req_tag = get_installed_dependencies()
 
             requirements_file_relative = requirements_file.relative_to(build_context)
 
             return BytesIO(bytes(f"""
-                FROM {python_name}:{python_tag}
+                FROM {for_req_name}:{for_req_tag}
                 ADD {requirements_file_relative} /srv/requirements.txt
                 RUN pip install -r /srv/requirements.txt
                 CMD bash -i
             """, encoding="utf-8"))
 
-        self.get_or_build_image(image_name, requirements_hash, install_requirements, build_context=build_context)
-
-        if image_tag == requirements_hash:
-            return self.get_image(image_name, image_tag)
-
-        dependencies = " ".join(self.get_dependencies())
-
-        install_dependencies = BytesIO(bytes(f"""
-            FROM {image_name}:{requirements_hash}
-            RUN apk add --no-cache {dependencies}
-            CMD bash -i
-        """, encoding="utf-8"))
-
-        self.get_or_build_image(image_name, image_tag, install_dependencies)
+        self.get_or_build_image(image_name, image_tag, install_requirements, build_context=build_context,
+                                pull=False)
 
         return self.get_image(image_name, image_tag)
 
