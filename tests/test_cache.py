@@ -9,27 +9,34 @@ import pytest
 from dogpile.cache.api import NO_VALUE
 from git import Repo
 
-from arca import Arca, VenvBackend, Task
+from arca import Arca, VenvBackend, Task, DockerBackend
 
 
-@pytest.mark.skipif(bool(os.environ.get("TRAVIS", False)), reason="Venv backend doesn't work on Travis")
-@pytest.mark.parametrize(["cache_backend", "arguments"], [
-    ("dogpile.cache.dbm", lambda base_dir: {
-        "filename": str(base_dir / "cachefile.dbm")
-    }),
-    ("dogpile.cache.dbm", lambda base_dir: json.dumps({
-        "filename": str(base_dir / "cachefile.dbm")
-    })),
-    ('dogpile.cache.memory', lambda base_dir: None),
-    ('dogpile.cache.memory_pickle', lambda base_dir: None),
-])
-def test_cache(mocker, cache_backend, arguments):
+cache_arguments = [
+    ["dogpile.cache.dbm", lambda base_dir: {"filename": str(base_dir / "cachefile.dbm")}],
+    ["dogpile.cache.dbm", lambda base_dir: json.dumps({"filename": str(base_dir / "cachefile.dbm")})],
+    ['dogpile.cache.memory', lambda base_dir: None],
+    ['dogpile.cache.memory_pickle', lambda base_dir: None],
+]
+
+
+def generate_arguments():
+    for backend in [VenvBackend, DockerBackend]:
+        for arguments in cache_arguments:
+            yield tuple([backend] + arguments)
+
+
+@pytest.mark.parametrize(["backend", "cache_backend", "arguments"], list(generate_arguments()))
+def test_cache(mocker, backend, cache_backend, arguments):
+    if backend == VenvBackend and bool(os.environ.get("TRAVIS", False)):
+        pytest.skip("Venv backend doesn't work on Travis")
+
     if os.environ.get("TRAVIS", False):
         base_dir = Path("/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca")))
     else:
         base_dir = Path("/tmp/arca/test")
 
-    backend = VenvBackend(base_dir=base_dir, verbosity=2, single_pull=True)
+    backend = backend(base_dir=base_dir, verbosity=2, single_pull=True)
 
     base_dir.mkdir(parents=True, exist_ok=True)
 

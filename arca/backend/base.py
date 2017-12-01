@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 
 from git import Repo
 
+import arca
 from arca.result import Result
 from arca.task import Task
 from arca.utils import NOT_SET, LazySettingProperty, logger
@@ -119,6 +120,9 @@ class BaseBackend:
         script_hash = hashlib.sha256(bytes(script, "utf-8")).hexdigest()
 
         return f"{script_hash}.py", script
+
+    def get_requirements_hash(self, requirements_file) -> str:
+        return hashlib.sha256(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
 
     def run(self, repo: str, branch: str, task: Task) -> Result:  # pragma: no cover
         raise NotImplementedError
