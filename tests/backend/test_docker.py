@@ -20,16 +20,34 @@ def return_python_version():
     return "{}.{}.{}".format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro)
 """
 
+RETURN_IS_XSLTPROC_INSTALLED = """
+import subprocess
+
+def return_is_xsltproc_installed():
+    try:
+        return subprocess.Popen(["xsltpoc", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+    except:
+        return False
+"""
+
+
+RETURN_IS_LXML_INSTALLED = """
+def return_is_lxml_installed():
+    try:
+        import lxml
+        return True
+    except:
+        return False
+"""
+
 
 def test_keep_container_running():
-    kwargs = {}
-
     if os.environ.get("TRAVIS", False):
         base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
     else:
         base_dir = "/tmp/arca/test"
 
-    backend = DockerBackend(base_dir=base_dir, verbosity=2, keep_container_running=True, **kwargs)
+    backend = DockerBackend(base_dir=base_dir, verbosity=2, keep_container_running=True)
 
     arca = Arca(backend=backend)
 
@@ -78,15 +96,12 @@ def test_keep_container_running():
 
 @pytest.mark.parametrize("python_version", ["3.6.0", "3.6.3"])
 def test_python_version(python_version):
-    kwargs = {}
-
     if os.environ.get("TRAVIS", False):
         base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
     else:
         base_dir = "/tmp/arca/test"
 
-    backend = DockerBackend(base_dir=base_dir, verbosity=2,
-                            python_version=python_version, **kwargs)
+    backend = DockerBackend(base_dir=base_dir, verbosity=2, python_version=python_version)
 
     arca = Arca(backend=backend)
 
@@ -113,3 +128,68 @@ def test_python_version(python_version):
 
     assert result.success
     assert result.result == python_version
+
+
+def test_apk_dependencies():
+    # TODO: maybe find something that installs quicker than lxml. Becase lxml takes a long time to compile.
+    if os.environ.get("TRAVIS", False):
+        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
+    else:
+        base_dir = "/tmp/arca/test"
+
+    backend = DockerBackend(base_dir=base_dir, verbosity=2, apk_dependencies=["libxml2-dev", "libxslt-dev"])
+
+    arca = Arca(backend=backend)
+
+    git_dir = Path("/tmp/arca/") / str(uuid4())
+
+    repo = Repo.init(git_dir)
+    filepath = git_dir / "test_file.py"
+
+    filepath.write_text(RETURN_IS_XSLTPROC_INSTALLED)
+    repo.index.add([str(filepath)])
+    repo.index.commit("Initial")
+
+    task = Task(
+        "return_is_xsltproc_installed",
+        from_imports=[("test_file", "return_is_xsltproc_installed")]
+    )
+
+    result = arca.run(f"file://{git_dir}", "master", task)
+
+    try:
+        print(result.error)
+    except AttributeError:
+        pass
+
+    assert result.success
+    assert result.result == 0
+
+    requirements_path = git_dir / "requirements.txt"
+
+    with filepath.open("w") as fl:
+        fl.write(RETURN_IS_LXML_INSTALLED)
+
+    requirements_path.parent.mkdir(exist_ok=True, parents=True)
+
+    with requirements_path.open("w") as fl:
+        fl.write("lxml")
+
+    repo.index.add([str(filepath)])
+    repo.index.add([str(requirements_path)])
+    repo.index.commit("Added requirements, changed to lxml")
+
+    task = Task(
+        "return_is_lxml_installed",
+        from_imports=[("test_file", "return_is_lxml_installed")]
+    )
+
+    result = arca.run(f"file://{git_dir}", "master", task)
+
+    try:
+        print(result.error)
+    except AttributeError:
+        pass
+
+    assert result.success
+    assert result.result
