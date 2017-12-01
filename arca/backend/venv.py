@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import stat
@@ -24,8 +23,7 @@ class VenvBackend(BaseBackend):
         if requirements_file is None:
             requirements_hash = "no_requirements_file"
         else:
-            requirements_hash = hashlib.sha256(bytes(requirements_file.read_text() + arca.__version__,
-                                                     "utf-8")).hexdigest()
+            requirements_hash = self.get_requirements_hash(requirements_file)
 
             logger.debug("Hashing: " + requirements_file.read_text() + arca.__version__)
 
