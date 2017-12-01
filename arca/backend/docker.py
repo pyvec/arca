@@ -1,5 +1,6 @@
 import itertools
 import json
+import signal
 import sys
 import tarfile
 import time
@@ -258,7 +259,7 @@ class DockerBackend(BaseBackend):
             return Result({"success": False, "error": str(e)})
         finally:
             if not self.keep_container_running:
-                container.kill("9")
+                container.kill(signal.SIGKILL)
             else:
                 self._containers.add(container)
 
@@ -266,6 +267,6 @@ class DockerBackend(BaseBackend):
         while len(self._containers):
             container = self._containers.pop()
             try:
-                container.kill("9")
+                container.kill(signal.SIGKILL)
             except APIError:  # probably doesn't exist anymore
                 pass
