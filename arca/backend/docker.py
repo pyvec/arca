@@ -30,7 +30,7 @@ class DockerBackend(BaseBackend):
     disable_pull = LazySettingProperty(key="disable_pull", default=False)  # so the build can be tested
 
     def __init__(self, **kwargs):
-        super(DockerBackend, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self._containers = set()
         self.client = None
