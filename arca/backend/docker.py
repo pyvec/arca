@@ -29,6 +29,7 @@ class DockerBackend(BaseBackend):
     keep_container_running = LazySettingProperty(key="keep_container_running", default=False)
     apk_dependencies = LazySettingProperty(key="apk_dependencies", default=None)
     disable_pull = LazySettingProperty(key="disable_pull", default=False)  # so the build can be tested
+    inherit_image = LazySettingProperty(key="inherit_image", default=None)
 
     NO_REQUIREMENTS_HASH = "no_req"
     NO_DEPENDENCIES_HASH = "no_dep"
@@ -38,6 +39,19 @@ class DockerBackend(BaseBackend):
 
         self._containers = set()
         self.client = None
+
+    def validate_settings(self):
+        super().validate_settings()
+
+        if self.inherit_image is not None and self.get_dependencies() is not None:
+            # TODO: Custom Exception
+            raise ValueError("An external image is used as a base, therefore Arca can't install dependencies")
+
+        if self.inherit_image is not None:
+            try:
+                name, tag = str(self.inherit_image).split(":")
+            except ValueError:
+                raise ValueError("Image which should be inherited is not in the proper docker format")
 
     def check_docker_access(self):
         """ Checks if the current user can access docker, raises exception otherwise
@@ -83,10 +97,15 @@ class DockerBackend(BaseBackend):
     def get_image_name(self, requirements_file: Optional[Path], dependencies: Optional[List[str]]) -> str:
         """ Returns the name of the image which are launched to run arca tasks
         """
-        return "arca_{arca_version}_{python_version}".format(
-            arca_version=str(arca.__version__),
-            python_version=self.get_python_version()
-        )
+        if self.inherit_image is None:
+            return "arca_{arca_version}_{python_version}".format(
+                arca_version=str(arca.__version__),
+                python_version=self.get_python_version()
+            )
+        else:
+            name, tag = str(self.inherit_image).split(":")
+
+            return f"arca_{name}_{tag}"
 
     def get_dependencies_hash(self, dependencies):
         return hashlib.sha256(bytes(",".join(dependencies), "utf-8")).hexdigest()
@@ -94,26 +113,30 @@ class DockerBackend(BaseBackend):
     def get_image_tag(self, requirements_file: Optional[Path], dependencies: Optional[List[str]]) -> str:
         """ Returns the tag for images with proper requirements and dependencies installed
             Possible outputs:
+                - `no_req` - if inheriting from a specified image
+                - `<requirements_hash>` - if inheriting from a specified image
                 - `no_dep_no_req`
                 - `<dependencies_hash>_no_req`
                 - `no_dep_<requirements_hash>`
                 - `<dependencies_hash>_<requirements_hash>`
         """
-
-        if dependencies is None:
-            dependencies_hash = self.NO_DEPENDENCIES_HASH
-        else:
-            dependencies_hash = self.get_dependencies_hash(dependencies)
-
         if requirements_file is None:
             requirements_hash = self.NO_REQUIREMENTS_HASH
         else:
             requirements_hash = self.get_requirements_hash(requirements_file)
 
-        if dependencies is not None and requirements_file is not None:
-            return f"{dependencies_hash[:59]}_{requirements_hash[:59]}"
+        if self.inherit_image is None:
+            if dependencies is None:
+                dependencies_hash = self.NO_DEPENDENCIES_HASH
+            else:
+                dependencies_hash = self.get_dependencies_hash(dependencies)
 
-        return f"{dependencies_hash}_{requirements_hash}"
+            if dependencies is not None and requirements_file is not None:
+                return f"{dependencies_hash[:25]}_{requirements_hash[:25]}"
+
+            return f"{dependencies_hash}_{requirements_hash}"
+        else:
+            return requirements_hash
 
     def get_arca_base_name(self):
         return "docker.io/mikicz/arca"
@@ -220,6 +243,15 @@ class DockerBackend(BaseBackend):
 
         return self.get_or_build_image(name, tag, get_dockerfile, pull=pull)
 
+    def pull_or_get(self, name, tag):
+        if self.image_exists(name, tag):
+            return name, tag
+        try:
+            self.client.images.pull(name, tag)
+        except APIError:
+            raise ValueError("The specified image from which Arca should inherit can't be pulled")  # TODO: Custom
+        return name, tag
+
     def create_image(self, image_name: str, image_tag: str,
                      build_context: Path,
                      requirements_file: Optional[Path],
@@ -229,7 +261,11 @@ class DockerBackend(BaseBackend):
         python_version = self.get_python_version()
 
         if requirements_file is None:  # requirements file doesn't exist in the repo
-            base_name, base_tag = self.get_python_base(python_version, pull=not self.disable_pull)
+            if self.inherit_image is None:
+                base_name, base_tag = self.get_python_base(python_version, pull=not self.disable_pull)
+            else:
+                base_name, base_tag = str(self.inherit_image).split(":")
+                self.pull_or_get(base_name, base_tag)
 
             # no requirements and no dependencies, just return the basic image with the correct python installed
             if dependencies is None:
@@ -257,7 +293,6 @@ class DockerBackend(BaseBackend):
                 or just an image with python installed if there aren't any dependencies.
             """
             if dependencies is not None:
-
                 def install_dependencies():
                     python_name, python_tag = self.get_python_base(python_version, pull=not self.disable_pull)
                     dependencies_serialized = " ".join(self.get_dependencies())
@@ -272,7 +307,12 @@ class DockerBackend(BaseBackend):
                 return self.get_or_build_image(image_name, self.get_image_tag(None, dependencies),
                                                install_dependencies, pull=not self.disable_pull)
             else:
-                return self.get_python_base(python_version, pull=not self.disable_pull)
+                if self.inherit_image is None:
+                    return self.get_python_base(python_version, pull=not self.disable_pull)
+                else:
+                    name, tag = self.inherit_image.split(":")
+                    self.pull_or_get(name, tag)
+                    return name, tag
 
         def install_requirements():
             for_req_name, for_req_tag = get_installed_dependencies()

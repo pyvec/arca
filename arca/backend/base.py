@@ -31,6 +31,11 @@ class BaseBackend:
     def inject_arca(self, arca):
         self._arca = arca
 
+        self.validate_settings()
+
+    def validate_settings(self):
+        pass
+
     def get_backend_name(self):
         # CamelCase -> camel_case
         s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', self.__class__.__name__)
