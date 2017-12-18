@@ -1,8 +1,10 @@
+import hashlib
 from pathlib import Path
 from uuid import uuid4
 import os
 
 import pytest
+from datetime import datetime
 from git import Repo
 
 from arca import Arca, DockerBackend, Task
@@ -270,6 +272,70 @@ def test_inherit_image():
         pass
     assert result.success
     assert result.result == "1.11.4"
+
+
+def test_push_to_registry(mocker):
+    if os.environ.get("TRAVIS", False):
+        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
+    else:
+        base_dir = "/tmp/arca/test"
+
+    class LocalDockerBackend(DockerBackend):
+        """ A subclass that adds random 10 characters to the tag name so we can start the test with empty slate
+            everytime. (When `push_to_repository_name` is used, a pull is launched. Since the requirements are always
+            the same, the image would always be pulled and never pushed.)
+        """
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.tag_prefix = hashlib.sha1(str(datetime.now()).encode("utf-8")).hexdigest()[:10]
+
+        def get_image_tag(self, requirements_file, dependencies):
+            tag = super().get_image_tag(requirements_file, dependencies)
+
+            return f"{self.tag_prefix}_{tag}"
+
+    backend = LocalDockerBackend(base_dir=base_dir, verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test")
+    arca = Arca(backend=backend)
+    git_dir = Path("/tmp/arca/") / str(uuid4())
+    repo = Repo.init(git_dir)
+
+    filepath = git_dir / "test_file.py"
+    filepath.write_text(RETURN_DJANGO_VERSION_FUNCTION)
+    repo.index.add([str(filepath)])
+
+    requirements_path = git_dir / backend.requirements_location
+    requirements_path.parent.mkdir(exist_ok=True, parents=True)
+    with requirements_path.open("w") as fl:
+        fl.write("django==1.11.3")  # Has to be unique!
+    repo.index.add([str(requirements_path)])
+
+    repo.index.commit("Initial")
+
+    task = Task(
+        "return_str_function",
+        from_imports=[("test_file", "return_str_function")]
+    )
+
+    repo = f"file://{git_dir}"
+    branch = "master"
+
+    mocker.spy(backend, "create_image")
+
+    result = arca.run(repo, branch, task)
+
+    assert result.success
+    assert result.result == "1.11.3"
+    assert backend.create_image.call_count == 1
+
+    image = backend.get_or_create_environment(repo, branch)
+    backend.client.images.remove(image.id, force=True)
+
+    result = arca.run(repo, branch, task)
+
+    assert result.success
+    assert result.result == "1.11.3"
+
+    assert backend.create_image.call_count == 1
 
 
 def test_inherit_image_with_dependecies():
