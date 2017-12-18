@@ -22,15 +22,15 @@ before_script:
   > ./cc-test-reporter
 - chmod +x ./cc-test-reporter
 - "./cc-test-reporter before-build"
+- docker login -u "$DOCKER_HUB_USERNAME" -p "$DOCKER_HUB_PASSWORD"
 script:
 - python setup.py test
 after_script:
 - "./cc-test-reporter after-build -t coverage.py"
-
 deploy:
   provider: script
   skip_cleanup: true
-  script: scripts/deploy.sh
+  script: python setup.py deploy_docker_bases
   on:
     branch: master
     repo: mikicz/arca

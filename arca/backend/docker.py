@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional, List
 
 import docker
-from docker.errors import BuildError, APIError, ImageNotFound
+import docker.errors
 from docker.models.containers import Container
 from docker.models.images import Image
 from requests.exceptions import ConnectionError
@@ -166,7 +166,7 @@ class DockerBackend(BaseBackend):
                 self.client.images.pull(name, tag=tag)
                 logger.info("The image %s:%s was pulled from repository", name, tag)
                 return name, tag
-            except APIError:
+            except docker.errors.APIError:
                 logger.info("The image %s:%s can't be pulled, building locally.", name, tag)
 
         if callable(dockerfile):
@@ -191,7 +191,7 @@ class DockerBackend(BaseBackend):
                 )
 
                 dockerfile_file.unlink()
-        except BuildError as e:
+        except docker.errors.BuildError as e:
             logger.exception(e)
             raise
 
@@ -255,7 +255,7 @@ class DockerBackend(BaseBackend):
             return name, tag
         try:
             self.client.images.pull(name, tag)
-        except APIError:
+        except docker.errors.APIError:
             raise ValueError("The specified image from which Arca should inherit can't be pulled")  # TODO: Custom
         return name, tag
 
@@ -370,7 +370,7 @@ class DockerBackend(BaseBackend):
     def try_pull_image_from_registry(self, image_name, image_tag) -> Optional[Image]:
         try:
             image: Image = self.client.images.pull(self.push_to_registry_name, image_tag)
-        except ImageNotFound:  # the image doesn't exist
+        except (docker.errors.ImageNotFound, docker.errors.NotFound):  # the image doesn't exist
             logger.info("Tried to pull %s:%s from a registry, not found", self.push_to_registry_name, image_tag)
             return None
 
@@ -502,5 +502,5 @@ class DockerBackend(BaseBackend):
             container = self._containers.pop()
             try:
                 container.kill(signal.SIGKILL)
-            except APIError:  # probably doesn't exist anymore
+            except docker.errors.APIError:  # probably doesn't exist anymore
                 pass
