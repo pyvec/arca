@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional, List
 
 import docker
-from docker.errors import BuildError, APIError
+from docker.errors import BuildError, APIError, ImageNotFound
 from docker.models.containers import Container
 from docker.models.images import Image
 from requests.exceptions import ConnectionError
@@ -30,6 +30,7 @@ class DockerBackend(BaseBackend):
     apk_dependencies = LazySettingProperty(key="apk_dependencies", default=None)
     disable_pull = LazySettingProperty(key="disable_pull", default=False)  # so the build can be tested
     inherit_image = LazySettingProperty(key="inherit_image", default=None)
+    push_to_registry_name = LazySettingProperty(key="push_to_registry_name", default=None)
 
     NO_REQUIREMENTS_HASH = "no_req"
     NO_DEPENDENCIES_HASH = "no_dep"
@@ -49,9 +50,15 @@ class DockerBackend(BaseBackend):
 
         if self.inherit_image is not None:
             try:
-                name, tag = str(self.inherit_image).split(":")
-            except ValueError:
+                assert len(str(self.inherit_image).split(":")) == 2
+            except (ValueError, AssertionError):
                 raise ValueError("Image which should be inherited is not in the proper docker format")
+
+        if self.push_to_registry_name is not None:
+            try:
+                assert 2 >= len(str(self.inherit_image).split("/")) <= 3
+            except ValueError:
+                raise ValueError("Repository name where images should be pushed doesn't match the format")
 
     def check_docker_access(self):
         """ Checks if the current user can access docker, raises exception otherwise
@@ -331,12 +338,49 @@ class DockerBackend(BaseBackend):
 
         return self.get_image(image_name, image_tag)
 
+    def push_to_registry(self, image: Image, image_tag: str):
+        image.tag(self.push_to_registry_name, image_tag)
+
+        result = self.client.images.push(self.push_to_registry_name, image_tag)
+
+        result = result.strip()  # remove empty line at the end of output
+
+        # the last can have one of two outputs, either
+        # {"progressDetail":{},"aux":{"Tag":"<tag>","Digest":"sha256:<hash>","Size":<size>}}
+        # when the push is successful, or
+        # {"errorDetail": {"message":"<error_msg>"},"error":"<error_msg>"}
+        # when the push is not successful
+
+        last_line = json.loads(result.split("\n")[-1])
+
+        if "error" in last_line:
+            # TODO: Custom exception (with full output)
+            raise ValueError(f"Push of the image failed because of: {last_line['error']}")
+
+        logger.info("Pushed image to registry %s:%s", self.push_to_registry_name, image_tag)
+        logger.debug("Info:\n%s", result)
+
     def image_exists(self, image_name, image_tag):
         # TODO: Is there a better filter?
         return f"{image_name}:{image_tag}" in itertools.chain(*[image.tags for image in self.client.images.list()])
 
     def get_image(self, image_name, image_tag) -> Image:
         return self.client.images.get(f"{image_name}:{image_tag}")
+
+    def try_pull_image_from_registry(self, image_name, image_tag) -> Optional[Image]:
+        try:
+            image: Image = self.client.images.pull(self.push_to_registry_name, image_tag)
+        except ImageNotFound:  # the image doesn't exist
+            logger.info("Tried to pull %s:%s from a registry, not found", self.push_to_registry_name, image_tag)
+            return None
+
+        logger.info("Pulled %s:%s from registry, tagged %s:%s", self.push_to_registry_name, image_tag,
+                    image_name, image_tag)
+
+        # the name and tag are different on the repo, let's tag it with local name so exists checks run smoothly
+        image.tag(image_name, image_tag)
+
+        return image
 
     def get_or_create_environment(self, repo: str, branch: str) -> Image:
         """ Returns an image for the specific repo (based on its requirements)
@@ -351,7 +395,19 @@ class DockerBackend(BaseBackend):
         if self.image_exists(image_name, image_tag):
             return self.get_image(image_name, image_tag)
 
-        return self.create_image(image_name, image_tag, path.parent, requirements_file, dependencies)
+        if self.push_to_registry_name is not None:
+            # the target image might have been built and pushed in a previous run already, let's try to pull it
+            img = self.try_pull_image_from_registry(image_name, image_tag)
+
+            if img is not None:  # image wasn't found
+                return img
+
+        image = self.create_image(image_name, image_tag, path.parent, requirements_file, dependencies)
+
+        if self.push_to_registry_name is not None:
+            self.push_to_registry(image, image_tag)
+
+        return image
 
     def container_running(self, container_name) -> Optional[Container]:
         """ Finds out if a container with name `container_name` is running, returns it if it does, None otherwise.
