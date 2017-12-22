@@ -1,14 +1,13 @@
 import hashlib
 from pathlib import Path
 from uuid import uuid4
-import os
 
 import pytest
 from datetime import datetime
 from git import Repo
 
 from arca import Arca, DockerBackend, Task
-from test_backends import RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION
+from test_backends import RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, BASE_DIR
 
 
 RETURN_PYTHON_VERSION_FUNCTION = """
@@ -48,14 +47,9 @@ def return_platform():
 
 
 def test_keep_container_running():
-    if os.environ.get("TRAVIS", False):
-        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
-    else:
-        base_dir = "/tmp/arca/test"
+    backend = DockerBackend(verbosity=2, keep_container_running=True)
 
-    backend = DockerBackend(base_dir=base_dir, verbosity=2, keep_container_running=True)
-
-    arca = Arca(backend=backend)
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     git_dir = Path("/tmp/arca/") / str(uuid4())
 
@@ -102,14 +96,9 @@ def test_keep_container_running():
 
 @pytest.mark.parametrize("python_version", ["3.6.0", "3.6.3"])
 def test_python_version(python_version):
-    if os.environ.get("TRAVIS", False):
-        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
-    else:
-        base_dir = "/tmp/arca/test"
+    backend = DockerBackend(verbosity=2, python_version=python_version)
 
-    backend = DockerBackend(base_dir=base_dir, verbosity=2, python_version=python_version)
-
-    arca = Arca(backend=backend)
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     git_dir = Path("/tmp/arca/") / str(uuid4())
 
@@ -138,14 +127,9 @@ def test_python_version(python_version):
 
 def test_apk_dependencies():
     # TODO: maybe find something that installs quicker than lxml. Becase lxml takes a long time to compile.
-    if os.environ.get("TRAVIS", False):
-        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
-    else:
-        base_dir = "/tmp/arca/test"
+    backend = DockerBackend(verbosity=2, apk_dependencies=["libxml2-dev", "libxslt-dev"])
 
-    backend = DockerBackend(base_dir=base_dir, verbosity=2, apk_dependencies=["libxml2-dev", "libxslt-dev"])
-
-    arca = Arca(backend=backend)
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     git_dir = Path("/tmp/arca/") / str(uuid4())
 
@@ -202,14 +186,9 @@ def test_apk_dependencies():
 
 
 def test_inherit_image():
-    if os.environ.get("TRAVIS", False):
-        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
-    else:
-        base_dir = "/tmp/arca/test"
+    backend = DockerBackend(verbosity=2, inherit_image="python:3.6")
 
-    backend = DockerBackend(base_dir=base_dir, verbosity=2, inherit_image="python:3.6")
-
-    arca = Arca(backend=backend)
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     git_dir = Path("/tmp/arca/") / str(uuid4())
 
@@ -275,11 +254,6 @@ def test_inherit_image():
 
 
 def test_push_to_registry(mocker):
-    if os.environ.get("TRAVIS", False):
-        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
-    else:
-        base_dir = "/tmp/arca/test"
-
     class LocalDockerBackend(DockerBackend):
         """ A subclass that adds random 10 characters to the tag name so we can start the test with empty slate
             everytime. (When `push_to_repository_name` is used, a pull is launched. Since the requirements are always
@@ -294,22 +268,22 @@ def test_push_to_registry(mocker):
 
             return f"{self.tag_prefix}_{tag}"
 
-    backend = LocalDockerBackend(base_dir=base_dir, verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test")
-    arca = Arca(backend=backend)
+    backend = LocalDockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test")
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
     git_dir = Path("/tmp/arca/") / str(uuid4())
-    repo = Repo.init(git_dir)
+    git_repo = Repo.init(git_dir)
 
     filepath = git_dir / "test_file.py"
     filepath.write_text(RETURN_DJANGO_VERSION_FUNCTION)
-    repo.index.add([str(filepath)])
+    git_repo.index.add([str(filepath)])
 
     requirements_path = git_dir / backend.requirements_location
     requirements_path.parent.mkdir(exist_ok=True, parents=True)
     with requirements_path.open("w") as fl:
         fl.write("django==1.11.3")  # Has to be unique!
-    repo.index.add([str(requirements_path)])
+    git_repo.index.add([str(requirements_path)])
 
-    repo.index.commit("Initial")
+    git_repo.index.commit("Initial")
 
     task = Task(
         "return_str_function",
@@ -327,7 +301,7 @@ def test_push_to_registry(mocker):
     assert result.result == "1.11.3"
     assert backend.create_image.call_count == 1
 
-    image = backend.get_or_create_environment(repo, branch)
+    image = backend.get_or_create_environment(repo, branch, git_repo, git_dir)
     backend.client.images.remove(image.id, force=True)
 
     result = arca.run(repo, branch, task)

@@ -27,7 +27,7 @@ class LazySettingProperty:
         self.name = name
 
     def __get__(self, instance, cls):
-        if instance is None or instance._arca is None:
+        if instance is None or (hasattr(instance, "_arca") and instance._arca is None):
             return self
         result = instance.get_setting(self.key, self.default)
         setattr(instance, self.name, result)

@@ -14,6 +14,7 @@ import docker
 import docker.errors
 from docker.models.containers import Container
 from docker.models.images import Image
+from git import Repo
 from requests.exceptions import ConnectionError
 
 import arca
@@ -115,7 +116,7 @@ class DockerBackend(BaseBackend):
             return f"arca_{name}_{tag}"
 
     def get_dependencies_hash(self, dependencies):
-        return hashlib.sha256(bytes(",".join(dependencies), "utf-8")).hexdigest()
+        return hashlib.sha1(bytes(",".join(dependencies), "utf-8")).hexdigest()
 
     def get_image_tag(self, requirements_file: Optional[Path], dependencies: Optional[List[str]]) -> str:
         """ Returns the tag for images with proper requirements and dependencies installed
@@ -382,11 +383,10 @@ class DockerBackend(BaseBackend):
 
         return image
 
-    def get_or_create_environment(self, repo: str, branch: str) -> Image:
+    def get_or_create_environment(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> Image:
         """ Returns an image for the specific repo (based on its requirements)
         """
-        _, path = self.get_files(repo, branch)
-        requirements_file = self.get_requirements_file(path)
+        requirements_file = self.get_requirements_file(repo_path)
         dependencies = self.get_dependencies()
 
         image_name = self.get_image_name(requirements_file, dependencies)
@@ -402,7 +402,7 @@ class DockerBackend(BaseBackend):
             if img is not None:  # image wasn't found
                 return img
 
-        image = self.create_image(image_name, image_tag, path.parent, requirements_file, dependencies)
+        image = self.create_image(image_name, image_tag, repo_path.parent, requirements_file, dependencies)
 
         if self.push_to_registry_name is not None:
             self.push_to_registry(image, image_tag)
@@ -431,18 +431,15 @@ class DockerBackend(BaseBackend):
         tar.close()
         return tarstream.getvalue()
 
-    def start_container(self, image, container_name, repo, branch) -> Container:
+    def start_container(self, image, container_name, repo_path: Path) -> Container:
         """ Starts a container with image `image` and name `container_name` and copies the git into the container.
         """
-
         container = self.client.containers.run(image, command="bash -i", detach=True, tty=True, name=container_name,
                                                working_dir=str((Path("/srv/data") / self.cwd).resolve()),
                                                auto_remove=True)
 
-        _, path = self.get_files(repo, branch)
-
         container.exec_run(["mkdir", "-p", "/srv"])
-        container.put_archive("/srv", self.tar_files(path))
+        container.put_archive("/srv", self.tar_files(repo_path))
 
         return container
 
@@ -460,22 +457,22 @@ class DockerBackend(BaseBackend):
 
         return tarstream.getvalue()
 
-    def run(self, repo: str, branch: str, task: Task) -> Result:
+    def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path) -> Result:
         """ Gets or builds an image for the repo, gets or starts a container for the image and runs the scripts.
         """
         self.check_docker_access()
 
-        image = self.get_or_create_environment(repo, branch)
+        image = self.get_or_create_environment(repo, branch, git_repo, repo_path)
 
         container_name = "arca_{}_{}_{}".format(
             self._arca.repo_id(repo),
             branch,
-            self.current_git_hash(repo,  branch, short=True)
+            self._arca.current_git_hash(repo, branch, git_repo, short=True)
         )
 
         container = self.container_running(container_name)
         if container is None:
-            container = self.start_container(image, container_name, repo, branch)
+            container = self.start_container(image, container_name, repo_path)
 
         script_name, script = self.create_script(task)
 
