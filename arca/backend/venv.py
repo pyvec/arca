@@ -3,7 +3,6 @@ import os
 import stat
 import traceback
 from pathlib import Path
-from typing import Tuple
 from venv import EnvBuilder
 
 import subprocess
@@ -27,7 +26,7 @@ class VenvBackend(BaseBackend):
 
             logger.debug("Hashing: " + requirements_file.read_text() + arca.__version__)
 
-        venv_path = Path(self.base_dir) / "venvs" / requirements_hash
+        venv_path = Path(self._arca.base_dir) / "venvs" / requirements_hash
 
         if not venv_path.exists():
             logger.info(f"Creating a venv in {venv_path}")
@@ -63,18 +62,14 @@ class VenvBackend(BaseBackend):
 
         return venv_path
 
-    def get_or_create_environment(self, repo: str, branch: str) -> Tuple[Repo, Path, Path]:
-        git_repo, repo_path = self.get_files(repo, branch)
+    def get_or_create_environment(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> Path:
+        return self.create_or_get_venv(repo_path)
 
-        venv_path = self.create_or_get_venv(repo_path)
-
-        return git_repo, repo_path, venv_path
-
-    def run(self, repo: str, branch: str, task: Task) -> Result:
-        git_repo, repo_path, venv_path = self.get_or_create_environment(repo, branch)
+    def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path) -> Result:
+        venv_path = self.get_or_create_environment(repo, branch, git_repo, repo_path)
 
         script_name, script = self.create_script(task, venv_path)
-        script_path = Path(self.base_dir, "scripts", script_name)
+        script_path = Path(self._arca.base_dir, "scripts", script_name)
         script_path.parent.mkdir(parents=True, exist_ok=True)
 
         with script_path.open("w") as f:

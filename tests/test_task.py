@@ -4,7 +4,7 @@ from pathlib import Path
 
 from arca.task import Task
 
-env_path = Path("/usr")
+ENV_PATH = Path("/usr")
 
 
 def _clean_lines(x: str) -> str:
@@ -21,7 +21,7 @@ def _clean_lines(x: str) -> str:
 ))
 def test_imports(imports, res):
     task = Task("func", imports=imports)
-    assert _clean_lines(task.build_script(env_path)) == _clean_lines("""#!/usr/bin/python3
+    assert _clean_lines(task.build_script(ENV_PATH)) == _clean_lines("""#!/usr/bin/python3
 import json
 import traceback
 import sys
@@ -46,7 +46,7 @@ except:
 ))
 def test_from_imports(from_imports, res):
     task = Task("func", from_imports=from_imports)
-    assert _clean_lines(task.build_script(env_path)) == _clean_lines("""#!/usr/bin/python3
+    assert _clean_lines(task.build_script(ENV_PATH)) == _clean_lines("""#!/usr/bin/python3
 import json
 import traceback
 import sys
@@ -71,7 +71,7 @@ except:
 ))
 def test_function_call(args, kwargs, res):
     task = Task("func", args=args, kwargs=kwargs)
-    assert _clean_lines(task.build_script(env_path)) == _clean_lines("""#!/usr/bin/python3
+    assert _clean_lines(task.build_script(ENV_PATH)) == _clean_lines("""#!/usr/bin/python3
 import json
 import traceback
 import sys

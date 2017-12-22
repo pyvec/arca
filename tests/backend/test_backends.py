@@ -8,6 +8,11 @@ from git import Repo
 
 from arca import Arca, VenvBackend, DockerBackend, Task
 
+if os.environ.get("TRAVIS", False):
+    BASE_DIR = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
+else:
+    BASE_DIR = "/tmp/arca/test"
+
 RETURN_STR_FUNCTION = """
 def return_str_function():
     return "Some string"
@@ -45,17 +50,12 @@ def test_backends(backend, requirements_location, file_location):
     if file_location is not None:
         kwargs["cwd"] = file_location
 
-    if os.environ.get("TRAVIS", False):
-        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
-    else:
-        base_dir = "/tmp/arca/test"
-
     if backend == DockerBackend:
         kwargs["disable_pull"] = True
 
-    backend = backend(base_dir=base_dir, verbosity=2, **kwargs)
+    backend = backend(verbosity=2, **kwargs)
 
-    arca = Arca(backend=backend)
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     git_dir = Path("/tmp/arca/") / str(uuid4())
 
@@ -158,15 +158,10 @@ def test_backends(backend, requirements_location, file_location):
         ("", "test_location"),
     ))
 )
-def test_backends_static(backend, file_location):
-    if os.environ.get("TRAVIS", False):
-        base_dir = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
-    else:
-        base_dir = "/tmp/arca/test"
+def test_static_files(backend, file_location):
+    backend = backend(verbosity=2)
 
-    backend = backend(base_dir=base_dir, verbosity=2)
-
-    arca = Arca(backend=backend)
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     git_dir = Path("/tmp/arca/") / str(uuid4())
 
