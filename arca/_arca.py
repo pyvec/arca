@@ -214,6 +214,7 @@ class Arca:
         _, repo_path = self.get_files(repo, branch)
 
         result = repo_path / relative_path
+        result = result.resolve()
 
         logger.info("Static path for %s is %s", relative_path, result)
 
