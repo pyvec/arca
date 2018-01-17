@@ -1,6 +1,7 @@
 import json
 import os
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Union, Optional, Dict, Any, Tuple
 
@@ -70,14 +71,23 @@ class Arca:
     def _make_region(self) -> CacheRegion:
         arguments = self.get_setting("cache_backend_arguments", None)
 
-        if isinstance(arguments, str):
+        if isinstance(arguments, str) and arguments:
             arguments = json.loads(arguments)  # TODO: catch errors and raise custom exception
 
-        return make_region().configure(
-            self.get_setting("cache_backend", "dogpile.cache.null"),
-            expiration_time=self.get_setting("cache_expiration_time", None),
-            arguments=arguments
-        )
+        # TODO: custom exceptions
+        try:
+            region = make_region().configure(
+                self.get_setting("cache_backend", "dogpile.cache.null"),
+                expiration_time=self.get_setting("cache_expiration_time", None),
+                arguments=arguments
+            )
+            region.set("last_arca_run", datetime.now().isoformat())
+        except ModuleNotFoundError:
+            raise ValueError("Cache backend cannot load a required library")
+        except Exception as e:
+            raise ValueError("The provided cache is not working - probably misconfigured. ")
+
+        return region
 
     def validate_repo_url(self, repo: str):
         # that should match valid git repos
