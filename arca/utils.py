@@ -2,6 +2,9 @@ import importlib
 import logging
 from typing import Any, Dict, Optional
 
+from .exceptions import ArcaMisconfigured
+
+
 NOT_SET = object()
 logger = logging.getLogger("arca")
 logger.setLevel(logging.DEBUG)
@@ -10,12 +13,14 @@ logger.setLevel(logging.DEBUG)
 def load_class(location: str) -> type:
     module_name = ".".join(location.split(".")[:-1])
     class_name = location.split(".")[-1]
-    imported_module = importlib.import_module(module_name)
 
     try:
+        imported_module = importlib.import_module(module_name)
         return getattr(imported_module, class_name)
+    except ModuleNotFoundError:
+        raise ArcaMisconfigured(f"{module_name} does not exist.")
     except AttributeError:
-        raise ValueError(f"{module_name} does not have a {class_name} class")  # TODO: custom exception?
+        raise ArcaMisconfigured(f"{module_name} does not have a {class_name} class")
 
 
 class LazySettingProperty:

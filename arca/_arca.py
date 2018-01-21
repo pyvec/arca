@@ -9,6 +9,7 @@ import re
 from dogpile.cache import make_region, CacheRegion
 from git import Repo
 
+from .exceptions import ArcaMisconfigured
 from .backend import BaseBackend
 from .result import Result
 from .task import Task
@@ -52,7 +53,7 @@ class Arca:
             backend = backend()
 
         if not issubclass(backend.__class__, BaseBackend):
-            raise ValueError(f"{backend.__class__} is not an subclass of BaseBackend")
+            raise ArcaMisconfigured(f"{backend.__class__} is not an subclass of BaseBackend")
 
         return backend
 
@@ -72,9 +73,11 @@ class Arca:
         arguments = self.get_setting("cache_backend_arguments", None)
 
         if isinstance(arguments, str) and arguments:
-            arguments = json.loads(arguments)  # TODO: catch errors and raise custom exception
+            try:
+                arguments = json.loads(arguments)
+            except ValueError:
+                raise ArcaMisconfigured("Cache backend arguments couldn't be converted to a dictionary.")
 
-        # TODO: custom exceptions
         try:
             region = make_region().configure(
                 self.get_setting("cache_backend", "dogpile.cache.null"),
@@ -83,17 +86,16 @@ class Arca:
             )
             region.set("last_arca_run", datetime.now().isoformat())
         except ModuleNotFoundError:
-            raise ValueError("Cache backend cannot load a required library")
+            raise ModuleNotFoundError("Cache backend cannot load a required library.")
         except Exception as e:
-            raise ValueError("The provided cache is not working - probably misconfigured. ")
+            raise ArcaMisconfigured("The provided cache is not working - most likely misconfigured.")
 
         return region
 
     def validate_repo_url(self, repo: str):
         # that should match valid git repos
         if not isinstance(repo, str) or not re.match(r"^(https?|file)://[\w._\-/~]*[.git]?/?$", repo):
-            # TODO: probably a custom exception would be better
-            raise ValueError(f"{repo} is not a valid http[s] or file:// git repo")
+            raise ValueError(f"{repo} is not a valid http[s] or file:// git repository.")
 
     def repo_id(self, repo: str) -> str:
         if repo.startswith("http"):
@@ -148,7 +150,7 @@ class Arca:
         if repo is None and branch is None:
             self._current_hash = {}
         elif repo is None:
-            raise ValueError("You can't define just the branch to pull again.")  # TODO: custom exception
+            raise ValueError("You can't define just the branch to pull again.")
         elif branch is None and repo is not None:
             self._current_hash.pop(self.repo_id(repo), None)
         else:
@@ -196,13 +198,9 @@ class Arca:
         def create_value():
             return self.backend.run(repo, branch, task, git_repo, repo_path)
 
-        def should_cache(value: Result):
-            return value.success
-
         return self.region.get_or_create(
             self.cache_key(repo, branch, task, git_repo),
-            create_value,
-            should_cache_fn=should_cache
+            create_value
         )
 
     def static_filename(self, repo: str, branch: str, relative_path: Union[str, Path]) -> Path:

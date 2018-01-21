@@ -2,6 +2,7 @@
 import pytest
 from pathlib import Path
 
+from arca.exceptions import TaskMisconfigured
 from arca.task import Task
 
 ENV_PATH = Path("/usr")
@@ -87,5 +88,5 @@ except:
 
 @pytest.mark.parametrize("call", [" test", "test ", "te st", "te\tst", "test()\ntest2"])
 def test_invalid_function_call(call):
-    with pytest.raises(ValueError):
+    with pytest.raises(TaskMisconfigured):
         Task(call)

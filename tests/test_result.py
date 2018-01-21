@@ -1,26 +1,18 @@
 # encoding=utf-8
 import pytest
 
+from arca.exceptions import BuildError
 from arca.result import Result
 
 
 def test_success():
     res = Result({"success": True, "result": "Message"})
-    assert res.success
-    assert res.result == "Message"
-    with pytest.raises(AttributeError):
-        res.error
+    assert res.output == "Message"
 
     res2 = Result({"success": True, "result": 1})
-    assert res2.success
-    assert res2.result == 1
-    with pytest.raises(AttributeError):
-        res2.error
+    assert res2.output == 1
 
 
 def test_error():
-    res = Result({"success": False, "error": "Error"})
-    assert not res.success
-    assert res.error == "Error"
-    with pytest.raises(AttributeError):
-        res.result
+    with pytest.raises(BuildError):
+        Result({"success": False, "error": "Error"})

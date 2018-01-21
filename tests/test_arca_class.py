@@ -3,6 +3,7 @@ import pytest
 from git import Repo
 
 from arca import Arca, VenvBackend
+from arca.exceptions import ArcaMisconfigured
 
 
 def test_arca_backend():
@@ -10,19 +11,16 @@ def test_arca_backend():
     assert isinstance(Arca(VenvBackend).backend, VenvBackend)
     assert isinstance(Arca("arca.backend.VenvBackend").backend, VenvBackend)
 
-    with pytest.raises(ModuleNotFoundError):
+    with pytest.raises(ArcaMisconfigured):
         Arca("arca.backend_test.TestBackend")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ArcaMisconfigured):
         Arca("arca.backend.TestBackend")
 
     class NotASubclassClass:
         pass
 
-    with pytest.raises(ValueError):
-        Arca(NotASubclassClass)
-
-    with pytest.raises(ValueError):
+    with pytest.raises(ArcaMisconfigured):
         Arca(NotASubclassClass)
 
 
@@ -46,13 +44,13 @@ def test_arca_backend():
     (Repo(), False),
 ])
 def test_validate_repo_url(url, valid):
-    backend = Arca()
+    arca = Arca()
 
     if valid:
-        backend.validate_repo_url(url)
+        arca.validate_repo_url(url)
     else:
         with pytest.raises(ValueError):
-            backend.validate_repo_url(url)
+            arca.validate_repo_url(url)
 
 
 @pytest.mark.parametrize("url", [
