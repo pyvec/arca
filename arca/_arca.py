@@ -9,7 +9,7 @@ import re
 from dogpile.cache import make_region, CacheRegion
 from git import Repo
 
-from .exceptions import ArcaMisconfigured
+from .exceptions import ArcaMisconfigured, FileOutOfRangeError
 from .backend import BaseBackend
 from .result import Result
 from .task import Task
@@ -87,7 +87,7 @@ class Arca:
             region.set("last_arca_run", datetime.now().isoformat())
         except ModuleNotFoundError:
             raise ModuleNotFoundError("Cache backend cannot load a required library.")
-        except Exception as e:
+        except Exception:
             raise ArcaMisconfigured("The provided cache is not working - most likely misconfigured.")
 
         return region
@@ -213,6 +213,12 @@ class Arca:
 
         result = repo_path / relative_path
         result = result.resolve()
+
+        if repo_path not in result.parents:
+            raise FileOutOfRangeError(f"{relative_path} is not inside the repository.")
+
+        if not result.exists():
+            raise FileNotFoundError(f"{relative_path} does not exist in the repository.")
 
         logger.info("Static path for %s is %s", relative_path, result)
 

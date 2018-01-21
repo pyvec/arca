@@ -7,7 +7,7 @@ import pytest
 from git import Repo
 
 from arca import Arca, VenvBackend, DockerBackend, Task
-from arca.exceptions import BuildError
+from arca.exceptions import BuildError, FileOutOfRangeError
 
 if os.environ.get("TRAVIS", False):
     BASE_DIR = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
@@ -156,6 +156,8 @@ def test_static_files(backend, file_location):
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     git_dir = Path("/tmp/arca/") / str(uuid4())
+    git_url = f"file://{git_dir}"
+    branch = "master"
 
     repo = Repo.init(git_dir)
     if not file_location:
@@ -169,11 +171,18 @@ def test_static_files(backend, file_location):
     repo.index.commit("Initial")
 
     relative_path = Path(file_location) / "test_file.txt"
+    nonexistent_relative_path = Path(file_location) / "test_file2.txt"
 
-    result = arca.static_filename(f"file://{git_dir}", "master", relative_path)
+    result = arca.static_filename(git_url, branch, relative_path)
+
+    assert filepath.read_text() == result.read_text()
+
+    result = arca.static_filename(git_url, branch, str(relative_path))
 
     assert filepath.read_text() == result.read_text()
 
-    result = arca.static_filename(f"file://{git_dir}", "master", str(relative_path))
+    with pytest.raises(FileOutOfRangeError):
+        arca.static_filename(git_url, branch, "../file.txt")
 
-    assert filepath.read_text() == result.read_text()
+    with pytest.raises(FileNotFoundError):
+        arca.static_filename(git_url, branch, nonexistent_relative_path)
