@@ -9,6 +9,7 @@ from git import Repo
 from arca import Arca, DockerBackend, Task
 from test_backends import RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, BASE_DIR
 
+from arca.exceptions import ArcaMisconfigured
 
 RETURN_PYTHON_VERSION_FUNCTION = """
 import sys
@@ -71,8 +72,7 @@ def test_keep_container_running():
 
     result = arca.run(f"file://{git_dir}", "master", task)
 
-    assert result.success
-    assert result.result == "Some string"
+    assert result.output == "Some string"
 
     count_after_run = len(backend.client.containers.list())
 
@@ -80,8 +80,7 @@ def test_keep_container_running():
 
     result = arca.run(f"file://{git_dir}", "master", task)
 
-    assert result.success
-    assert result.result == "Some string"
+    assert result.output == "Some string"
 
     count_after_second_run = len(backend.client.containers.list())
 
@@ -121,8 +120,7 @@ def test_python_version(python_version):
     except AttributeError:
         pass
 
-    assert result.success
-    assert result.result == python_version
+    assert result.output == python_version
 
 
 def test_apk_dependencies():
@@ -152,8 +150,7 @@ def test_apk_dependencies():
     except AttributeError:
         pass
 
-    assert result.success
-    assert result.result == 0
+    assert result.output == 0
 
     requirements_path = git_dir / "requirements.txt"
 
@@ -181,8 +178,7 @@ def test_apk_dependencies():
     except AttributeError:
         pass
 
-    assert result.success
-    assert result.result
+    assert result.output
 
 
 def test_inherit_image():
@@ -206,8 +202,7 @@ def test_inherit_image():
 
     result = arca.run(f"file://{git_dir}", "master", task)
 
-    assert result.success
-    assert result.result == "Some string"
+    assert result.output == "Some string"
 
     filepath.write_text(RETURN_PLATFORM)
     repo.index.add([str(filepath)])
@@ -220,10 +215,8 @@ def test_inherit_image():
 
     result = arca.run(f"file://{git_dir}", "master", task)
 
-    assert result.success
-
     # alpine is the default, dist() returns ('', '', '') on - so this fails when the default image is used
-    assert result.result == "debian"
+    assert result.output == "debian"
 
     requirements_path = git_dir / backend.requirements_location
 
@@ -245,12 +238,8 @@ def test_inherit_image():
     )
 
     result = arca.run(f"file://{git_dir}", "master", django_task)
-    try:
-        print(result.error)
-    except AttributeError:
-        pass
-    assert result.success
-    assert result.result == "1.11.4"
+
+    assert result.output == "1.11.4"
 
 
 def test_push_to_registry(mocker):
@@ -297,8 +286,7 @@ def test_push_to_registry(mocker):
 
     result = arca.run(repo, branch, task)
 
-    assert result.success
-    assert result.result == "1.11.3"
+    assert result.output == "1.11.3"
     assert backend.create_image.call_count == 1
 
     image = backend.get_or_create_environment(repo, branch, git_repo, git_dir)
@@ -306,13 +294,12 @@ def test_push_to_registry(mocker):
 
     result = arca.run(repo, branch, task)
 
-    assert result.success
-    assert result.result == "1.11.3"
+    assert result.output == "1.11.3"
 
     assert backend.create_image.call_count == 1
 
 
 def test_inherit_image_with_dependecies():
     backend = DockerBackend(inherit_image="python:alpine3.6", apk_dependencies=["libxml2-dev", "libxslt-dev"])
-    with pytest.raises(ValueError):
+    with pytest.raises(ArcaMisconfigured):
         Arca(backend=backend)

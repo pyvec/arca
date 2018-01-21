@@ -7,6 +7,7 @@ import pytest
 from git import Repo
 
 from arca import Arca, VenvBackend, DockerBackend, Task
+from arca.exceptions import BuildError
 
 if os.environ.get("TRAVIS", False):
     BASE_DIR = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
@@ -77,8 +78,7 @@ def test_backends(backend, requirements_location, file_location):
 
     result = arca.run(f"file://{git_dir}", "master", task)
 
-    assert result.success
-    assert result.result == "Some string"
+    assert result.output == "Some string"
 
     with filepath.open("w") as fl:
         fl.write(SECOND_RETURN_STR_FUNCTION)
@@ -89,13 +89,11 @@ def test_backends(backend, requirements_location, file_location):
     repo.index.commit("Updated function")
 
     result = arca.run(f"file://{git_dir}", "master", task)
-    assert result.success
-    assert result.result == "Some other string"
+    assert result.output == "Some other string"
 
     # in the other branch there's still the original
     result = arca.run(f"file://{git_dir}", "new_branch", task)
-    assert result.success
-    assert result.result == "Some string"
+    assert result.output == "Some string"
 
     repo.branches.master.checkout()
 
@@ -114,12 +112,8 @@ def test_backends(backend, requirements_location, file_location):
     repo.index.commit("Added requirements, changed to version")
 
     result = arca.run(f"file://{git_dir}", "master", task)
-    try:
-        print(result.error)
-    except AttributeError:
-        pass
-    assert result.success
-    assert result.result == "1.11.4"
+
+    assert result.output == "1.11.4"
 
     with pytest.raises(ModuleNotFoundError):
         import django
@@ -132,8 +126,7 @@ def test_backends(backend, requirements_location, file_location):
     repo.index.commit("Updated requirements")
 
     result = arca.run(f"file://{git_dir}", "master", task)
-    assert result.success
-    assert result.result == "1.11.5"
+    assert result.output == "1.11.5"
 
     django_task = Task(
         "django.get_version",
@@ -141,15 +134,14 @@ def test_backends(backend, requirements_location, file_location):
     )
 
     result = arca.run(f"file://{git_dir}", "master", django_task)
-    assert result.success
-    assert result.result == "1.11.5"
+    assert result.output == "1.11.5"
 
     django_task_error = Task(
         "django.get_version",
     )
 
-    result = arca.run(f"file://{git_dir}", "master", django_task_error)
-    assert not result.success
+    with pytest.raises(BuildError):
+        arca.run(f"file://{git_dir}", "master", django_task_error)
 
 
 @pytest.mark.parametrize(

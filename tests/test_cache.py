@@ -74,13 +74,7 @@ def test_cache(mocker, backend, cache_backend, arguments):
 
     result = arca.run(repo, branch, django_task)
 
-    try:
-        print(result.error)
-    except AttributeError:
-        pass
-
-    assert result.success
-    assert result.result == "1.11.5"
+    assert result.output == "1.11.5"
 
     assert arca.backend.run.call_count == 1
 
@@ -91,8 +85,7 @@ def test_cache(mocker, backend, cache_backend, arguments):
     assert cached_result is not NO_VALUE
 
     result = arca.run(repo, branch, django_task)
-    assert result.success
-    assert result.result == "1.11.5"
+    assert result.output == "1.11.5"
 
     # check that the result was actually from cache, that run wasn't called again
     assert arca.backend.run.call_count == 1
@@ -102,7 +95,6 @@ def test_cache(mocker, backend, cache_backend, arguments):
     mocker.spy(arca, "get_files")
 
     result = arca.run(repo, branch, django_task)
-    assert result.success
-    assert result.result == "1.11.5"
+    assert result.output == "1.11.5"
 
     assert arca.get_files.call_count == 1  # check that the repo was pulled

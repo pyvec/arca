@@ -1,7 +1,6 @@
 import json
 import os
 import stat
-import traceback
 from pathlib import Path
 from venv import EnvBuilder
 
@@ -12,6 +11,7 @@ import arca
 from arca.task import Task
 from arca.result import Result
 from arca.utils import logger
+from arca.exceptions import BuildError
 from .base import BaseBackend
 
 
@@ -44,17 +44,21 @@ class VenvBackend(BaseBackend):
                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 [out_stream, err_stream] = process.communicate()
+                out_stream = out_stream.decode("utf-8")
+                err_stream = err_stream.decode("utf-8")
 
                 logger.debug("Return code is %s", process.returncode)
-                logger.debug(out_stream.decode("utf-8"))
-                logger.debug(err_stream.decode("utf-8"))
+                logger.debug(out_stream)
+                logger.debug(err_stream)
 
                 if process.returncode:
                     venv_path.rmdir()
-                    raise ValueError("Unable to install requirements.txt")  # TODO: custom exception
+                    raise BuildError("Unable to install requirements.txt", extra_info={
+                        "out_stream": out_stream,
+                        "err_stream": err_stream,
+                        "returncode": process.returncode
+                    })
 
-                logger.debug(out_stream.decode("utf-8"))
-                logger.debug(err_stream.decode("utf-8"))
             else:
                 logger.info("Requirements file not present in repo, empty venv it is.")
         else:
@@ -96,6 +100,8 @@ class VenvBackend(BaseBackend):
             return Result(json.loads(out_stream.decode("utf-8")))
         except Exception as e:
             logger.exception(e)
-            return Result({"success": False, "error": (traceback.format_exc() + "\n" +
-                                                       out_stream.decode("utf-8") + "\n\n" +
-                                                       err_stream.decode("utf-8"))})
+            raise BuildError("The build failed", extra_info={
+                "exception": e,
+                "out_stream": out_stream,
+                "err_stream": err_stream,
+            })

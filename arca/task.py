@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Optional, Tuple, Any, Dict, Iterable
 
+from .exceptions import TaskMisconfigured
+
 
 class Task:
 
@@ -14,7 +16,7 @@ class Task:
                  args: Optional[Iterable[Any]]=None,
                  kwargs: Optional[Dict[str, Any]]=None) -> None:
         if re.match(r".*\s.*", function_call):
-            raise ValueError("function_call contains a whitespace")  # TODO: custom exception
+            raise TaskMisconfigured("function_call contains a whitespace")
 
         self.function_call = function_call
         self.imports = list(imports or [])

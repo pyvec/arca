@@ -41,8 +41,7 @@ def test_single_pull(mocker, backend):
     repo_url = f"file://{git_dir}"
 
     result = arca.run(repo_url, "master", task)
-    assert result.success
-    assert result.result == "Some string"
+    assert result.output == "Some string"
     assert arca._pull.call_count == 1
 
     with filepath.open("w") as fl:
@@ -52,15 +51,13 @@ def test_single_pull(mocker, backend):
     repo.index.commit("Updated function")
 
     result = arca.run(repo_url, "master", task)
-    assert result.success
-    assert result.result == "Some string"
+    assert result.output == "Some string"
     assert arca._pull.call_count == 1
 
     arca.pull_again(repo_url, "master")
 
     result = arca.run(repo_url, "master", task)
-    assert result.success
-    assert result.result == "Some other string"
+    assert result.output == "Some other string"
     assert arca._pull.call_count == 2
 
 
@@ -96,13 +93,11 @@ def test_pull_efficiency(mocker, backend):
     repo_url = f"file://{git_dir}"
 
     result = arca.run(repo_url, "master", task)
-    assert result.success
-    assert result.result == "Some string"
+    assert result.output == "Some string"
     assert arca._pull.call_count == 1
 
     result = arca.run(repo_url, "master", task)
-    assert result.success
-    assert result.result == "Some string"
+    assert result.output == "Some string"
     assert arca._pull.call_count == 2
 
     with filepath.open("w") as fl:
@@ -112,11 +107,9 @@ def test_pull_efficiency(mocker, backend):
     repo.index.commit("Updated function")
 
     result = arca.run(repo_url, "master", task)
-    assert result.success
-    assert result.result == "Some other string"
+    assert result.output == "Some other string"
     assert arca._pull.call_count == 3
 
     result = arca.run(repo_url, "master", task)
-    assert result.success
-    assert result.result == "Some other string"
+    assert result.output == "Some other string"
     assert arca._pull.call_count == 4

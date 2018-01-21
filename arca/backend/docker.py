@@ -18,6 +18,7 @@ from git import Repo
 from requests.exceptions import ConnectionError
 
 import arca
+from arca.exceptions import ArcaMisconfigured, BuildError, PushToRegistryError
 from arca.result import Result
 from arca.task import Task
 from arca.utils import logger, LazySettingProperty
@@ -46,20 +47,19 @@ class DockerBackend(BaseBackend):
         super().validate_settings()
 
         if self.inherit_image is not None and self.get_dependencies() is not None:
-            # TODO: Custom Exception
-            raise ValueError("An external image is used as a base, therefore Arca can't install dependencies")
+            raise ArcaMisconfigured("An external image is used as a base, therefore Arca can't install dependencies")
 
         if self.inherit_image is not None:
             try:
                 assert len(str(self.inherit_image).split(":")) == 2
             except (ValueError, AssertionError):
-                raise ValueError("Image which should be inherited is not in the proper docker format")
+                raise ArcaMisconfigured("Image which should be inherited is not in the proper docker format")
 
         if self.push_to_registry_name is not None:
             try:
                 assert 2 >= len(str(self.inherit_image).split("/")) <= 3
             except ValueError:
-                raise ValueError("Repository name where images should be pushed doesn't match the format")
+                raise ArcaMisconfigured("Repository name where images should be pushed doesn't match the format")
 
     def check_docker_access(self):
         """ Checks if the current user can access docker, raises exception otherwise
@@ -70,8 +70,7 @@ class DockerBackend(BaseBackend):
             self.client.ping()  # check that docker is running and user is permitted to access it
         except ConnectionError as e:
             logger.exception(e)
-            # TODO: Custom exception
-            raise ValueError("Docker is not running or the current user doesn't have permissions to access docker.")
+            raise BuildError("Docker is not running or the current user doesn't have permissions to access docker.")
 
     def get_dependencies(self) -> Optional[List[str]]:
         """ Returns a converted list of dependencies.
@@ -85,8 +84,7 @@ class DockerBackend(BaseBackend):
         try:
             dependencies = list([str(x) for x in self.apk_dependencies])
         except (TypeError, ValueError):
-            # TODO: Custom exception
-            raise ValueError("Apk dependencies can't be converted into a list of strings")
+            raise ArcaMisconfigured("Apk dependencies can't be converted into a list of strings")
 
         if not len(dependencies):
             return None
@@ -257,7 +255,7 @@ class DockerBackend(BaseBackend):
         try:
             self.client.images.pull(name, tag)
         except docker.errors.APIError:
-            raise ValueError("The specified image from which Arca should inherit can't be pulled")  # TODO: Custom
+            raise ArcaMisconfigured("The specified image from which Arca should inherit can't be pulled")
         return name, tag
 
     def create_image(self, image_name: str, image_tag: str,
@@ -355,8 +353,7 @@ class DockerBackend(BaseBackend):
         last_line = json.loads(result.split("\n")[-1])
 
         if "error" in last_line:
-            # TODO: Custom exception (with full output)
-            raise ValueError(f"Push of the image failed because of: {last_line['error']}")
+            raise PushToRegistryError(f"Push of the image failed because of: {last_line['error']}", full_output=result)
 
         logger.info("Pushed image to registry %s:%s", self.push_to_registry_name, image_tag)
         logger.debug("Info:\n%s", result)
@@ -485,7 +482,9 @@ class DockerBackend(BaseBackend):
             return Result(json.loads(res))
         except Exception as e:
             logger.exception(e)
-            return Result({"success": False, "error": str(e)})
+            raise BuildError("The build failed", extra_info={
+                "exception": e
+            })
         finally:
             if not self.keep_container_running:
                 container.kill(signal.SIGKILL)
