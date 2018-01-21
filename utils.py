@@ -18,6 +18,7 @@ class DeployDockerBasesCommand(distutils.cmd.Command):
         from arca import DockerBackend
 
         backend = DockerBackend()
+        backend.check_docker_access()
 
         base_arca_name, base_arca_tag = backend.get_arca_base(False)
 
@@ -31,7 +32,7 @@ class DeployDockerBasesCommand(distutils.cmd.Command):
 
         print(f"Pushed image {base_arca_name}:{base_arca_tag}")
 
-        for docker_base in ["3.6.0", "3.6.1", "3.6.2", "3.6.3"]:  # TODO: dynamically list these
+        for docker_base in ["3.6.0", "3.6.1", "3.6.2", "3.6.3", "3.6.4"]:  # TODO: dynamically list these
             image_name, image_tag = backend.get_python_base(docker_base, pull=False)
 
             print(f"Built image {image_name}:{image_tag}")
