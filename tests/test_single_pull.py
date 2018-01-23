@@ -5,12 +5,12 @@ import os
 import pytest
 from git import Repo
 
-from arca import Arca, DockerBackend, Task, VenvBackend
-from test_backends import RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION, BASE_DIR
+from arca import Arca, DockerBackend, Task, VenvBackend, CurrentEnvironmentBackend
+from common import RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION, BASE_DIR
 
 
 @pytest.mark.parametrize(
-    "backend", [VenvBackend, DockerBackend],
+    "backend", [VenvBackend, DockerBackend, CurrentEnvironmentBackend],
 )
 def test_single_pull(mocker, backend):
     if os.environ.get("TRAVIS", False) and backend == VenvBackend:
@@ -19,6 +19,8 @@ def test_single_pull(mocker, backend):
     kwargs = {}
     if backend == DockerBackend:
         kwargs["disable_pull"] = True
+    if backend == CurrentEnvironmentBackend:
+        kwargs["current_environment_requirements"] = None
 
     backend = backend(verbosity=2, **kwargs)
 
@@ -62,7 +64,7 @@ def test_single_pull(mocker, backend):
 
 
 @pytest.mark.parametrize(
-    "backend", [VenvBackend, DockerBackend],
+    "backend", [VenvBackend, DockerBackend, CurrentEnvironmentBackend],
 )
 def test_pull_efficiency(mocker, backend):
     if os.environ.get("TRAVIS", False) and backend == VenvBackend:
@@ -71,6 +73,8 @@ def test_pull_efficiency(mocker, backend):
     kwargs = {}
     if backend == DockerBackend:
         kwargs["disable_pull"] = True
+    if backend == CurrentEnvironmentBackend:
+        kwargs["current_environment_requirements"] = None
 
     backend = backend(verbosity=2, **kwargs)
 

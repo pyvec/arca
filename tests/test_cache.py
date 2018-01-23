@@ -9,12 +9,11 @@ import pytest
 from dogpile.cache.api import NO_VALUE
 from git import Repo
 
-from arca import Arca, VenvBackend, Task, DockerBackend
+from arca import Arca, VenvBackend, Task, DockerBackend, CurrentEnvironmentBackend
+from arca.exceptions import ArcaMisconfigured
 
-if os.environ.get("TRAVIS", False):
-    BASE_DIR = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
-else:
-    BASE_DIR = "/tmp/arca/test"
+from common import BASE_DIR
+
 
 cache_arguments = [
     ["dogpile.cache.dbm", lambda base_dir: {"filename": str(base_dir / "cachefile.dbm")}],
@@ -25,7 +24,7 @@ cache_arguments = [
 
 
 def generate_arguments():
-    for backend in [VenvBackend, DockerBackend]:
+    for backend in [VenvBackend, DockerBackend, CurrentEnvironmentBackend]:
         for arguments in cache_arguments:
             yield tuple([backend] + arguments)
 
@@ -37,7 +36,12 @@ def test_cache(mocker, backend, cache_backend, arguments):
 
     base_dir = Path(BASE_DIR)
 
-    backend = backend(verbosity=2)
+    kwargs = {}
+    if backend == CurrentEnvironmentBackend:
+        kwargs["current_environment_requirements"] = None
+        kwargs["requirements_strategy"] = "install_extra"
+
+    backend = backend(verbosity=2, **kwargs)
 
     base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -98,3 +102,16 @@ def test_cache(mocker, backend, cache_backend, arguments):
     assert result.output == "1.11.5"
 
     assert arca.get_files.call_count == 1  # check that the repo was pulled
+
+    if isinstance(backend, CurrentEnvironmentBackend):
+        backend._uninstall("django")
+
+
+def test_invalid_arguments():
+    with pytest.raises(ArcaMisconfigured):
+        Arca(base_dir=BASE_DIR,
+             single_pull=True,
+             settings={
+                 "ARCA_CACHE_BACKEND": "dogpile.cache.dbm",
+                 "ARCA_CACHE_BACKEND_ARGUMENTS": json.dumps({"filename": str(Path(BASE_DIR) / "cachefile.dbm")})[:-1]
+             })

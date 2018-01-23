@@ -28,3 +28,10 @@ class PushToRegistryError(ArcaException):
 
 class FileOutOfRangeError(ValueError, ArcaException):
     pass
+
+
+class RequirementsMismatch(ValueError, ArcaException):
+
+    def __init__(self, *args, diff=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.diff = diff

@@ -7,44 +7,10 @@ from datetime import datetime
 from git import Repo
 
 from arca import Arca, DockerBackend, Task
-from test_backends import RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, BASE_DIR
-
 from arca.exceptions import ArcaMisconfigured
 
-RETURN_PYTHON_VERSION_FUNCTION = """
-import sys
-
-def return_python_version():
-    return "{}.{}.{}".format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro)
-"""
-
-RETURN_IS_XSLTPROC_INSTALLED = """
-import subprocess
-
-def return_is_xsltproc_installed():
-    try:
-        return subprocess.Popen(["xsltpoc", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
-    except:
-        return False
-"""
-
-
-RETURN_IS_LXML_INSTALLED = """
-def return_is_lxml_installed():
-    try:
-        import lxml
-        return True
-    except:
-        return False
-"""
-
-
-RETURN_PLATFORM = """
-import platform
-
-def return_platform():
-    return platform.dist()[0]
-"""
+from common import (RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, BASE_DIR, RETURN_PLATFORM,
+                    RETURN_IS_LXML_INSTALLED, RETURN_PYTHON_VERSION_FUNCTION, RETURN_IS_XSLTPROC_INSTALLED)
 
 
 def test_keep_container_running():
