@@ -119,4 +119,7 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
                     self.install_requirements(requirements=extra_requirements_set)
 
     def _uninstall(self, *args):
+        """ For usage in tests to uninstall packages from the current environment
+        :param args: packages to uninstall
+        """
         self.install_requirements(requirements=args, _action="uninstall")

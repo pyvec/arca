@@ -50,6 +50,27 @@ def test_current_environment_requirements():
         arca.backend.install_requirements(requirements=["django"], _action="remove")
 
 
+def test_requirements_strategy():
+    """ Test validation of invalid strategies
+    """
+
+    with pytest.raises(ValueError):
+        Arca(backend=CurrentEnvironmentBackend(
+            verbosity=2,
+            current_environment_requirements=None,
+            requirements_strategy="nonexistant_strategy"
+        ), base_dir=BASE_DIR)
+
+    with pytest.raises(ValueError):
+        arca = Arca(base_dir=BASE_DIR, settings={
+            "ARCA_BACKEND": "arca.backend.CurrentEnvironmentBackend",
+            "ARCA_BACKEND_VERBOSITY": 2,
+            "ARCA_BACKEND_CURRENT_ENVIRONMENT_REQUIREMENTS": None,
+            "ARCA_BACKEND_REQUIREMENTS_STRATEGY": "nonexistant_strategy"
+        })
+        print(arca.backend.requirements_strategy)
+
+
 @pytest.mark.parametrize("strategy", ["ignore", RequirementsStrategy.IGNORE])
 def test_strategy_ignore(mocker, strategy):
     install_requirements = mocker.patch.object(CurrentEnvironmentBackend, "install_requirements")
