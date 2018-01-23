@@ -6,35 +6,15 @@ import itertools
 import pytest
 from git import Repo
 
-from arca import Arca, VenvBackend, DockerBackend, Task
+from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
 from arca.exceptions import BuildError, FileOutOfRangeError
 
-if os.environ.get("TRAVIS", False):
-    BASE_DIR = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
-else:
-    BASE_DIR = "/tmp/arca/test"
-
-RETURN_STR_FUNCTION = """
-def return_str_function():
-    return "Some string"
-"""
-
-SECOND_RETURN_STR_FUNCTION = """
-def return_str_function():
-    return "Some other string"
-"""
-
-RETURN_DJANGO_VERSION_FUNCTION = """
-import django
-
-def return_str_function():
-    return django.__version__
-"""
+from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION
 
 
 @pytest.mark.parametrize(
     ["backend", "requirements_location", "file_location"], list(itertools.product(
-        (VenvBackend, DockerBackend),
+        (VenvBackend, DockerBackend, CurrentEnvironmentBackend),
         (None, "requirements/requirements.txt"),
         (None, "test_package"),
     ))
@@ -53,6 +33,9 @@ def test_backends(backend, requirements_location, file_location):
 
     if backend == DockerBackend:
         kwargs["disable_pull"] = True
+    if backend == CurrentEnvironmentBackend:
+        kwargs["current_environment_requirements"] = None
+        kwargs["requirements_strategy"] = "install_extra"
 
     backend = backend(verbosity=2, **kwargs)
 
@@ -115,9 +98,12 @@ def test_backends(backend, requirements_location, file_location):
 
     assert result.output == "1.11.4"
 
-    with pytest.raises(ModuleNotFoundError):
+    if not isinstance(backend, CurrentEnvironmentBackend):
+        with pytest.raises(ModuleNotFoundError):
+            import django
+            print(django.__version__)
+    else:
         import django
-        print(django.__version__)
 
     with requirements_path.open("w") as fl:
         fl.write("django==1.11.5")
@@ -143,15 +129,23 @@ def test_backends(backend, requirements_location, file_location):
     with pytest.raises(BuildError):
         arca.run(f"file://{git_dir}", "master", django_task_error)
 
+    if isinstance(backend, CurrentEnvironmentBackend):
+        backend._uninstall("django")
+
 
 @pytest.mark.parametrize(
     "backend,file_location", list(itertools.product(
-        (VenvBackend, DockerBackend),
+        (VenvBackend, DockerBackend, CurrentEnvironmentBackend),
         ("", "test_location"),
     ))
 )
 def test_static_files(backend, file_location):
-    backend = backend(verbosity=2)
+    kwargs = {}
+    if backend == CurrentEnvironmentBackend:
+        kwargs["current_environment_requirements"] = None
+        kwargs["requirements_strategy"] = "install_extra"
+
+    backend = backend(verbosity=2, **kwargs)
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 

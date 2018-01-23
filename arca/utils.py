@@ -1,6 +1,6 @@
 import importlib
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 
 from .exceptions import ArcaMisconfigured
 
@@ -24,9 +24,10 @@ def load_class(location: str) -> type:
 
 
 class LazySettingProperty:
-    def __init__(self, *, key, default=NOT_SET) -> None:
+    def __init__(self, *, key, default=NOT_SET, convert: Callable=None) -> None:
         self.key = key
         self.default = default
+        self.convert = convert
 
     def __set_name__(self, cls, name):
         self.name = name
@@ -35,6 +36,10 @@ class LazySettingProperty:
         if instance is None or (hasattr(instance, "_arca") and instance._arca is None):
             return self
         result = instance.get_setting(self.key, self.default)
+
+        if self.convert is not None:
+            result = self.convert(result)
+
         setattr(instance, self.name, result)
         return result
 
