@@ -15,10 +15,22 @@ class DeployDockerBasesCommand(distutils.cmd.Command):
         pass
 
     def run(self):
+        import requests
+        import arca
         from arca import DockerBackend
 
         backend = DockerBackend()
         backend.check_docker_access()
+
+        response = requests.get(
+            "https://hub.docker.com/v2/repositories/mikicz/arca/tags/",
+            params={"page_size": 1000}
+        )
+        response = response.json()
+
+        if arca.__version__ in [x["name"] for x in response["results"]]:
+            print("This version was already pushed into the registry.")
+            return
 
         base_arca_name, base_arca_tag = backend.get_arca_base(False)
 
