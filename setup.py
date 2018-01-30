@@ -31,6 +31,8 @@ setup(
         "dogpile.cache==0.6.4",
         "requests",
         "docker",
+        "python-vagrant",
+        "fabric3"
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",  # TODO: update when ready
