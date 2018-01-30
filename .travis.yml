@@ -14,7 +14,6 @@ notifications:
 sudo: required
 services:
 - docker
-
 install:
 - python setup.py install
 before_script:
@@ -24,7 +23,10 @@ before_script:
 - "./cc-test-reporter before-build"
 - docker login -u "$DOCKER_HUB_USERNAME" -p "$DOCKER_HUB_PASSWORD"
 script:
-- python setup.py test
+- python setup.py test 2>error.log
+- echo "==============================="
+- echo "Captured error out from tests"
+- cat error.log
 after_script:
 - "./cc-test-reporter after-build -t coverage.py"
 deploy:
