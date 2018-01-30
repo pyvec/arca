@@ -1,7 +1,7 @@
 gitpython
 pytest
 dogpile.cache==0.6.4
-docker
+docker~=3.0
 pytest-flake8
 pytest-cov
 pytest-mock

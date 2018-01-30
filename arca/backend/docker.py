@@ -12,7 +12,7 @@ from typing import Optional, List
 
 import docker
 import docker.errors
-from docker.models.containers import Container
+from docker.models.containers import Container, ExecResult
 from docker.models.images import Image
 from git import Repo
 from requests.exceptions import ConnectionError
@@ -477,9 +477,9 @@ class DockerBackend(BaseBackend):
         container.put_archive("/srv/scripts", self.tar_script(script_name, script))
 
         try:
-            res = container.exec_run(["python", f"/srv/scripts/{script_name}"], tty=True)
+            res: ExecResult = container.exec_run(["python", f"/srv/scripts/{script_name}"], tty=True)
 
-            return Result(json.loads(res))
+            return Result(json.loads(res.output))
         except Exception as e:
             logger.exception(e)
             raise BuildError("The build failed", extra_info={

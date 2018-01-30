@@ -1,16 +1,18 @@
 import json
+import re
+import subprocess
 from pathlib import Path
+from uuid import uuid4
 
+from fabric import api
 from git import Repo
+from vagrant import Vagrant, make_file_cm
 
-from arca.task import Task
-from arca.result import Result
 from arca.exceptions import ArcaMisconfigured, BuildError
+from arca.result import Result
+from arca.task import Task
 from arca.utils import LazySettingProperty, logger
 from .docker import DockerBackend
-
-from vagrant import Vagrant
-from fabric import api
 
 
 @api.task
@@ -25,15 +27,24 @@ def run_script(container_name, script_name):
 
 class VagrantBackend(DockerBackend):
 
-    box = LazySettingProperty(key="box", default="ubuntu/trusty64")
+    # Box has to either not contain docker at all (will be installed in that case, takes a long time)
+    # or has to contain Docker with version >= 1.8 (Versions < 1.8 can't copy files from host to container)
+    box = LazySettingProperty(key="box", default="ailispaw/barge")
     provider = LazySettingProperty(key="provider", default="virtualbox")
-    quiet = LazySettingProperty(key="quiet", default=False, convert=bool)
+    quiet = LazySettingProperty(key="quiet", default=True, convert=bool)
+    destroy = LazySettingProperty(key="destroy", default=True, convert=bool)
 
     def validate_settings(self):
         super(VagrantBackend, self).validate_settings()
 
         if self.push_to_registry_name is None:
             raise ArcaMisconfigured("Push to registry setting is required for VagrantBackend")
+
+        if not re.match(r"^[a-z]+/[a-zA-Z0-9\-_]+$", self.box):
+            raise ArcaMisconfigured("Provided Vagrant box is not valid")
+
+        if not re.match(r"^[a-z_]+$", self.provider):
+            raise ArcaMisconfigured("Provided Vagrant provider is not valid")
 
     def get_vagrant_file_location(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> Path:
         """ Returns a directory where Vagrantfile should be. Based on repo, branch and tag of the used docker image.
@@ -59,6 +70,8 @@ class VagrantBackend(DockerBackend):
         image_tag = self.get_image_tag(requirements_file, dependencies)
         image_name = self.push_to_registry_name
 
+        logger.info("Creating Vagrantfile with image %s:%s", image_name, image_tag)
+
         container_name = "arca_{}_{}_{}".format(
             self._arca.repo_id(repo),
             branch,
@@ -74,6 +87,7 @@ class VagrantBackend(DockerBackend):
 
 Vagrant.configure("2") do |config|
   config.vm.box = "{self.box}"
+  config.ssh.insert_key = true
   config.vm.provision "docker" do |d|
     d.pull_images "{image_name}:{image_tag}"
     d.run "{image_name}:{image_tag}",
@@ -82,6 +96,7 @@ Vagrant.configure("2") do |config|
       cmd: "bash -i"
   end
 
+  config.vm.synced_folder ".", "/vagrant"
   config.vm.synced_folder "{repo_path}", "/srv/data"
   config.vm.provider "{self.provider}"
 
@@ -94,7 +109,10 @@ end
         vagrant_file = self.get_vagrant_file_location(repo, branch, git_repo, repo_path)
 
         if not vagrant_file.exists():
+            logger.info("Vagrantfile doesn't exist, creating")
             self.create_vagrant_file(repo, branch, git_repo, repo_path)
+
+        logger.info("Vagrantfile in folder %s", vagrant_file)
 
         script_name, script = self.create_script(task)
 
@@ -106,12 +124,23 @@ end
             self._arca.current_git_hash(repo, branch, git_repo, short=True)
         )
 
-        vagrant = Vagrant(root=vagrant_file, quiet_stdout=self.quiet, quiet_stderr=self.quiet)
-        vagrant.up()
+        log_path = Path(self._arca.base_dir) / "logs" / (str(uuid4()) + ".log")
+        log_path.parent.mkdir(exist_ok=True, parents=True)
+        log_cm = make_file_cm(log_path)
+        logger.info("Storing vagrant log in %s", log_path)
+
+        vagrant = Vagrant(root=vagrant_file, quiet_stdout=self.quiet, quiet_stderr=self.quiet,
+                          out_cm=log_cm, err_cm=log_cm)
+        try:
+            vagrant.up()
+        except subprocess.CalledProcessError as e:
+            raise BuildError("Vagrant VM couldn't up launched. See output for details.")
 
         api.env.hosts = [vagrant.user_hostname_port()]
         api.env.key_filename = vagrant.keyfile()
         api.env.disable_known_hosts = True  # useful for when the vagrant box ip changes.
+        api.env.abort_exception = BuildError  # raises SystemExit otherwise
+        api.env.shell = "/bin/sh -l -c"
         if self.quiet:
             api.output.everything = False
         else:
@@ -127,4 +156,7 @@ end
                 "exception": e
             })
         finally:
-            vagrant.halt()
+            if self.destroy:
+                vagrant.destroy()
+            else:
+                vagrant.halt()
