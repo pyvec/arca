@@ -1,7 +1,7 @@
 import json
 import os
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Union, Optional, Dict, Any, Tuple
 
@@ -16,6 +16,9 @@ from .task import Task
 from .utils import load_class, Settings, NOT_SET, logger, LazySettingProperty
 
 BackendDefinitionType = Union[type, BaseBackend, str]
+DepthDefinitionType = Optional[int]
+ShallowSinceDefinitionType = Optional[Union[str, date]]
+ReferenceDefinitionType = Optional[Union[Path, str]]
 
 
 class Arca:
@@ -141,7 +144,11 @@ class Arca:
             repo_id = self.repo_id(repo)
             self._current_hash[repo_id][branch] = git_repo.head.object.hexsha
 
-    def _pull(self, *, repo_path: Path=None, git_repo: Repo=None, repo: str=None, branch: str=None) -> Repo:
+    def _pull(self, *, repo_path: Path=None, git_repo: Repo=None, repo: str=None, branch: str=None,
+              depth: Optional[int] = None,
+              shallow_since: Optional[date] = None,
+              reference: Optional[Path] = None
+              ) -> Repo:
         """ A method which either pulls on a existing repo or creates a new repo based info.
             In a separate method so pulls can be counted in testing.
         """
@@ -149,7 +156,19 @@ class Arca:
             git_repo.remote().pull()
             return git_repo
         else:
-            return Repo.clone_from(repo, str(repo_path), branch=branch, depth=1)
+            kwargs = {}
+
+            if shallow_since is None:
+                if depth != -1:
+                    kwargs["depth"] = depth or 1
+            else:
+                kwargs["shallow-since"] = (shallow_since - timedelta(days=1)).strftime("%Y-%m-%d")
+
+            if reference is not None:
+                kwargs["reference-if-able"] = str(reference.absolute())
+                kwargs["dissociate"] = True
+
+            return Repo.clone_from(repo, str(repo_path), branch=branch, **kwargs)
 
     def current_git_hash(self, repo: str, branch: str, git_repo: Repo, short: bool=False) -> str:
         current_hash = self._current_hash[self.repo_id(repo)].get(branch)
@@ -176,7 +195,11 @@ class Arca:
             except KeyError:
                 pass
 
-    def get_files(self, repo: str, branch: str) -> Tuple[Repo, Path]:
+    def get_files(self, repo: str, branch: str, *,
+                  depth: Optional[int] = None,
+                  shallow_since: Optional[date] = None,
+                  reference: Optional[Path] = None
+                  ) -> Tuple[Repo, Path]:
         repo_path = self.get_path_to_repo(repo, branch)
 
         logger.info("Repo is stored at %s", repo_path)
@@ -192,7 +215,10 @@ class Arca:
         else:
             repo_path.parent.mkdir(exist_ok=True, parents=True)
             logger.info("Initial pull")
-            git_repo = self._pull(repo_path=repo_path, repo=repo, branch=branch)
+            git_repo = self._pull(repo_path=repo_path, repo=repo, branch=branch,
+                                  depth=depth,
+                                  shallow_since=shallow_since,
+                                  reference=reference)
 
         self.save_hash(repo, branch, git_repo)
 
@@ -204,28 +230,64 @@ class Arca:
                                                       hash=self.current_git_hash(repo, branch, git_repo),
                                                       task=task.serialize())
 
-    def run(self, repo: str, branch: str, task: Task) -> Result:
+    def run(self, repo: str, branch: str, task: Task, *,
+            depth: DepthDefinitionType=None,
+            shallow_since: ShallowSinceDefinitionType=None,
+            reference: ReferenceDefinitionType=None
+            ) -> Result:
+        """
+        :param repo: Target git repository
+        :param branch: Target git branch
+        :param task: Task which will be run in the target repository
+        :param depth: How many commits back should the repo be cloned in case the target repository isn't cloned yet.
+                      Defaults to 1, ignored if `shallow_since` is set. -1 means no limit, otherwise must be positive.
+        :param shallow_since: Shallow clone in case the target repository isn't cloned yet, including the date.
+        :param reference: A path to a repository from which the target repository is forked,
+                          to save bandwidth, `--dissociate` is used if set.
+        """
         self.validate_repo_url(repo)
+        depth = self.validate_depth(depth)
+        shallow_since = self.validate_shallow_since(shallow_since)
+        reference = self.validate_reference(reference)
 
         logger.info("Running Arca task %r for repo '%s' in branch '%s'", task, repo, branch)
 
-        git_repo, repo_path = self.get_files(repo, branch)
+        git_repo, repo_path = self.get_files(repo, branch,
+                                             depth=depth,
+                                             shallow_since=shallow_since,
+                                             reference=reference)
 
         def create_value():
             return self.backend.run(repo, branch, task, git_repo, repo_path)
 
         return self.region.get_or_create(
             self.cache_key(repo, branch, task, git_repo),
-            create_value
+            create_value,
+            should_cache_fn=self.should_cache_fn
         )
 
-    def static_filename(self, repo: str, branch: str, relative_path: Union[str, Path]) -> Path:
+    def should_cache_fn(self, value: Result) -> bool:
+        """ Can be overridden to designate if dogpile should or shouldn't cache this value.
+        """
+        return True
+
+    def static_filename(self, repo: str, branch: str, relative_path: Union[str, Path],
+                        depth: DepthDefinitionType = None,
+                        shallow_since: ShallowSinceDefinitionType = None,
+                        reference: ReferenceDefinitionType = None
+                        ) -> Path:
         self.validate_repo_url(repo)
+        depth = self.validate_depth(depth)
+        shallow_since = self.validate_shallow_since(shallow_since)
+        reference = self.validate_reference(reference)
 
         if not isinstance(relative_path, Path):
             relative_path = Path(relative_path)
 
-        _, repo_path = self.get_files(repo, branch)
+        _, repo_path = self.get_files(repo, branch,
+                                      depth=depth,
+                                      shallow_since=shallow_since,
+                                      reference=reference)
 
         result = repo_path / relative_path
         result = result.resolve()
@@ -239,3 +301,40 @@ class Arca:
         logger.info("Static path for %s is %s", relative_path, result)
 
         return result
+
+    def validate_depth(self, depth: DepthDefinitionType) -> Optional[int]:
+        if depth is not None:
+            try:
+                depth = int(depth)
+            except ValueError:
+                raise ValueError("Depth '{}' can't be converted to int.".format(depth))
+
+            if not (depth == -1 or depth > 0):
+                raise ValueError("Depth '{}' isn't positive or -1 to indicate no limit".format(depth))
+            return depth
+        return None
+
+    def validate_shallow_since(self, shallow_since: ShallowSinceDefinitionType) -> Optional[date]:
+        if shallow_since is not None:
+            if isinstance(shallow_since, datetime):
+                return shallow_since.date()
+            elif isinstance(shallow_since, date):
+                return shallow_since
+            try:
+                return datetime.strptime(shallow_since, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValueError("Shallows since value '{}' isn't a date or a string in format "
+                                 "YYYY-MM-DD".format(shallow_since))
+
+        return None
+
+    def validate_reference(self, reference: ReferenceDefinitionType) -> Optional[Path]:
+        if reference is not None:
+            if isinstance(reference, bytes):
+                reference = reference.decode("utf-8")
+            try:
+                return Path(reference)
+            except TypeError:
+                raise ValueError("Can't convert reference path to a pathlib.Path")
+
+        return None
