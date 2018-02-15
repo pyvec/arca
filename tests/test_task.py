@@ -9,7 +9,7 @@ ENV_PATH = Path("/usr")
 
 
 def _clean_lines(x: str) -> str:
-    return "\n".join([line for line in x.split("\n") if line.strip()])
+    return "\n".join([line.replace("\r", "") for line in x.split("\n") if line.replace("\r", "").strip()])
 
 
 @pytest.mark.parametrize(["imports", "res"], (
@@ -23,6 +23,7 @@ def _clean_lines(x: str) -> str:
 def test_imports(imports, res):
     task = Task("func", imports=imports)
     assert _clean_lines(task.build_script(ENV_PATH)) == _clean_lines("""#!/usr/bin/python3
+# encoding=utf-8
 import json
 import traceback
 import sys
@@ -48,6 +49,7 @@ except:
 def test_from_imports(from_imports, res):
     task = Task("func", from_imports=from_imports)
     assert _clean_lines(task.build_script(ENV_PATH)) == _clean_lines("""#!/usr/bin/python3
+# encoding=utf-8
 import json
 import traceback
 import sys
@@ -73,6 +75,7 @@ except:
 def test_function_call(args, kwargs, res):
     task = Task("func", args=args, kwargs=kwargs)
     assert _clean_lines(task.build_script(ENV_PATH)) == _clean_lines("""#!/usr/bin/python3
+# encoding=utf-8
 import json
 import traceback
 import sys

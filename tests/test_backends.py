@@ -9,7 +9,8 @@ from git import Repo
 from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
 from arca.exceptions import BuildError, FileOutOfRangeError
 
-from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION
+from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
+    TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION
 
 
 @pytest.mark.parametrize(
@@ -53,13 +54,14 @@ def test_backends(backend, requirements_location, file_location):
     filepath.write_text(RETURN_STR_FUNCTION)
     repo.index.add([str(filepath)])
     repo.index.commit("Initial")
+    repo_url = f"file://{git_dir}"
 
     task = Task(
         "return_str_function",
         from_imports=[("test_file", "return_str_function")]
     )
 
-    result = arca.run(f"file://{git_dir}", "master", task)
+    result = arca.run(repo_url, "master", task)
 
     assert result.output == "Some string"
 
@@ -71,11 +73,11 @@ def test_backends(backend, requirements_location, file_location):
     repo.index.add([str(filepath)])
     repo.index.commit("Updated function")
 
-    result = arca.run(f"file://{git_dir}", "master", task)
-    assert result.output == "Some other string"
+    result = arca.run(repo_url, "master", task)
+    assert result.output == TEST_UNICODE
 
     # in the other branch there's still the original
-    result = arca.run(f"file://{git_dir}", "new_branch", task)
+    result = arca.run(repo_url, "new_branch", task)
     assert result.output == "Some string"
 
     repo.branches.master.checkout()
@@ -94,7 +96,7 @@ def test_backends(backend, requirements_location, file_location):
     repo.index.add([str(requirements_path)])
     repo.index.commit("Added requirements, changed to version")
 
-    result = arca.run(f"file://{git_dir}", "master", task)
+    result = arca.run(repo_url, "master", task)
 
     assert result.output == "1.11.4"
 
@@ -111,7 +113,7 @@ def test_backends(backend, requirements_location, file_location):
     repo.index.add([str(requirements_path)])
     repo.index.commit("Updated requirements")
 
-    result = arca.run(f"file://{git_dir}", "master", task)
+    result = arca.run(repo_url, "master", task)
     assert result.output == "1.11.5"
 
     django_task = Task(
@@ -119,7 +121,7 @@ def test_backends(backend, requirements_location, file_location):
         imports=["django"]
     )
 
-    result = arca.run(f"file://{git_dir}", "master", django_task)
+    result = arca.run(repo_url, "master", django_task)
     assert result.output == "1.11.5"
 
     django_task_error = Task(
@@ -131,6 +133,26 @@ def test_backends(backend, requirements_location, file_location):
 
     if isinstance(backend, CurrentEnvironmentBackend):
         backend._uninstall("django")
+
+    filepath.write_text(ARG_STR_FUNCTION)
+    repo.index.add([str(filepath)])
+    repo.index.commit("Argument function")
+
+    assert arca.run(repo_url, "master", Task(
+        "return_str_function",
+        from_imports=[("test_file", "return_str_function")],
+        args=[TEST_UNICODE]
+    )).output == TEST_UNICODE[::-1]
+
+    filepath.write_text(KWARG_STR_FUNCTION)
+    repo.index.add([str(filepath)])
+    repo.index.commit("Keyword argument function")
+
+    assert arca.run(repo_url, "master", Task(
+        "return_str_function",
+        from_imports=[("test_file", "return_str_function")],
+        kwargs={"kwarg": TEST_UNICODE}
+    )).output == TEST_UNICODE[::-1]
 
 
 @pytest.mark.parametrize(

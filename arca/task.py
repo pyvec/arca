@@ -3,6 +3,7 @@ import json
 import re
 
 from pathlib import Path
+from pprint import pformat
 from typing import Optional, Tuple, Any, Dict, Iterable
 
 from .exceptions import TaskMisconfigured
@@ -28,27 +29,27 @@ class Task:
         return f"Task({self.function_call})"
 
     def build_imports(self):
-        return "\n".join([f"    import {x}" for x in self.imports])
+        return "\r\n".join([f"    import {x}" for x in self.imports])
 
     def build_from_imports(self):
-        return "\n".join([f"    from {x[0]} import {x[1]}" for x in self.from_imports])
+        return "\r\n".join([f"    from {x[0]} import {x[1]}" for x in self.from_imports])
 
     def build_function_call(self):
         if len(self.args) and len(self.kwargs):
             return "{}(*{}, **{})".format(
                 self.function_call,
-                self.args,
-                self.kwargs
+                pformat(self.args),
+                pformat(self.kwargs)
             )
         elif len(self.args):
             return "{}(*{})".format(
                 self.function_call,
-                self.args
+                pformat(self.args)
             )
         elif len(self.kwargs):
             return "{}(**{})".format(
                 self.function_call,
-                self.kwargs
+                pformat(self.kwargs)
             )
         else:
             return f"{self.function_call}()"
@@ -57,19 +58,20 @@ class Task:
         result = ""
 
         if venv_path is not None:
-            result += "#!" + str(venv_path.resolve() / "bin" / "python3") + "\n\n"
+            result += "#!" + str(venv_path.resolve() / "bin" / "python3") + "\r\n\r\n"
         else:
-            result += "#!python3\n\n"
+            result += "#!python3\r\n"
 
-        result += "import json\n"
-        result += "import traceback\n"
-        result += "import sys\n"
-        result += "import os\n"
-        result += "sys.path.insert(1, os.getcwd())\n"
-        result += "try:\n"
+        result += "# encoding=utf-8\r\n\r\n"
+        result += "import json\r\n"
+        result += "import traceback\r\n"
+        result += "import sys\r\n"
+        result += "import os\r\n"
+        result += "sys.path.insert(1, os.getcwd())\r\n"
+        result += "try:\r\n"
 
-        result += self.build_imports() + "\n\n"
-        result += self.build_from_imports() + "\n\n"
+        result += self.build_imports() + "\r\n"
+        result += self.build_from_imports() + "\r\n"
 
         result += f"""
     res = {self.build_function_call()}

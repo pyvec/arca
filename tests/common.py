@@ -11,9 +11,21 @@ def return_str_function():
     return "Some string"
 """
 
+TEST_UNICODE = "Nechť již hříšné saxofony ďáblů rozezvučí síň úděsnými tóny waltzu, tanga a\xa0quickstepu.→"
+
 SECOND_RETURN_STR_FUNCTION = """
 def return_str_function():
-    return "Some other string"
+    return "Nechť již hříšné saxofony ďáblů rozezvučí síň úděsnými tóny waltzu, tanga a\xa0quickstepu.→"
+"""
+
+ARG_STR_FUNCTION = """
+def return_str_function(arg):
+    return arg[::-1]
+"""
+
+KWARG_STR_FUNCTION = """
+def return_str_function(*, kwarg):
+    return kwarg[::-1]
 """
 
 RETURN_DJANGO_VERSION_FUNCTION = """

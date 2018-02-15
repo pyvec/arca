@@ -447,9 +447,11 @@ class DockerBackend(BaseBackend):
         tar = tarfile.TarFile(fileobj=tarstream, mode='w')
         tarinfo = tarfile.TarInfo(name=name)
 
+        script = script.encode("utf-8")
+
         tarinfo.size = len(script)
         tarinfo.mtime = time.time()
-        tar.addfile(tarinfo, BytesIO(script.encode("utf-8")))
+        tar.addfile(tarinfo, BytesIO(script))
         tar.close()
 
         return tarstream.getvalue()

@@ -6,7 +6,7 @@ import pytest
 from git import Repo
 
 from arca import Arca, DockerBackend, Task, VenvBackend, CurrentEnvironmentBackend
-from common import RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION, BASE_DIR
+from common import RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION, BASE_DIR, TEST_UNICODE
 
 
 @pytest.mark.parametrize(
@@ -59,7 +59,7 @@ def test_single_pull(mocker, backend):
     arca.pull_again(repo_url, "master")
 
     result = arca.run(repo_url, "master", task)
-    assert result.output == "Some other string"
+    assert result.output == TEST_UNICODE
     assert arca._pull.call_count == 2
 
 
@@ -111,9 +111,9 @@ def test_pull_efficiency(mocker, backend):
     repo.index.commit("Updated function")
 
     result = arca.run(repo_url, "master", task)
-    assert result.output == "Some other string"
+    assert result.output == TEST_UNICODE
     assert arca._pull.call_count == 3
 
     result = arca.run(repo_url, "master", task)
-    assert result.output == "Some other string"
+    assert result.output == TEST_UNICODE
     assert arca._pull.call_count == 4
