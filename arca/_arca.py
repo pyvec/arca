@@ -20,14 +20,25 @@ BackendDefinitionType = Union[type, BaseBackend, str]
 
 class Arca:
 
-    single_pull: bool = LazySettingProperty(key="single_pull", default=False)
+    single_pull: bool = LazySettingProperty(key="single_pull", default=False, convert=bool)
     base_dir: str = LazySettingProperty(key="base_dir", default=".arca")
+    ignore_cache_errors: bool = LazySettingProperty(key="ignore_cache_errors", default=False, convert=bool)
 
     def __init__(self, backend: BackendDefinitionType=NOT_SET,
                  settings=None,
                  single_pull=None,
-                 base_dir=None) -> None:
+                 base_dir=None,
+                 ignore_cache_errors=None) -> None:
         self.settings: Settings = self._get_settings(settings)
+
+        if ignore_cache_errors is not None:
+            self.ignore_cache_errors = bool(ignore_cache_errors)
+
+        if single_pull is not None:
+            self.single_pull = bool(single_pull)
+
+        if base_dir is not None:
+            self.base_dir = base_dir
 
         self.region: CacheRegion = self._make_region()
 
@@ -35,12 +46,6 @@ class Arca:
         self.backend.inject_arca(self)
 
         self._current_hash = defaultdict(lambda: {})
-
-        if single_pull is not None:
-            self.single_pull = bool(single_pull)
-
-        if base_dir is not None:
-            self.base_dir = base_dir
 
     def _get_backend_instance(self, backend: BackendDefinitionType) -> BaseBackend:
         if backend is NOT_SET:
@@ -72,10 +77,17 @@ class Arca:
     def _make_region(self) -> CacheRegion:
         arguments = self.get_setting("cache_backend_arguments", None)
 
+        def null_cache():
+            return make_region().configure(
+                "dogpile.cache.null"
+            )
+
         if isinstance(arguments, str) and arguments:
             try:
                 arguments = json.loads(arguments)
             except ValueError:
+                if self.ignore_cache_errors:
+                    return null_cache()
                 raise ArcaMisconfigured("Cache backend arguments couldn't be converted to a dictionary.")
 
         try:
@@ -86,8 +98,12 @@ class Arca:
             )
             region.set("last_arca_run", datetime.now().isoformat())
         except ModuleNotFoundError:
+            if self.ignore_cache_errors:
+                return null_cache()
             raise ModuleNotFoundError("Cache backend cannot load a required library.")
         except Exception:
+            if self.ignore_cache_errors:
+                return null_cache()
             raise ArcaMisconfigured("The provided cache is not working - most likely misconfigured.")
 
         return region

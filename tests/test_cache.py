@@ -115,3 +115,36 @@ def test_invalid_arguments():
                  "ARCA_CACHE_BACKEND": "dogpile.cache.dbm",
                  "ARCA_CACHE_BACKEND_ARGUMENTS": json.dumps({"filename": str(Path(BASE_DIR) / "cachefile.dbm")})[:-1]
              })
+
+    # in case ignore is set, no error thrown, region configred
+    arca = Arca(base_dir=BASE_DIR,
+                single_pull=True,
+                ignore_cache_errors=True,
+                settings={
+                    "ARCA_CACHE_BACKEND": "dogpile.cache.dbm",
+                    "ARCA_CACHE_BACKEND_ARGUMENTS": json.dumps({"filename": str(Path(BASE_DIR) / "cachefile.dbm")})[:-1]
+                })
+
+    assert arca.region.is_configured
+
+
+def test_cache_backend_module_not_found():
+    # redis must not be present in the env
+    with pytest.raises(ImportError):
+        import redis  # noqa
+
+    with pytest.raises(ModuleNotFoundError):
+        Arca(base_dir=BASE_DIR,
+             single_pull=True,
+             settings={
+                 "ARCA_CACHE_BACKEND": "dogpile.cache.redis"
+             })
+
+    arca = Arca(base_dir=BASE_DIR,
+                single_pull=True,
+                ignore_cache_errors=True,
+                settings={
+                    "ARCA_CACHE_BACKEND": "dogpile.cache.redis"
+                })
+
+    assert arca.region.is_configured
