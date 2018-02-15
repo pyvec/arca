@@ -107,3 +107,4 @@ ENV/
 venv_backend
 arca/venv_backend
 coverage.xml
+.pytest_cache

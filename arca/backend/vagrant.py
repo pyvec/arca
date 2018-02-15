@@ -6,7 +6,6 @@ from uuid import uuid4
 
 from fabric import api
 from git import Repo
-from vagrant import Vagrant, make_file_cm
 
 from arca.exceptions import ArcaMisconfigured, BuildError
 from arca.result import Result
@@ -45,6 +44,12 @@ class VagrantBackend(DockerBackend):
 
         if not re.match(r"^[a-z_]+$", self.provider):
             raise ArcaMisconfigured("Provided Vagrant provider is not valid")
+
+    def check_vagrant_access(self):
+        from vagrant import get_vagrant_executable
+
+        if get_vagrant_executable() is None:
+            raise BuildError("Vagrant executable is not accessible!")
 
     def get_vagrant_file_location(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> Path:
         """ Returns a directory where Vagrantfile should be. Based on repo, branch and tag of the used docker image.
@@ -106,6 +111,11 @@ end
     def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path):
         """ Gets or creates Vagrantfile, starts up a VM with it, executes Fabric script over SSH, returns result.
         """
+        # importing here, prints out warning when vagrant is missing even when the backend is not used otherwise
+        from vagrant import Vagrant, make_file_cm
+
+        self.check_vagrant_access()
+
         vagrant_file = self.get_vagrant_file_location(repo, branch, git_repo, repo_path)
 
         if not vagrant_file.exists():

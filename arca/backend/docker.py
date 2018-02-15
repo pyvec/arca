@@ -476,14 +476,20 @@ class DockerBackend(BaseBackend):
         container.exec_run(["mkdir", "-p", "/srv/scripts"])
         container.put_archive("/srv/scripts", self.tar_script(script_name, script))
 
+        res = None
+
         try:
             res: ExecResult = container.exec_run(["python", f"/srv/scripts/{script_name}"], tty=True)
 
             return Result(json.loads(res.output))
         except Exception as e:
             logger.exception(e)
+            if res is not None:
+                logger.warning(res.output)
+
             raise BuildError("The build failed", extra_info={
-                "exception": e
+                "exception": e,
+                "output": res if res is None else res.output
             })
         finally:
             if not self.keep_container_running:
