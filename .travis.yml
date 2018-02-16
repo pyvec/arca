@@ -29,6 +29,9 @@ script:
 - cat error.log
 after_script:
 - "./cc-test-reporter after-build -t coverage.py"
+branches:
+  only:
+    master
 deploy:
   provider: script
   skip_cleanup: true
