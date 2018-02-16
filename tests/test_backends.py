@@ -7,7 +7,7 @@ import pytest
 from git import Repo
 
 from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
-from arca.exceptions import BuildError, FileOutOfRangeError
+from arca.exceptions import BuildError
 
 from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
     TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION
@@ -153,52 +153,3 @@ def test_backends(backend, requirements_location, file_location):
         from_imports=[("test_file", "return_str_function")],
         kwargs={"kwarg": TEST_UNICODE}
     )).output == TEST_UNICODE[::-1]
-
-
-@pytest.mark.parametrize(
-    "backend,file_location", list(itertools.product(
-        (VenvBackend, DockerBackend, CurrentEnvironmentBackend),
-        ("", "test_location"),
-    ))
-)
-def test_static_files(backend, file_location):
-    kwargs = {}
-    if backend == CurrentEnvironmentBackend:
-        kwargs["current_environment_requirements"] = None
-        kwargs["requirements_strategy"] = "install_extra"
-
-    backend = backend(verbosity=2, **kwargs)
-
-    arca = Arca(backend=backend, base_dir=BASE_DIR)
-
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-    git_url = f"file://{git_dir}"
-    branch = "master"
-
-    repo = Repo.init(git_dir)
-    if not file_location:
-        filepath = git_dir / "test_file.txt"
-    else:
-        (git_dir / file_location).mkdir(exist_ok=True, parents=True)
-        filepath = git_dir / file_location / "test_file.txt"
-
-    filepath.write_text("Some test file")
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
-
-    relative_path = Path(file_location) / "test_file.txt"
-    nonexistent_relative_path = Path(file_location) / "test_file2.txt"
-
-    result = arca.static_filename(git_url, branch, relative_path)
-
-    assert filepath.read_text() == result.read_text()
-
-    result = arca.static_filename(git_url, branch, str(relative_path))
-
-    assert filepath.read_text() == result.read_text()
-
-    with pytest.raises(FileOutOfRangeError):
-        arca.static_filename(git_url, branch, "../file.txt")
-
-    with pytest.raises(FileNotFoundError):
-        arca.static_filename(git_url, branch, nonexistent_relative_path)
