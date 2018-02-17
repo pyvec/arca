@@ -8,7 +8,7 @@ import shutil
 from datetime import datetime, timedelta, date
 from git import Repo
 
-from arca import Arca, VenvBackend
+from arca import Arca, VenvBackend, CurrentEnvironmentBackend
 from arca.exceptions import ArcaMisconfigured, FileOutOfRangeError
 from common import BASE_DIR
 
@@ -343,3 +343,25 @@ def test_shallow_since_validate(shallow_since, valid):
     else:
         with pytest.raises(ValueError):
             arca.static_filename(git_url, branch, relative_path, shallow_since=shallow_since)
+
+
+def test_is_dirty():
+    arca = Arca(backend=CurrentEnvironmentBackend(
+        verbosity=2,
+        current_environment_requirements=None,
+        requirements_strategy="ignore"
+    ), base_dir=BASE_DIR)
+
+    if arca.is_dirty():
+        pytest.skip("Can't test is_dirty method when the current repo is dirty.")
+
+    assert not arca.is_dirty()
+
+    fl = Path(str(uuid4()))
+    fl.touch()
+
+    assert arca.is_dirty()
+
+    fl.unlink()
+
+    assert not arca.is_dirty()
