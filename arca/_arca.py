@@ -7,7 +7,7 @@ from typing import Union, Optional, Dict, Any, Tuple
 
 import re
 from dogpile.cache import make_region, CacheRegion
-from git import Repo
+from git import Repo, InvalidGitRepositoryError
 
 from .exceptions import ArcaMisconfigured, FileOutOfRangeError
 from .backend import BaseBackend
@@ -229,6 +229,15 @@ class Arca:
                                                       branch=branch,
                                                       hash=self.current_git_hash(repo, branch, git_repo),
                                                       task=task.serialize())
+
+    def is_dirty(self) -> bool:
+        """ Returns if the repository the code is launched from was modified in any way.
+            Returns False if not in a repository.
+        """
+        try:
+            return Repo(".", search_parent_directories=True).is_dirty(untracked_files=True)
+        except InvalidGitRepositoryError:
+            return False
 
     def run(self, repo: str, branch: str, task: Task, *,
             depth: DepthDefinitionType=None,
