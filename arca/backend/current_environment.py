@@ -34,7 +34,7 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
     def install_requirements(self, *, fl: Optional[Path]=None, requirements: Optional[Iterable[str]]=None,
                              _action: str="install"):
         if _action not in ["install", "uninstall"]:
-            raise ValueError(f"{_action} is invalid value for _invalid")
+            raise ValueError(f"{_action} is invalid value for _action")
 
         cmd = [sys.executable, "-m", "pip", _action]
 
