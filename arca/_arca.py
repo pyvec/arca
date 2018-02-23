@@ -7,9 +7,9 @@ from typing import Union, Optional, Dict, Any, Tuple
 
 import re
 from dogpile.cache import make_region, CacheRegion
-from git import Repo, InvalidGitRepositoryError
+from git import Repo, InvalidGitRepositoryError, GitCommandError
 
-from .exceptions import ArcaMisconfigured, FileOutOfRangeError
+from .exceptions import ArcaMisconfigured, FileOutOfRangeError, PullError
 from .backend import BaseBackend
 from .result import Result
 from .task import Task
@@ -153,7 +153,10 @@ class Arca:
             In a separate method so pulls can be counted in testing.
         """
         if git_repo is not None:
-            git_repo.remote().pull()
+            try:
+                git_repo.remote().pull()
+            except GitCommandError:
+                raise PullError("There was an error pulling the target repository.")
             return git_repo
         else:
             kwargs = {}
@@ -168,7 +171,10 @@ class Arca:
                 kwargs["reference-if-able"] = str(reference.absolute())
                 kwargs["dissociate"] = True
 
-            return Repo.clone_from(repo, str(repo_path), branch=branch, **kwargs)
+            try:
+                return Repo.clone_from(repo, str(repo_path), branch=branch, **kwargs)
+            except GitCommandError:
+                raise PullError("There was an error cloning the target repository.")
 
     def current_git_hash(self, repo: str, branch: str, git_repo: Repo, short: bool=False) -> str:
         current_hash = self._current_hash[self.repo_id(repo)].get(branch)

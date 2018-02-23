@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, date
 from git import Repo
 
 from arca import Arca, VenvBackend, CurrentEnvironmentBackend
-from arca.exceptions import ArcaMisconfigured, FileOutOfRangeError
+from arca.exceptions import ArcaMisconfigured, FileOutOfRangeError, PullError
 from common import BASE_DIR
 
 
@@ -365,3 +365,29 @@ def test_is_dirty():
     fl.unlink()
 
     assert not arca.is_dirty()
+
+
+def test_pull_error():
+    arca = Arca(base_dir=BASE_DIR)
+
+    git_dir = Path("/tmp/arca/") / str(uuid4())
+    git_url = f"file://{git_dir}"
+
+    with pytest.raises(PullError):
+        arca.get_files(git_url, "master")
+
+    filepath = git_dir / "test_file.txt"
+    repo = Repo.init(git_dir)
+    filepath.write_text(str(uuid4()))
+    repo.index.add([str(filepath)])
+    repo.index.commit("Initial")
+
+    arca.get_files(git_url, "master")
+
+    with pytest.raises(PullError):
+        arca.get_files(git_url, "some_branch")
+
+    shutil.rmtree(str(git_dir))
+
+    with pytest.raises(PullError):
+        arca.get_files(git_url, "master")

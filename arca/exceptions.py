@@ -12,6 +12,10 @@ class TaskMisconfigured(ValueError, ArcaException):
     pass
 
 
+class PullError(ArcaException):
+    pass
+
+
 class BuildError(ArcaException):
 
     def __init__(self, *args, extra_info=None, **kwargs):
