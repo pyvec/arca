@@ -1,6 +1,5 @@
 import distutils.cmd
 import re
-from pathlib import Path
 
 
 class DeployDockerBasesCommand(distutils.cmd.Command):
@@ -24,7 +23,7 @@ class DeployDockerBasesCommand(distutils.cmd.Command):
 
         build_for = re.compile(r"^3\.[67]\.[0-9]+$")
 
-        for path in sorted((pyenv / "plugins/python-build/share/python-build/").iterdir()):  # type: Path
+        for path in sorted((pyenv / "plugins/python-build/share/python-build/").iterdir()):
             if path.is_dir():
                 continue
 

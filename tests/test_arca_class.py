@@ -307,11 +307,11 @@ def test_shallow_since():
 
     repo = Repo.init(git_dir)
 
-    for i in range(20, 1, -1):
+    for i in range(20, 0, -1):
         filepath.write_text(str(uuid4()))
         repo.index.add([str(filepath)])
-        repo.index.commit("Initial", commit_date=(now - timedelta(days=i)).strftime("%Y-%m-%dT%H:%M:%S"),
-                          author_date=(now - timedelta(days=i)).strftime("%Y-%m-%dT%H:%M:%S"))
+        repo.index.commit("Initial", commit_date=(now - timedelta(days=i, hours=5)).strftime("%Y-%m-%dT%H:%M:%S"),
+                          author_date=(now - timedelta(days=i, hours=5)).strftime("%Y-%m-%dT%H:%M:%S"))
 
     cloned_repo, cloned_repo_path = arca.get_files(git_url, branch, shallow_since=(now - timedelta(days=10)).date())
     assert cloned_repo.commit().count() == 10

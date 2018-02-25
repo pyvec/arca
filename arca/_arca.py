@@ -48,7 +48,7 @@ class Arca:
         self.backend: BaseBackend = self._get_backend_instance(backend)
         self.backend.inject_arca(self)
 
-        self._current_hash = defaultdict(lambda: {})
+        self._current_hash: Dict[str, Dict[str, str]] = defaultdict(lambda: {})
 
     def _get_backend_instance(self, backend: BackendDefinitionType) -> BaseBackend:
         if backend is NOT_SET:

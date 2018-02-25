@@ -478,10 +478,10 @@ class DockerBackend(BaseBackend):
         container.exec_run(["mkdir", "-p", "/srv/scripts"])
         container.put_archive("/srv/scripts", self.tar_script(script_name, script))
 
-        res = None
+        res: Optional[ExecResult] = None
 
         try:
-            res: ExecResult = container.exec_run(["python", f"/srv/scripts/{script_name}"], tty=True)
+            res = container.exec_run(["python", f"/srv/scripts/{script_name}"], tty=True)
 
             return Result(json.loads(res.output))
         except Exception as e:
