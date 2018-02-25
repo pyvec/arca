@@ -2,6 +2,7 @@ import json
 import re
 import subprocess
 from pathlib import Path
+from textwrap import dedent
 from uuid import uuid4
 
 from fabric import api
@@ -86,27 +87,27 @@ class VagrantBackend(DockerBackend):
 
         vagrant_file.parent.mkdir(exist_ok=True, parents=True)
 
-        vagrant_file.write_text(f"""
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
+        vagrant_file.write_text(dedent(f"""
+        # -*- mode: ruby -*-
+        # vi: set ft=ruby :
 
-Vagrant.configure("2") do |config|
-  config.vm.box = "{self.box}"
-  config.ssh.insert_key = true
-  config.vm.provision "docker" do |d|
-    d.pull_images "{image_name}:{image_tag}"
-    d.run "{image_name}:{image_tag}",
-      name: "{container_name}",
-      args: "-t -w {workdir}",
-      cmd: "bash -i"
-  end
+        Vagrant.configure("2") do |config|
+          config.vm.box = "{self.box}"
+          config.ssh.insert_key = true
+          config.vm.provision "docker" do |d|
+            d.pull_images "{image_name}:{image_tag}"
+            d.run "{image_name}:{image_tag}",
+              name: "{container_name}",
+              args: "-t -w {workdir}",
+              cmd: "bash -i"
+          end
 
-  config.vm.synced_folder ".", "/vagrant"
-  config.vm.synced_folder "{repo_path}", "/srv/data"
-  config.vm.provider "{self.provider}"
+          config.vm.synced_folder ".", "/vagrant"
+          config.vm.synced_folder "{repo_path}", "/srv/data"
+          config.vm.provider "{self.provider}"
 
-end
-        """)
+        end
+        """))
 
     def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path):
         """ Gets or creates Vagrantfile, starts up a VM with it, executes Fabric script over SSH, returns result.

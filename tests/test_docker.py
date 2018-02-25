@@ -28,8 +28,7 @@ def test_keep_container_running():
     repo.index.commit("Initial")
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
 
     backend.check_docker_access()   # init docker client
@@ -75,16 +74,10 @@ def test_python_version(python_version):
     repo.index.commit("Initial")
 
     task = Task(
-        "return_python_version",
-        from_imports=[("test_file", "return_python_version")]
+        "test_file:return_python_version",
     )
 
     result = arca.run(f"file://{git_dir}", "master", task)
-
-    try:
-        print(result.error)
-    except AttributeError:
-        pass
 
     assert result.output == python_version
 
@@ -105,16 +98,10 @@ def test_apk_dependencies():
     repo.index.commit("Initial")
 
     task = Task(
-        "return_is_xsltproc_installed",
-        from_imports=[("test_file", "return_is_xsltproc_installed")]
+        "test_file:return_is_xsltproc_installed",
     )
 
     result = arca.run(f"file://{git_dir}", "master", task)
-
-    try:
-        print(result.error)
-    except AttributeError:
-        pass
 
     assert result.output == 0
 
@@ -133,16 +120,10 @@ def test_apk_dependencies():
     repo.index.commit("Added requirements, changed to lxml")
 
     task = Task(
-        "return_is_lxml_installed",
-        from_imports=[("test_file", "return_is_lxml_installed")]
+        "test_file:return_is_lxml_installed",
     )
 
     result = arca.run(f"file://{git_dir}", "master", task)
-
-    try:
-        print(result.error)
-    except AttributeError:
-        pass
 
     assert result.output
 
@@ -162,8 +143,7 @@ def test_inherit_image():
     repo.index.commit("Initial")
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
 
     result = arca.run(f"file://{git_dir}", "master", task)
@@ -175,8 +155,7 @@ def test_inherit_image():
     repo.index.commit("Platform")
 
     task = Task(
-        "return_platform",
-        from_imports=[("test_file", "return_platform")]
+        "test_file:return_platform",
     )
 
     result = arca.run(f"file://{git_dir}", "master", task)
@@ -199,8 +178,7 @@ def test_inherit_image():
     repo.index.commit("Added requirements, changed to version")
 
     django_task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
 
     result = arca.run(f"file://{git_dir}", "master", django_task)
@@ -241,8 +219,7 @@ def test_push_to_registry(mocker):
     git_repo.index.commit("Initial")
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
 
     repo = f"file://{git_dir}"

@@ -58,7 +58,7 @@ class BaseBackend:
         return requirements_file
 
     def create_script(self, task: Task, venv_path: Path=None) -> Tuple[str, str]:
-        script = task.build_script(venv_path)
+        script = task.build_script()
         script_hash = hashlib.sha1(bytes(script, "utf-8")).hexdigest()
 
         return f"{script_hash}.py", script

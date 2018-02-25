@@ -37,8 +37,7 @@ def test_single_pull(mocker, backend):
     mocker.spy(arca, "_pull")
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
     repo_url = f"file://{git_dir}"
 
@@ -91,8 +90,7 @@ def test_pull_efficiency(mocker, backend):
     mocker.spy(arca, "_pull")
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
     repo_url = f"file://{git_dir}"
 

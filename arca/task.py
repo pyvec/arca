@@ -1,92 +1,92 @@
 import hashlib
 import json
 import re
-
-from pathlib import Path
 from pprint import pformat
-from typing import Optional, Tuple, Any, Dict, Iterable
+from textwrap import dedent, indent
+from typing import Optional, Any, Dict, Iterable
+
+from entrypoints import EntryPoint, BadEntryPoint
 
 from .exceptions import TaskMisconfigured
+
+custom_pattern = re.compile(r"[.\w]*:[.\w]*")
 
 
 class Task:
 
-    def __init__(self, function_call: str, *,
-                 imports: Optional[Iterable[str]]=None,
-                 from_imports: Optional[Iterable[Tuple[str, str]]]=None,
+    def __init__(self, entry_point: str, *,
                  args: Optional[Iterable[Any]]=None,
                  kwargs: Optional[Dict[str, Any]]=None) -> None:
-        if re.match(r".*\s.*", function_call):
-            raise TaskMisconfigured("function_call contains a whitespace")
 
-        self.function_call = function_call
-        self.imports = list(imports or [])
-        self.from_imports = list(from_imports or [])
+        if not custom_pattern.match(entry_point):
+            raise TaskMisconfigured("Task entry point must be an object, not a module.")
+
+        try:
+            self.entry_point = EntryPoint.from_string(entry_point, "task")
+        except BadEntryPoint:
+            raise TaskMisconfigured("Incorrectly defined entry point.")
+
         self.args = list(args or [])
         self.kwargs = dict(kwargs or {})
 
     def __repr__(self):
-        return f"Task({self.function_call})"
-
-    def build_imports(self):
-        return "\r\n".join([f"    import {x}" for x in self.imports])
-
-    def build_from_imports(self):
-        return "\r\n".join([f"    from {x[0]} import {x[1]}" for x in self.from_imports])
+        return f"Task({self.entry_point})"
 
     def build_function_call(self):
         if len(self.args) and len(self.kwargs):
-            return "{}(*{}, **{})".format(
-                self.function_call,
+            return "{!r}.load()(*{}, **{})".format(
+                self.entry_point,
                 pformat(self.args),
                 pformat(self.kwargs)
             )
         elif len(self.args):
-            return "{}(*{})".format(
-                self.function_call,
+            return "{!r}.load()(*{})".format(
+                self.entry_point,
                 pformat(self.args)
             )
         elif len(self.kwargs):
-            return "{}(**{})".format(
-                self.function_call,
+            return "{!r}.load()(**{})".format(
+                self.entry_point,
                 pformat(self.kwargs)
             )
         else:
-            return f"{self.function_call}()"
+            return "{!r}.load()()".format(self.entry_point)
 
-    def build_script(self, venv_path: Path=None) -> str:
-        result = ""
+    def build_script(self) -> str:
+        function_call = self.build_function_call()
+        function_call = indent(function_call, "            ", lambda x: not x.startswith("EntryPoint"))
 
-        if venv_path is not None:
-            result += "#!" + str(venv_path.resolve() / "bin" / "python3") + "\r\n\r\n"
-        else:
-            result += "#!python3\r\n"
+        return dedent(f"""
+        # encoding=utf-8
+        import json
+        import traceback
+        import sys
+        import os
+        from importlib import import_module
 
-        result += "# encoding=utf-8\r\n\r\n"
-        result += "import json\r\n"
-        result += "import traceback\r\n"
-        result += "import sys\r\n"
-        result += "import os\r\n"
-        result += "sys.path.insert(1, os.getcwd())\r\n"
-        result += "try:\r\n"
+        class EntryPoint:
+            def __init__(self, name, module_name, object_name, *args, **kwargs):
+                self.module_name = module_name
+                self.object_name = object_name
 
-        result += self.build_imports() + "\r\n"
-        result += self.build_from_imports() + "\r\n"
+            def load(self):
+                mod = import_module(self.module_name)
+                obj = mod
+                for attr in self.object_name.split('.'):
+                    obj = getattr(obj, attr)
+                return obj
 
-        result += f"""
-    res = {self.build_function_call()}
-    print(json.dumps({{"success": True, "result": res}}))
-except:
-    print(json.dumps({{"success": False, "error": traceback.format_exc()}}))
-"""
-
-        return result
+        sys.path.insert(1, os.getcwd())
+        try:
+            res = {function_call}
+            print(json.dumps({{"success": True, "result": res}}))
+        except:
+            print(json.dumps({{"success": False, "error": traceback.format_exc()}}))
+        """)
 
     def serialize(self):
         return hashlib.sha1(bytes(json.dumps({
-            "function_call": self.function_call,
-            "imports": self.imports,
-            "from_imports": self.from_imports,
+            "entry_point": self.entry_point.__repr__(),
             "args": self.args,
             "kwargs": self.kwargs,
         }), "utf-8")).hexdigest()

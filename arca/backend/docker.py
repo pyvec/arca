@@ -175,7 +175,6 @@ class DockerBackend(BaseBackend):
             if build_context is None:
                 self.client.images.build(
                     fileobj=dockerfile,
-                    pull=True,
                     tag=f"{name}:{tag}"
                 )
             else:
@@ -184,7 +183,6 @@ class DockerBackend(BaseBackend):
 
                 self.client.images.build(
                     path=str(build_context.resolve()),
-                    pull=pull,
                     dockerfile=dockerfile_file.name,
                     tag=f"{name}:{tag}"
                 )

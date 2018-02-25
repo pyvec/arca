@@ -7,7 +7,6 @@ import pytest
 from git import Repo
 
 from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
-from arca.exceptions import BuildError
 
 from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
     TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION
@@ -57,8 +56,7 @@ def test_backends(backend, requirements_location, file_location):
     repo_url = f"file://{git_dir}"
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
 
     result = arca.run(repo_url, "master", task)
@@ -117,19 +115,11 @@ def test_backends(backend, requirements_location, file_location):
     assert result.output == "1.11.5"
 
     django_task = Task(
-        "django.get_version",
-        imports=["django"]
+        "django:get_version"
     )
 
     result = arca.run(repo_url, "master", django_task)
     assert result.output == "1.11.5"
-
-    django_task_error = Task(
-        "django.get_version",
-    )
-
-    with pytest.raises(BuildError):
-        arca.run(f"file://{git_dir}", "master", django_task_error)
 
     if isinstance(backend, CurrentEnvironmentBackend):
         backend._uninstall("django")
@@ -139,8 +129,7 @@ def test_backends(backend, requirements_location, file_location):
     repo.index.commit("Argument function")
 
     assert arca.run(repo_url, "master", Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")],
+        "test_file:return_str_function",
         args=[TEST_UNICODE]
     )).output == TEST_UNICODE[::-1]
 
@@ -149,7 +138,6 @@ def test_backends(backend, requirements_location, file_location):
     repo.index.commit("Keyword argument function")
 
     assert arca.run(repo_url, "master", Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")],
+        "test_file:return_str_function",
         kwargs={"kwarg": TEST_UNICODE}
     )).output == TEST_UNICODE[::-1]

@@ -70,8 +70,7 @@ def test_vagrant(box):
     git_repo.index.commit("Initial")
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
 
     repo = f"file://{git_dir}"

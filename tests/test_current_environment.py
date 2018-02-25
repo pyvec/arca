@@ -92,8 +92,7 @@ def test_strategy_ignore(mocker, strategy):
     repo.index.commit("Initial")
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
 
     # nor the current env or the repo has any requirements, install requirements is not called at all
@@ -168,8 +167,7 @@ def test_strategy_raise(strategy):
     repo.index.commit("Initial")
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
 
     # nor the current env or the repo has any requirements, install requirements is not called at all
@@ -240,8 +238,7 @@ def test_strategy_install_extra(mocker, strategy):
     repo.index.commit("Initial")
 
     task = Task(
-        "return_str_function",
-        from_imports=[("test_file", "return_str_function")]
+        "test_file:return_str_function",
     )
 
     # nor the current env or the repo has any requirements, install requirements is not called at all

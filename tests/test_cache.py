@@ -66,8 +66,7 @@ def test_cache(mocker, backend, cache_backend, arguments):
     git_repo.index.commit("Added requirements")
 
     django_task = Task(
-        "django.get_version",
-        imports=["django"]
+        "django:get_version",
     )
 
     repo = f"file://{git_dir}"

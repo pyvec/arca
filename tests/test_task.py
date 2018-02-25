@@ -12,52 +12,16 @@ def _clean_lines(x: str) -> str:
     return "\n".join([line.replace("\r", "") for line in x.split("\n") if line.replace("\r", "").strip()])
 
 
-@pytest.mark.parametrize(["imports", "res"], (
-    (None, ""),
-    ([], ""),
-    (set(), ""),
-    (["single_import"], "import single_import"),
-    (["more_imports", "more_imports.second"], "import more_imports\n    import more_imports.second\n"),
-    ({"import_from_set"}, "import import_from_set"),
+@pytest.mark.parametrize(["entry_point", "res"], (
+    ("library:func", "EntryPoint('task', 'library', 'func', None)"),
+    ("library.submodule:func", "EntryPoint('task', 'library.submodule', 'func', None)"),
+    ("library.submodule:Obj", "EntryPoint('task', 'library.submodule', 'Obj', None)"),
 ))
-def test_imports(imports, res):
-    task = Task("func", imports=imports)
-    assert _clean_lines(task.build_script(ENV_PATH)) == _clean_lines("""#!/usr/bin/python3
-# encoding=utf-8
-import json
-import traceback
-import sys
-import os
-sys.path.insert(1, os.getcwd())
+def test_imports(entry_point, res):
+    task = Task(entry_point)
+    assert _clean_lines(task.build_script().split("sys.path.insert(1, os.getcwd())")[1]) == _clean_lines("""
 try:
-    {}
-    res = func()
-    print(json.dumps({{"success": True, "result": res}}))
-except:
-    print(json.dumps({{"success": False, "error": traceback.format_exc()}}))
-""".format(res))
-
-
-@pytest.mark.parametrize(["from_imports", "res"], (
-    (None, ""),
-    ([], ""),
-    (set(), ""),
-    ([("single_import", "Things")], "from single_import import Things"),
-    ([("more_imports", "Thing"), ("multiple_imports", "SecondThing")],
-     "from more_imports import Thing\n    from multiple_imports import SecondThing\n")
-))
-def test_from_imports(from_imports, res):
-    task = Task("func", from_imports=from_imports)
-    assert _clean_lines(task.build_script(ENV_PATH)) == _clean_lines("""#!/usr/bin/python3
-# encoding=utf-8
-import json
-import traceback
-import sys
-import os
-sys.path.insert(1, os.getcwd())
-try:
-    {}
-    res = func()
+    res = {}.load()()
     print(json.dumps({{"success": True, "result": res}}))
 except:
     print(json.dumps({{"success": False, "error": traceback.format_exc()}}))
@@ -65,31 +29,31 @@ except:
 
 
 @pytest.mark.parametrize(["args", "kwargs", "res"], (
-    (None, None, "func()"),
-    ([], {}, "func()"),
-    ([1, "Test'\""], {}, """func(*[1, 'Test\\'"'])"""),
-    ([], {"test_1": 1, "test_2": "Test'\""}, """func(**{'test_1': 1, 'test_2': 'Test\\'"'})"""),
+    (None, None, "()"),
+    ([], {}, "()"),
+    ([1, "Test'\""], {}, """(*[1, 'Test\\'"'])"""),
+    ([], {"test_1": 1, "test_2": "Test'\""}, """(**{'test_1': 1, 'test_2': 'Test\\'"'})"""),
     ([1, "Test'\""], {"test_1": 1, "test_2": "Test'\""},
-     """func(*[1, 'Test\\'"'], **{'test_1': 1, 'test_2': 'Test\\'"'})"""),
+     """(*[1, 'Test\\'"'], **{'test_1': 1, 'test_2': 'Test\\'"'})"""),
 ))
-def test_function_call(args, kwargs, res):
-    task = Task("func", args=args, kwargs=kwargs)
-    assert _clean_lines(task.build_script(ENV_PATH)) == _clean_lines("""#!/usr/bin/python3
-# encoding=utf-8
-import json
-import traceback
-import sys
-import os
-sys.path.insert(1, os.getcwd())
+def test_arguments(args, kwargs, res):
+    task = Task("library:func", args=args, kwargs=kwargs)
+    assert _clean_lines(task.build_script().split("sys.path.insert(1, os.getcwd())")[1]) == _clean_lines("""
 try:
-    res = {}
+    res = EntryPoint('task', 'library', 'func', None).load(){}
     print(json.dumps({{"success": True, "result": res}}))
 except:
     print(json.dumps({{"success": False, "error": traceback.format_exc()}}))
 """.format(res))
 
 
-@pytest.mark.parametrize("call", [" test", "test ", "te st", "te\tst", "test()\ntest2"])
-def test_invalid_function_call(call):
+@pytest.mark.parametrize("entry_point", [
+    "library",
+    "library.mod",
+    "task=library.mod:func",
+    "library.mod func",
+    "library.mod:asdf asdf\nasdfasdf",
+])
+def test_invalid_entry_point(entry_point):
     with pytest.raises(TaskMisconfigured):
-        Task(call)
+        Task(entry_point)

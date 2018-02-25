@@ -32,7 +32,8 @@ setup(
         "requests",
         "docker~=3.0",
         "python-vagrant",
-        "fabric3"
+        "fabric3",
+        "entrypoints>=0.2.3",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",  # TODO: update when ready
