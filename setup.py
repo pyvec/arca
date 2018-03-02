@@ -11,8 +11,11 @@ if sys.version_info < (3, 6):
     raise RuntimeError('Arca requires Python 3.6 or greater')
 
 
-def read(filename: str) -> str:
-    return (Path(__file__).resolve().parent / filename).read_text()
+def long_description():
+    return """{}\n\n{}""".format(
+        (Path(__file__).resolve().parent / "README.rst").read_text(),
+        (Path(__file__).resolve().parent / "CHANGELOG.rst").read_text()
+    )
 
 
 setup(
@@ -25,7 +28,7 @@ setup(
     license="MIT",
     url="https://github.com/mikicz/arca",
     packages=find_packages(),
-    long_description=read("README.rst"),
+    long_description=long_description(),
     install_requires=[
         "gitpython==2.1.7",
         "dogpile.cache==0.6.4",

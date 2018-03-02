@@ -19,7 +19,6 @@ from arca.utils import NOT_SET, LazySettingProperty, logger
 
 class BaseBackend:
 
-    verbosity: int = LazySettingProperty(key="verbosity", default=0)
     requirements_location: str = LazySettingProperty(key="requirements_location", default="requirements.txt")
     cwd: str = LazySettingProperty(key="cwd", default="")
 

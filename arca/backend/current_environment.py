@@ -19,17 +19,11 @@ class RequirementsStrategy(Enum):
 
 class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
 
-    current_environment_requirements = LazySettingProperty(key="current_environment_requirements")
+    current_environment_requirements = LazySettingProperty(key="current_environment_requirements",
+                                                           default="requirements.txt")
     requirements_strategy = LazySettingProperty(key="requirements_strategy",
                                                 default=RequirementsStrategy.RAISE,
                                                 convert=RequirementsStrategy)
-
-    def validate_settings(self):
-        super().validate_settings()
-
-        if self.current_environment_requirements is not None:
-            if not Path(self.current_environment_requirements).exists():
-                raise ArcaMisconfigured("Can't locate current environment requirements.")
 
     def install_requirements(self, *, fl: Optional[Path]=None, requirements: Optional[Iterable[str]]=None,
                              _action: str="install"):
@@ -94,14 +88,17 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
 
                 self.install_requirements(fl=requirements)
 
-        # requirements for current environment configured and exists
+        # requirements for current environment configured
         else:
             current_requirements = Path(self.current_environment_requirements)
 
-            current_requirements_set = self.get_requirements_set(current_requirements)
-
             if not requirements.exists():
                 return  # no req. file in repo -> no extra requirements
+
+            if not current_requirements.exists():
+                raise ArcaMisconfigured("Can't locate current environment requirements.")
+
+            current_requirements_set = self.get_requirements_set(current_requirements)
 
             requirements_set = self.get_requirements_set(requirements)
 

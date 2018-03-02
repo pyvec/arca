@@ -52,7 +52,7 @@ class Arca:
 
     def _get_backend_instance(self, backend: BackendDefinitionType) -> BaseBackend:
         if backend is NOT_SET:
-            backend = self.get_setting("backend", "arca.backend.VenvBackend")
+            backend = self.get_setting("backend", "arca.backend.CurrentEnvironmentBackend")
 
         if isinstance(backend, str):
             backend = load_class(backend)
