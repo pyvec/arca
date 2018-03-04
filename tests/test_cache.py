@@ -1,19 +1,14 @@
 # encoding=utf-8
 import json
-from pathlib import Path
-from uuid import uuid4
-
 import os
+from pathlib import Path
 
 import pytest
 from dogpile.cache.api import NO_VALUE
-from git import Repo
 
 from arca import Arca, VenvBackend, Task, DockerBackend, CurrentEnvironmentBackend
 from arca.exceptions import ArcaMisconfigured
-
 from common import BASE_DIR
-
 
 cache_arguments = [
     ["dogpile.cache.dbm", lambda base_dir: {"filename": str(base_dir / "cachefile.dbm")}],
@@ -30,7 +25,7 @@ def generate_arguments():
 
 
 @pytest.mark.parametrize(["backend", "cache_backend", "arguments"], list(generate_arguments()))
-def test_cache(mocker, backend, cache_backend, arguments):
+def test_cache(mocker, temp_repo_func, backend, cache_backend, arguments):
     if backend == VenvBackend and bool(os.environ.get("TRAVIS", False)):
         pytest.skip("Venv backend doesn't work on Travis")
 
@@ -53,53 +48,37 @@ def test_cache(mocker, backend, cache_backend, arguments):
                     "ARCA_CACHE_BACKEND_ARGUMENTS": arguments(base_dir)
                 })
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
+    requirements_path = temp_repo_func.path / "requirements.txt"
+    requirements_path.write_text("django==1.11.5")
 
-    git_repo = Repo.init(git_dir)
-    requirements_path = git_dir / "requirements.txt"
-    requirements_path.parent.mkdir(exist_ok=True, parents=True)
+    temp_repo_func.repo.index.add([str(requirements_path)])
+    temp_repo_func.repo.index.commit("Added requirements")
 
-    with requirements_path.open("w") as fl:
-        fl.write("django==1.11.5")
+    django_task = Task("django:get_version")
 
-    git_repo.index.add([str(requirements_path)])
-    git_repo.index.commit("Added requirements")
-
-    django_task = Task(
-        "django:get_version",
-    )
-
-    repo = f"file://{git_dir}"
-    branch = "master"
-
-    arca.region.delete(arca.cache_key(repo, branch, django_task, git_repo))  # delete from previous tests
+    # delete from previous tests
+    arca.region.delete(arca.cache_key(temp_repo_func.url, temp_repo_func.branch, django_task, temp_repo_func.repo))
     mocker.spy(arca.backend, "run")
 
-    result = arca.run(repo, branch, django_task)
-
-    assert result.output == "1.11.5"
-
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, django_task).output == "1.11.5"
     assert arca.backend.run.call_count == 1
 
     cached_result = arca.region.get(
-        arca.cache_key(repo, branch, django_task, git_repo)
+        arca.cache_key(temp_repo_func.url, temp_repo_func.branch, django_task, temp_repo_func.repo)
     )
 
     assert cached_result is not NO_VALUE
 
-    result = arca.run(repo, branch, django_task)
-    assert result.output == "1.11.5"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, django_task).output == "1.11.5"
 
     # check that the result was actually from cache, that run wasn't called again
     assert arca.backend.run.call_count == 1
 
-    arca.pull_again(repo, branch)
+    arca.pull_again(temp_repo_func.url, temp_repo_func.branch)
 
     mocker.spy(arca, "get_files")
 
-    result = arca.run(repo, branch, django_task)
-    assert result.output == "1.11.5"
-
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, django_task).output == "1.11.5"
     assert arca.get_files.call_count == 1  # check that the repo was pulled
 
     if isinstance(backend, CurrentEnvironmentBackend):

@@ -1,13 +1,10 @@
-from pathlib import Path
-from uuid import uuid4
-
 import os
+
 import pytest
-from git import Repo
 
 from arca import VagrantBackend, Arca, Task
 from arca.exceptions import ArcaMisconfigured, BuildError
-from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION
+from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, replace_text
 
 
 def test_validation():
@@ -45,7 +42,7 @@ def test_validation():
 # `hashicorp/boot2docker` contains docker 1.7 - doesn't work
 # `asdfkljasdf/asdfasdf` doesn't exist
 @pytest.mark.parametrize("box", [None, "hashicorp/boot2docker", "asdfkljasdf/asdfasdf"])
-def test_vagrant(box):
+def test_vagrant(temp_repo_func, box):
     if os.environ.get("TRAVIS", False):
         pytest.skip("Vagrant doesn't work on Travis")
 
@@ -54,31 +51,18 @@ def test_vagrant(box):
         kwargs["box"] = box
     backend = VagrantBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test", **kwargs)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-    git_repo = Repo.init(git_dir)
 
-    filepath = git_dir / "test_file.py"
-    filepath.write_text(RETURN_DJANGO_VERSION_FUNCTION)
-    git_repo.index.add([str(filepath)])
+    replace_text(temp_repo_func.fl, RETURN_DJANGO_VERSION_FUNCTION)
+    requirements_path = temp_repo_func.path / backend.requirements_location
+    requirements_path.write_text("django==1.11.3")  # Has to be unique in Arca tests.
 
-    requirements_path = git_dir / backend.requirements_location
-    requirements_path.parent.mkdir(exist_ok=True, parents=True)
-    with requirements_path.open("w") as fl:
-        fl.write("django==1.11.3")  # Has to be unique in Arca tests.
-    git_repo.index.add([str(requirements_path)])
+    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.repo.index.commit("Initial")
 
-    git_repo.index.commit("Initial")
-
-    task = Task(
-        "test_file:return_str_function",
-    )
-
-    repo = f"file://{git_dir}"
-    branch = "master"
+    task = Task("test_file:return_str_function")
 
     if not box:
-        result = arca.run(repo, branch, task)
-        assert result.output == "1.11.3"
+        assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.3"
     else:
         with pytest.raises(BuildError):  # fails because of reasons listed above
-            arca.run(repo, branch, task)
+            arca.run(temp_repo_func.url, temp_repo_func.branch, task)

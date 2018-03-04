@@ -134,7 +134,7 @@ class Arca:
         return self.settings.get(key, default=default)
 
     def get_path_to_repo_base(self, repo: str) -> Path:
-        return Path(self.base_dir) / self.repo_id(repo)
+        return Path(self.base_dir) / "repos" / self.repo_id(repo)
 
     def get_path_to_repo(self, repo: str, branch: str) -> Path:
         return self.get_path_to_repo_base(repo).resolve() / branch

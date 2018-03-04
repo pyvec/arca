@@ -1,15 +1,11 @@
-from pathlib import Path
-from uuid import uuid4
+import itertools
 import os
 
-import itertools
 import pytest
-from git import Repo
 
 from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
-
-from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
-    TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION
+from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
+    TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION, replace_text
 
 
 @pytest.mark.parametrize(
@@ -19,7 +15,7 @@ from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, RETURN_STR_FUNCTION
         (None, "test_package"),
     ))
 )
-def test_backends(backend, requirements_location, file_location):
+def test_backends(temp_repo_func, backend, requirements_location, file_location):
     if os.environ.get("TRAVIS", False) and backend == VenvBackend:
         pytest.skip("Venv Backend doesn't work on Travis")
 
@@ -41,62 +37,43 @@ def test_backends(backend, requirements_location, file_location):
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-
-    repo = Repo.init(git_dir)
     if file_location is None:
-        filepath = git_dir / "test_file.py"
+        filepath = temp_repo_func.fl
     else:
-        (git_dir / file_location).mkdir(exist_ok=True, parents=True)
-        filepath = git_dir / file_location / "test_file.py"
+        filepath = temp_repo_func.path / file_location / "test_file.py"
+        filepath.parent.mkdir(exist_ok=True, parents=True)
+        temp_repo_func.fl.replace(filepath)
 
-    filepath.write_text(RETURN_STR_FUNCTION)
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
-    repo_url = f"file://{git_dir}"
+        temp_repo_func.repo.index.remove([str(temp_repo_func.fl)])
+        temp_repo_func.repo.index.add([str(filepath)])
+        temp_repo_func.repo.index.commit("Initial")
 
-    task = Task(
-        "test_file:return_str_function",
-    )
+    task = Task("test_file:return_str_function",)
 
-    result = arca.run(repo_url, "master", task)
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
 
-    assert result.output == "Some string"
+    replace_text(filepath, SECOND_RETURN_STR_FUNCTION)
+    temp_repo_func.repo.create_head("new_branch")
+    temp_repo_func.repo.index.add([str(filepath)])
+    temp_repo_func.repo.index.commit("Updated function")
 
-    with filepath.open("w") as fl:
-        fl.write(SECOND_RETURN_STR_FUNCTION)
-
-    repo.create_head("new_branch")
-
-    repo.index.add([str(filepath)])
-    repo.index.commit("Updated function")
-
-    result = arca.run(repo_url, "master", task)
-    assert result.output == TEST_UNICODE
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == TEST_UNICODE
 
     # in the other branch there's still the original
-    result = arca.run(repo_url, "new_branch", task)
-    assert result.output == "Some string"
+    assert arca.run(temp_repo_func.url, "new_branch", task).output == "Some string"
 
-    repo.branches.master.checkout()
+    temp_repo_func.repo.branches.master.checkout()
 
-    requirements_path = git_dir / backend.requirements_location
-
-    with filepath.open("w") as fl:
-        fl.write(RETURN_DJANGO_VERSION_FUNCTION)
-
+    requirements_path = temp_repo_func.path / backend.requirements_location
     requirements_path.parent.mkdir(exist_ok=True, parents=True)
+    requirements_path.write_text("django==1.11.4")
 
-    with requirements_path.open("w") as fl:
-        fl.write("django==1.11.4")
+    replace_text(filepath, RETURN_DJANGO_VERSION_FUNCTION)
 
-    repo.index.add([str(filepath)])
-    repo.index.add([str(requirements_path)])
-    repo.index.commit("Added requirements, changed to version")
+    temp_repo_func.repo.index.add([str(filepath), str(requirements_path)])
+    temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
-    result = arca.run(repo_url, "master", task)
-
-    assert result.output == "1.11.4"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.4"
 
     if not isinstance(backend, CurrentEnvironmentBackend):
         with pytest.raises(ModuleNotFoundError):
@@ -108,36 +85,32 @@ def test_backends(backend, requirements_location, file_location):
     with requirements_path.open("w") as fl:
         fl.write("django==1.11.5")
 
-    repo.index.add([str(requirements_path)])
-    repo.index.commit("Updated requirements")
+    temp_repo_func.repo.index.add([str(requirements_path)])
+    temp_repo_func.repo.index.commit("Updated requirements")
 
-    result = arca.run(repo_url, "master", task)
-    assert result.output == "1.11.5"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.5"
 
-    django_task = Task(
-        "django:get_version"
-    )
+    django_task = Task("django:get_version")
 
-    result = arca.run(repo_url, "master", django_task)
-    assert result.output == "1.11.5"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, django_task).output == "1.11.5"
 
     if isinstance(backend, CurrentEnvironmentBackend):
         backend._uninstall("django")
 
     filepath.write_text(ARG_STR_FUNCTION)
-    repo.index.add([str(filepath)])
-    repo.index.commit("Argument function")
+    temp_repo_func.repo.index.add([str(filepath)])
+    temp_repo_func.repo.index.commit("Argument function")
 
-    assert arca.run(repo_url, "master", Task(
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, Task(
         "test_file:return_str_function",
         args=[TEST_UNICODE]
     )).output == TEST_UNICODE[::-1]
 
     filepath.write_text(KWARG_STR_FUNCTION)
-    repo.index.add([str(filepath)])
-    repo.index.commit("Keyword argument function")
+    temp_repo_func.repo.index.add([str(filepath)])
+    temp_repo_func.repo.index.commit("Keyword argument function")
 
-    assert arca.run(repo_url, "master", Task(
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, Task(
         "test_file:return_str_function",
         kwargs={"kwarg": TEST_UNICODE}
     )).output == TEST_UNICODE[::-1]

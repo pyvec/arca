@@ -10,7 +10,7 @@ from git import Repo
 
 from arca import Arca, VenvBackend, CurrentEnvironmentBackend
 from arca.exceptions import ArcaMisconfigured, FileOutOfRangeError, PullError
-from common import BASE_DIR
+from common import BASE_DIR, replace_text
 
 
 def test_arca_backend():
@@ -84,93 +84,84 @@ def test_repo_id(url):
 
 
 @pytest.mark.parametrize("file_location", ["", "test_location"])
-def test_static_files(file_location):
+def test_static_files(temp_repo_static, file_location):
     arca = Arca(base_dir=BASE_DIR)
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-    git_url = f"file://{git_dir}"
-    branch = "master"
+    filepath = temp_repo_static.fl
+    if file_location:
+        new_filepath = temp_repo_static.path / file_location / "test_file.txt"
+        new_filepath.parent.mkdir(exist_ok=True, parents=True)
 
-    repo = Repo.init(git_dir)
-    if not file_location:
-        filepath = git_dir / "test_file.txt"
-    else:
-        (git_dir / file_location).mkdir(exist_ok=True, parents=True)
-        filepath = git_dir / file_location / "test_file.txt"
+        filepath.replace(new_filepath)
 
-    filepath.write_text("Some test file")
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
+        temp_repo_static.repo.index.add([str(new_filepath)])
+        temp_repo_static.repo.index.remove([str(filepath)])
+        temp_repo_static.repo.index.commit("Initial")
+
+        filepath = new_filepath
 
     relative_path = Path(file_location) / "test_file.txt"
     nonexistent_relative_path = Path(file_location) / "test_file2.txt"
 
-    result = arca.static_filename(git_url, branch, relative_path)
+    result = arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path)
 
     assert filepath.read_text() == result.read_text()
 
-    result = arca.static_filename(git_url, branch, str(relative_path))
+    result = arca.static_filename(temp_repo_static.url, temp_repo_static.branch, str(relative_path))
 
     assert filepath.read_text() == result.read_text()
 
     with pytest.raises(FileOutOfRangeError):
-        arca.static_filename(git_url, branch, "../file.txt")
+        arca.static_filename(temp_repo_static.url, temp_repo_static.branch, "../file.txt")
 
     with pytest.raises(FileNotFoundError):
-        arca.static_filename(git_url, branch, nonexistent_relative_path)
+        arca.static_filename(temp_repo_static.url, temp_repo_static.branch, nonexistent_relative_path)
 
 
-def test_depth():
+def test_depth(temp_repo_static):
     arca = Arca(base_dir=BASE_DIR)
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-    git_url = f"file://{git_dir}"
-    branch = "master"
-    filepath = git_dir / "test_file.txt"
-
-    repo = Repo.init(git_dir)
-
-    for _ in range(20):
-        filepath.write_text(str(uuid4()))
-        repo.index.add([str(filepath)])
-        repo.index.commit("Initial")
+    for _ in range(19):  # since one commit is made in the fixture
+        replace_text(temp_repo_static.fl, str(uuid4()))
+        temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
+        temp_repo_static.repo.index.commit("Initial")
 
     # test that in default settings, the whole repo is pulled in one go
 
-    cloned_repo, cloned_repo_path = arca.get_files(git_url, branch)
+    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
     assert cloned_repo.commit().count() == 1  # default is 1
 
     # test when pulled again, the depth is increased since the local copy is stored
 
-    filepath.write_text(str(uuid4()))
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
+    replace_text(temp_repo_static.fl, str(uuid4()))
+    temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
+    temp_repo_static.repo.index.commit("Initial")
 
-    cloned_repo, cloned_repo_path = arca.get_files(git_url, branch)
+    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
     assert cloned_repo.commit().count() == 2
 
     shutil.rmtree(str(cloned_repo_path))
 
     # test that when setting a certain depth, at least the depth is pulled (in case of merges etc)
 
-    cloned_repo, cloned_repo_path = arca.get_files(git_url, branch, depth=10)
+    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch, depth=10)
     assert cloned_repo.commit().count() >= 10
     before_second_pull = cloned_repo.commit().count()
 
     # test when pulled again, the depth setting is ignored
 
-    filepath.write_text(str(uuid4()))
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
+    replace_text(temp_repo_static.fl, str(uuid4()))
+    temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
+    temp_repo_static.repo.index.commit("Initial")
 
-    cloned_repo, cloned_repo_path = arca.get_files(git_url, branch)
+    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
     assert cloned_repo.commit().count() == before_second_pull + 1
 
     shutil.rmtree(str(cloned_repo_path))
 
     # test when setting depth bigger than repo size, no fictional commits are included
 
-    cloned_repo, cloned_repo_path = arca.get_files(git_url, branch, depth=100)
+    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch, depth=100)
 
     assert cloned_repo.commit().count() == 22  # 20 plus the 2 extra commits
 
@@ -178,7 +169,7 @@ def test_depth():
 
     # test no limit
 
-    cloned_repo, cloned_repo_path = arca.get_files(git_url, branch, depth=-1)
+    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch, depth=-1)
 
     assert cloned_repo.commit().count() == 22  # 20 plus the 2 extra commits
 
@@ -193,24 +184,16 @@ def test_depth():
     (0, False),
     (-2, False),
 ])
-def test_depth_validate(depth, valid):
+def test_depth_validate(temp_repo_static, depth, valid):
     arca = Arca(base_dir=BASE_DIR)
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-    git_url = f"file://{git_dir}"
-    branch = "master"
-    filepath = git_dir / "test_file.txt"
-    repo = Repo.init(git_dir)
-    filepath.write_text(str(uuid4()))
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
     relative_path = Path("test_file.txt")
 
     if valid:
-        arca.static_filename(git_url, branch, relative_path, depth=depth)
+        arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path, depth=depth)
     else:
         with pytest.raises(ValueError):
-            arca.static_filename(git_url, branch, relative_path, depth=depth)
+            arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path, depth=depth)
 
 
 def test_reference():
@@ -275,45 +258,34 @@ def test_reference():
     (None, True),
     (1, False)
 ])
-def test_reference_validate(reference, valid):
+def test_reference_validate(temp_repo_static, reference, valid):
     arca = Arca(base_dir=BASE_DIR)
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-    git_url = f"file://{git_dir}"
-    branch = "master"
-    filepath = git_dir / "test_file.txt"
-    repo = Repo.init(git_dir)
-    filepath.write_text(str(uuid4()))
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
     relative_path = Path("test_file.txt")
 
     if valid:
-        arca.static_filename(git_url, branch, relative_path, reference=reference)
+        arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path, reference=reference)
     else:
         with pytest.raises(ValueError):
-            arca.static_filename(git_url, branch, relative_path, reference=reference)
+            arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path, reference=reference)
 
 
-def test_shallow_since():
+def test_shallow_since(temp_repo_static):
     arca = Arca(base_dir=BASE_DIR)
-
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-    git_url = f"file://{git_dir}"
-    branch = "master"
-    filepath = git_dir / "test_file.txt"
 
     now = datetime.now()
 
-    repo = Repo.init(git_dir)
+    for i in range(19, 0, -1):
+        replace_text(temp_repo_static.fl, str(uuid4()))
+        temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
+        temp_repo_static.repo.index.commit(
+            "Initial",
+            commit_date=(now - timedelta(days=i, hours=5)).strftime("%Y-%m-%dT%H:%M:%S"),
+            author_date=(now - timedelta(days=i, hours=5)).strftime("%Y-%m-%dT%H:%M:%S")
+        )
 
-    for i in range(20, 0, -1):
-        filepath.write_text(str(uuid4()))
-        repo.index.add([str(filepath)])
-        repo.index.commit("Initial", commit_date=(now - timedelta(days=i, hours=5)).strftime("%Y-%m-%dT%H:%M:%S"),
-                          author_date=(now - timedelta(days=i, hours=5)).strftime("%Y-%m-%dT%H:%M:%S"))
-
-    cloned_repo, cloned_repo_path = arca.get_files(git_url, branch, shallow_since=(now - timedelta(days=10)).date())
+    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch,
+                                                   shallow_since=(now - timedelta(days=10)).date())
     assert cloned_repo.commit().count() == 10
 
 
@@ -325,24 +297,18 @@ def test_shallow_since():
     ("sasdfasdf", False),
     (None, True)
 ])
-def test_shallow_since_validate(shallow_since, valid):
+def test_shallow_since_validate(temp_repo_static, shallow_since, valid):
     arca = Arca(base_dir=BASE_DIR)
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-    git_url = f"file://{git_dir}"
-    branch = "master"
-    filepath = git_dir / "test_file.txt"
-    repo = Repo.init(git_dir)
-    filepath.write_text(str(uuid4()))
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
     relative_path = Path("test_file.txt")
 
     if valid:
-        arca.static_filename(git_url, branch, relative_path, shallow_since=shallow_since)
+        arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path,
+                             shallow_since=shallow_since)
     else:
         with pytest.raises(ValueError):
-            arca.static_filename(git_url, branch, relative_path, shallow_since=shallow_since)
+            arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path,
+                                 shallow_since=shallow_since)
 
 
 def test_is_dirty():

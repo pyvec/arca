@@ -1,18 +1,15 @@
-from pathlib import Path
-from uuid import uuid4
-
 import os
+
 import pytest
-from git import Repo
 
 from arca import Arca, DockerBackend, Task, VenvBackend, CurrentEnvironmentBackend
-from common import RETURN_STR_FUNCTION, SECOND_RETURN_STR_FUNCTION, BASE_DIR, TEST_UNICODE
+from common import SECOND_RETURN_STR_FUNCTION, BASE_DIR, TEST_UNICODE, replace_text
 
 
 @pytest.mark.parametrize(
     "backend", [VenvBackend, DockerBackend, CurrentEnvironmentBackend],
 )
-def test_single_pull(mocker, backend):
+def test_single_pull(temp_repo_func, mocker, backend):
     if os.environ.get("TRAVIS", False) and backend == VenvBackend:
         pytest.skip("Venv Backend doesn't work on Travis")
 
@@ -26,46 +23,30 @@ def test_single_pull(mocker, backend):
 
     arca = Arca(backend=backend, base_dir=BASE_DIR, single_pull=True)
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-
-    repo = Repo.init(git_dir)
-    filepath = git_dir / "test_file.py"
-    filepath.write_text(RETURN_STR_FUNCTION)
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
-
     mocker.spy(arca, "_pull")
 
-    task = Task(
-        "test_file:return_str_function",
-    )
-    repo_url = f"file://{git_dir}"
+    task = Task("test_file:return_str_function")
 
-    result = arca.run(repo_url, "master", task)
-    assert result.output == "Some string"
+    assert arca.run(temp_repo_func.url,  temp_repo_func.branch, task).output == "Some string"
     assert arca._pull.call_count == 1
 
-    with filepath.open("w") as fl:
-        fl.write(SECOND_RETURN_STR_FUNCTION)
+    replace_text(temp_repo_func.fl, SECOND_RETURN_STR_FUNCTION)
+    temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
+    temp_repo_func.repo.index.commit("Updated function")
 
-    repo.index.add([str(filepath)])
-    repo.index.commit("Updated function")
-
-    result = arca.run(repo_url, "master", task)
-    assert result.output == "Some string"
+    assert arca.run(temp_repo_func.url,  temp_repo_func.branch, task).output == "Some string"
     assert arca._pull.call_count == 1
 
-    arca.pull_again(repo_url, "master")
+    arca.pull_again(temp_repo_func.url,  temp_repo_func.branch)
 
-    result = arca.run(repo_url, "master", task)
-    assert result.output == TEST_UNICODE
+    assert arca.run(temp_repo_func.url,  temp_repo_func.branch, task).output == TEST_UNICODE
     assert arca._pull.call_count == 2
 
 
 @pytest.mark.parametrize(
     "backend", [VenvBackend, DockerBackend, CurrentEnvironmentBackend],
 )
-def test_pull_efficiency(mocker, backend):
+def test_pull_efficiency(temp_repo_func, mocker, backend):
     if os.environ.get("TRAVIS", False) and backend == VenvBackend:
         pytest.skip("Venv Backend doesn't work on Travis")
 
@@ -79,39 +60,22 @@ def test_pull_efficiency(mocker, backend):
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
-
-    repo = Repo.init(git_dir)
-    filepath = git_dir / "test_file.py"
-    filepath.write_text(RETURN_STR_FUNCTION)
-    repo.index.add([str(filepath)])
-    repo.index.commit("Initial")
-
     mocker.spy(arca, "_pull")
 
-    task = Task(
-        "test_file:return_str_function",
-    )
-    repo_url = f"file://{git_dir}"
+    task = Task("test_file:return_str_function")
 
-    result = arca.run(repo_url, "master", task)
-    assert result.output == "Some string"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
     assert arca._pull.call_count == 1
 
-    result = arca.run(repo_url, "master", task)
-    assert result.output == "Some string"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
     assert arca._pull.call_count == 2
 
-    with filepath.open("w") as fl:
-        fl.write(SECOND_RETURN_STR_FUNCTION)
+    replace_text(temp_repo_func.fl, SECOND_RETURN_STR_FUNCTION)
+    temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
+    temp_repo_func.repo.index.commit("Updated function")
 
-    repo.index.add([str(filepath)])
-    repo.index.commit("Updated function")
-
-    result = arca.run(repo_url, "master", task)
-    assert result.output == TEST_UNICODE
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == TEST_UNICODE
     assert arca._pull.call_count == 3
 
-    result = arca.run(repo_url, "master", task)
-    assert result.output == TEST_UNICODE
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == TEST_UNICODE
     assert arca._pull.call_count == 4
