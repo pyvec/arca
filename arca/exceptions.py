@@ -23,9 +23,12 @@ class BuildError(ArcaException):
         self.extra_info = extra_info
 
     def __str__(self):
+        extra_info = self.extra_info
+        if isinstance(extra_info, dict) and "traceback" in extra_info:
+            extra_info = extra_info["traceback"]
         return "{}\n\n{}".format(
             super().__str__(),
-            self.extra_info
+            extra_info
         )
 
 
