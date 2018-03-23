@@ -113,15 +113,15 @@ def test_push_to_registry(temp_repo_func, mocker):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
     mocker.stopall()
 
-    image = backend.get_or_create_environment(temp_repo_func.url, temp_repo_func.branch,
-                                              temp_repo_func.repo, temp_repo_func.path)
+    image = backend.get_image_for_repo(temp_repo_func.url, temp_repo_func.branch,
+                                       temp_repo_func.repo, temp_repo_func.path)
 
     backend.client.images.remove(image.id, force=True)
 
-    mocker.spy(backend, "create_image")
+    mocker.spy(backend, "build_image")
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
-    assert backend.create_image.call_count == 0
+    assert backend.build_image.call_count == 0
 
 
 def test_push_to_registry_fail(temp_repo_func):

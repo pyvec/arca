@@ -26,6 +26,24 @@ def run_script(container_name, script_name):
 
 
 class VagrantBackend(DockerBackend):
+    """ Uses Docker in Vagrant.
+
+    Inherits settings from :class:`DockerBackend`:
+
+    * **python_version**
+    * **apk_dependencies**
+    * **disable_pull**
+    * **inherit_image**
+    * **push_to_registry_name**
+
+    Adds new settings:
+
+    * **box** - what Vagrant box to use (must include docker >= 1.8 or no docker)
+    * **provider** - what provider should Vagrant user
+    * **quiet** - Keeps the extra vagrant logs quiet.
+    * **destroy** - Destroy or just halt the VMs (default is ``True``)
+
+    """
 
     # Box has to either not contain docker at all (will be installed in that case, takes a long time)
     # or has to contain Docker with version >= 1.8 (Versions < 1.8 can't copy files from host to container)
@@ -35,6 +53,12 @@ class VagrantBackend(DockerBackend):
     destroy = LazySettingProperty(key="destroy", default=True, convert=bool)
 
     def validate_settings(self):
+        """ Runs :meth:`arca.DockerBackend.validate_settings` and checks extra:
+
+        * ``box`` format
+        * ``provider`` format
+        * ``push_to_registry_name`` is set
+        """
         super(VagrantBackend, self).validate_settings()
 
         if self.push_to_registry_name is None:
@@ -47,6 +71,9 @@ class VagrantBackend(DockerBackend):
             raise ArcaMisconfigured("Provided Vagrant provider is not valid")
 
     def check_vagrant_access(self):
+        """
+        :raise BuildError: If Vagrant is not installed.
+        """
         from vagrant import get_vagrant_executable
 
         if get_vagrant_executable() is None:
@@ -69,7 +96,7 @@ class VagrantBackend(DockerBackend):
 
         self.check_docker_access()
 
-        self.get_or_create_environment(repo, branch, git_repo, repo_path)
+        self.get_image_for_repo(repo, branch, git_repo, repo_path)
 
         requirements_file = self.get_requirements_file(repo_path)
         dependencies = self.get_dependencies()
@@ -144,7 +171,7 @@ class VagrantBackend(DockerBackend):
                           out_cm=log_cm, err_cm=log_cm)
         try:
             vagrant.up()
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             raise BuildError("Vagrant VM couldn't up launched. See output for details.")
 
         api.env.hosts = [vagrant.user_hostname_port()]

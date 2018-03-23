@@ -4,6 +4,8 @@ from arca.exceptions import BuildError
 
 
 class Result:
+    """ For storing results of the tasks. So far only has one attribute, :attr:`output`.
+    """
 
     def __init__(self, result: Dict[str, Union[bool, str, Any]]) -> None:
         if not result.get("success"):
@@ -11,4 +13,5 @@ class Result:
                 "traceback": result.get("error")
             })
 
+        #: The output of the task
         self.output = result.get("result")

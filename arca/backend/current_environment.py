@@ -2,7 +2,7 @@ import subprocess
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Set
 
 from git import Repo
 
@@ -12,12 +12,33 @@ from .base import BaseRunInSubprocessBackend
 
 
 class RequirementsStrategy(Enum):
+    """ Enum for defining strategy for :class:`CurrentEnvironmentBackend`
+    """
+
+    #: Ignores all difference of requirements of the current environment and the target repository.
     IGNORE = "ignore"
+
+    #: Raises an exception if there are some extra requirements in the target repository.
     RAISE = "raise"
+
+    #: Installs the extra requirements.
     INSTALL_EXTRA = "install_extra"
 
 
 class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
+    """ Uses the current Python to run the tasks, however they're launched in a :mod:`subprocess`.
+
+    Available settings:
+
+    * **current_environment_requirements**: Path to the requirements file of the current requirements.
+      Set to ``None`` if there are none. (default is ``requirements.txt``)
+
+    * **requirements_strategy**: How should requirements differences be handled.
+      Can be either strings or a :class:`RequirementsStrategy` value.
+      See the :class:`RequirementsStrategy` Enum for available strategies
+      (default is :attr:`RequirementsStrategy.RAISE`)
+
+    """
 
     current_environment_requirements = LazySettingProperty(key="current_environment_requirements",
                                                            default="requirements.txt")
@@ -27,6 +48,17 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
 
     def install_requirements(self, *, fl: Optional[Path]=None, requirements: Optional[Iterable[str]]=None,
                              _action: str="install"):
+        """
+        Installs requirements, either from a file or from a iterable of strings.
+
+        :param fl: :class:`Path <pathlib.Path>` to a ``requirements.txt`` file. Has priority over ``requirements``.
+        :param requirements: A iterable of strings of requirements to install.
+        :param _action: For testing purposes, can be either ``install`` or ``uninstall``
+
+        :raise BuildError: If installing fails.
+        :raise ValueError: If both ``fl`` and ``requirements`` are undefined.
+        :raise ValueError: If ``_action`` not ``install`` or ``uninstall``.
+        """
         if _action not in ["install", "uninstall"]:
             raise ValueError(f"{_action} is invalid value for _action")
 
@@ -61,11 +93,24 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
                 "returncode": process.returncode
             })
 
-    def get_requirements_set(self, fl):
+    def get_requirements_set(self, fl: Path) -> Set[str]:
+        """
+        :param fl: :class:`Path <pathlib.Path>` to a ``requirements.txt`` file.
+        :return: Set of the requirements from the file with newlines and extra characters removed.
+        """
         return set([x.strip() for x in fl.read_text().split("\n") if x.strip()])
 
-    def get_or_create_environment(self, repo: str, branch: str, git_repo: Repo, repo_path: Path):
-        """ Handles requirements difference based on configured strategy
+    def get_or_create_environment(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> str:
+        """
+        Handles the requirements of the target repository (based on ``requirements_strategy``) and returns
+        the path to the current Python executable.
+        """
+        self.handle_requirements(repo, branch, repo_path)
+
+        return sys.executable
+
+    def handle_requirements(self, repo: str, branch: str, repo_path: Path):
+        """ Checks the differences and handles it using the selected strategy.
         """
         if self.requirements_strategy == RequirementsStrategy.IGNORE:
             logger.info("Requirements strategy is IGNORE")
@@ -95,6 +140,7 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
             if not requirements.exists():
                 return  # no req. file in repo -> no extra requirements
 
+            logger.info("Searching for current requirements at absolute path %s", current_requirements)
             if not current_requirements.exists():
                 raise ArcaMisconfigured("Can't locate current environment requirements.")
 
@@ -117,6 +163,7 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
 
     def _uninstall(self, *args):
         """ For usage in tests to uninstall packages from the current environment
+
         :param args: packages to uninstall
         """
         self.install_requirements(requirements=args, _action="uninstall")
