@@ -336,6 +336,10 @@ class DockerBackend(BaseBackend):
         return self.get_image(image_name, image_tag)
 
     def push_to_registry(self, image: Image, image_tag: str):
+        # already tagged, so it's already pushed
+        if f"{self.push_to_registry_name}:{image_tag}" in image.tags:
+            return
+
         image.tag(self.push_to_registry_name, image_tag)
 
         result = self.client.images.push(self.push_to_registry_name, image_tag)
@@ -351,6 +355,7 @@ class DockerBackend(BaseBackend):
         last_line = json.loads(result.split("\n")[-1])
 
         if "error" in last_line:
+            self.client.images.remove(f"{self.push_to_registry_name}:{image_tag}")
             raise PushToRegistryError(f"Push of the image failed because of: {last_line['error']}", full_output=result)
 
         logger.info("Pushed image to registry %s:%s", self.push_to_registry_name, image_tag)
@@ -388,7 +393,13 @@ class DockerBackend(BaseBackend):
         image_tag = self.get_image_tag(requirements_file, dependencies)
 
         if self.image_exists(image_name, image_tag):
-            return self.get_image(image_name, image_tag)
+            image = self.get_image(image_name, image_tag)
+
+            # in case the push to registry was set later and the image wasn't pushed when built
+            if self.push_to_registry_name is not None:
+                self.push_to_registry(image, image_tag)
+
+            return image
 
         if self.push_to_registry_name is not None:
             # the target image might have been built and pushed in a previous run already, let's try to pull it

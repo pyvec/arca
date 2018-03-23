@@ -1,10 +1,7 @@
-import hashlib
-from datetime import datetime
-
 import pytest
 
 from arca import Arca, DockerBackend, Task
-from arca.exceptions import ArcaMisconfigured
+from arca.exceptions import ArcaMisconfigured, PushToRegistryError
 from common import (RETURN_COLORAMA_VERSION_FUNCTION, BASE_DIR, RETURN_PLATFORM,
                     RETURN_IS_LXML_INSTALLED, RETURN_PYTHON_VERSION_FUNCTION, RETURN_IS_XSLTPROC_INSTALLED)
 
@@ -106,43 +103,50 @@ def test_inherit_image(temp_repo_func):
 
 
 def test_push_to_registry(temp_repo_func, mocker):
-    class LocalDockerBackend(DockerBackend):
-        """ A subclass that adds random 10 characters to the tag name so we can start the test with empty slate
-            everytime. (When `push_to_repository_name` is used, a pull is launched. Since the requirements are always
-            the same, the image would always be pulled and never pushed.)
-        """
-        def __init__(self, **kwargs):
-            super().__init__(**kwargs)
-            self.tag_prefix = hashlib.sha1(str(datetime.now()).encode("utf-8")).hexdigest()[:10]
-
-        def get_image_tag(self, requirements_file, dependencies):
-            tag = super().get_image_tag(requirements_file, dependencies)
-
-            return f"{self.tag_prefix}_{tag}"
-
-    backend = LocalDockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test")
+    backend = DockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test")
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
     requirements_path = temp_repo_func.path / backend.requirements_location
-    requirements_path.write_text("colorama==0.3.7")  # Has to be unique!
+    requirements_path.write_text("colorama==0.3.9")
 
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Initial")
 
-    task = Task("test_file:return_str_function",)
+    task = Task("test_file:return_str_function")
 
-    mocker.spy(backend, "create_image")
-
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.7"
-    assert backend.create_image.call_count == 1
+    # even though the image might already exist on the registry, lets pretend it doesn't
+    mocker.patch.object(backend, "try_pull_image_from_registry", lambda *args: None)
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
+    mocker.stopall()
 
     image = backend.get_or_create_environment(temp_repo_func.url, temp_repo_func.branch,
                                               temp_repo_func.repo, temp_repo_func.path)
+
     backend.client.images.remove(image.id, force=True)
 
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.7"
-    assert backend.create_image.call_count == 1
+    mocker.spy(backend, "create_image")
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
+    assert backend.create_image.call_count == 0
+
+
+def test_push_to_registry_fail(temp_repo_func):
+    # when a unused repository name is used, it's created -> different username has to be used
+    backend = DockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz-unknown-user/arca-test")
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
+
+    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    requirements_path = temp_repo_func.path / backend.requirements_location
+    requirements_path.write_text("colorama==0.3.9")
+
+    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.repo.index.commit("Initial")
+
+    task = Task("test_file:return_str_function")
+
+    with pytest.raises(PushToRegistryError):
+        assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
 
 
 def test_inherit_image_with_dependecies():
