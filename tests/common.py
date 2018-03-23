@@ -7,11 +7,6 @@ else:
     BASE_DIR = "/tmp/arca/test"
 
 
-def replace_text(path, text):
-    with path.open("w") as fl:
-        fl.write(text)
-
-
 RETURN_STR_FUNCTION = """
 def return_str_function():
     return "Some string"

@@ -9,4 +9,4 @@ requests
 python-vagrant
 fabric3
 entrypoints>=0.2.3
-
+flake8

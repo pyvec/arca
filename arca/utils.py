@@ -2,8 +2,9 @@ import importlib
 import logging
 from typing import Any, Dict, Optional, Callable
 
-from .exceptions import ArcaMisconfigured
+from git import Repo
 
+from .exceptions import ArcaMisconfigured
 
 NOT_SET = object()
 logger = logging.getLogger("arca")
@@ -75,3 +76,19 @@ class Settings:
 
     def __contains__(self, item):
         return item in self.data
+
+
+def is_dirty(repo: Repo) -> bool:
+    """ Returns if the ``repo`` has been modified (including untracked files).
+    """
+    return repo.is_dirty(untracked_files=True)
+
+
+def get_last_commit_modifying_files(repo: Repo, *files) -> str:
+    """ Returns the hash of the last commit which modified some of the files.
+
+    :param repo: The repo to check in.
+    :param files: List of files to check
+    :return: Commit hash.
+    """
+    return repo.git.log(*files, n=1, format="%H")

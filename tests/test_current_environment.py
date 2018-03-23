@@ -5,7 +5,7 @@ import pytest
 
 from arca import Arca, CurrentEnvironmentBackend, RequirementsStrategy, Task
 from arca.exceptions import ArcaMisconfigured, BuildError, RequirementsMismatch
-from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, replace_text
+from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION
 
 
 def test_current_environment_requirements():
@@ -69,7 +69,7 @@ def test_strategy_ignore(mocker, temp_repo_func, strategy):
     requirements_path = temp_repo_func.path / arca.backend.requirements_location
     requirements_path.write_text("django==1.11.4")
 
-    replace_text(temp_repo_func.fl, RETURN_DJANGO_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
 
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
@@ -151,7 +151,8 @@ def test_strategy_raise(temp_repo_func, strategy):
 
     requirements_path = temp_repo_func.path / arca.backend.requirements_location
     requirements_path.write_text("django==1.11.4")
-    replace_text(temp_repo_func.fl, RETURN_DJANGO_VERSION_FUNCTION)
+
+    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
 
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
@@ -221,7 +222,7 @@ def test_strategy_install_extra(temp_repo_func, mocker, strategy):
 
     requirements_path = temp_repo_func.path / arca.backend.requirements_location
     requirements_path.write_text("django==1.11.4")
-    replace_text(temp_repo_func.fl, RETURN_DJANGO_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
 
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")

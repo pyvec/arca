@@ -1,16 +1,15 @@
 # encoding=utf-8
+import shutil
+from datetime import datetime, timedelta, date
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
-import shutil
-
-from datetime import datetime, timedelta, date
 from git import Repo
 
-from arca import Arca, VenvBackend, CurrentEnvironmentBackend
+from arca import Arca, VenvBackend
 from arca.exceptions import ArcaMisconfigured, FileOutOfRangeError, PullError
-from common import BASE_DIR, replace_text
+from common import BASE_DIR
 
 
 def test_arca_backend():
@@ -122,7 +121,7 @@ def test_depth(temp_repo_static):
     arca = Arca(base_dir=BASE_DIR)
 
     for _ in range(19):  # since one commit is made in the fixture
-        replace_text(temp_repo_static.fl, str(uuid4()))
+        temp_repo_static.fl.write_text(str(uuid4()))
         temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
         temp_repo_static.repo.index.commit("Initial")
 
@@ -133,7 +132,7 @@ def test_depth(temp_repo_static):
 
     # test when pulled again, the depth is increased since the local copy is stored
 
-    replace_text(temp_repo_static.fl, str(uuid4()))
+    temp_repo_static.fl.write_text(str(uuid4()))
     temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
     temp_repo_static.repo.index.commit("Initial")
 
@@ -150,7 +149,7 @@ def test_depth(temp_repo_static):
 
     # test when pulled again, the depth setting is ignored
 
-    replace_text(temp_repo_static.fl, str(uuid4()))
+    temp_repo_static.fl.write_text(str(uuid4()))
     temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
     temp_repo_static.repo.index.commit("Initial")
 
@@ -276,7 +275,7 @@ def test_shallow_since(temp_repo_static):
     now = datetime.now()
 
     for i in range(19, 0, -1):
-        replace_text(temp_repo_static.fl, str(uuid4()))
+        temp_repo_static.fl.write_text(str(uuid4()))
         temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
         temp_repo_static.repo.index.commit(
             "Initial",
@@ -311,28 +310,6 @@ def test_shallow_since_validate(temp_repo_static, shallow_since, valid):
                                  shallow_since=shallow_since)
 
 
-def test_is_dirty():
-    arca = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=None,
-        requirements_strategy="ignore"
-    ), base_dir=BASE_DIR)
-
-    if arca.is_dirty():
-        pytest.skip("Can't test is_dirty method when the current repo is dirty.")
-
-    assert not arca.is_dirty()
-
-    fl = Path(str(uuid4()))
-    fl.touch()
-
-    assert arca.is_dirty()
-
-    fl.unlink()
-
-    assert not arca.is_dirty()
-
-
 def test_pull_error():
     arca = Arca(base_dir=BASE_DIR)
 
@@ -357,3 +334,11 @@ def test_pull_error():
 
     with pytest.raises(PullError):
         arca.get_files(git_url, "master")
+
+
+def test_get_repo(temp_repo_static):
+    arca = Arca(base_dir=BASE_DIR)
+
+    pulled_repo = arca.get_repo(temp_repo_static.url, temp_repo_static.branch)
+
+    assert pulled_repo.head.object.hexsha == temp_repo_static.repo.head.object.hexsha

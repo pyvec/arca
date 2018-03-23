@@ -3,7 +3,7 @@ import os
 import pytest
 
 from arca import Arca, DockerBackend, Task, VenvBackend, CurrentEnvironmentBackend
-from common import SECOND_RETURN_STR_FUNCTION, BASE_DIR, TEST_UNICODE, replace_text
+from common import SECOND_RETURN_STR_FUNCTION, BASE_DIR, TEST_UNICODE
 
 
 @pytest.mark.parametrize(
@@ -27,19 +27,19 @@ def test_single_pull(temp_repo_func, mocker, backend):
 
     task = Task("test_file:return_str_function")
 
-    assert arca.run(temp_repo_func.url,  temp_repo_func.branch, task).output == "Some string"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
     assert arca._pull.call_count == 1
 
-    replace_text(temp_repo_func.fl, SECOND_RETURN_STR_FUNCTION)
+    temp_repo_func.fl.write_text(SECOND_RETURN_STR_FUNCTION)
     temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
     temp_repo_func.repo.index.commit("Updated function")
 
-    assert arca.run(temp_repo_func.url,  temp_repo_func.branch, task).output == "Some string"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
     assert arca._pull.call_count == 1
 
-    arca.pull_again(temp_repo_func.url,  temp_repo_func.branch)
+    arca.pull_again(temp_repo_func.url, temp_repo_func.branch)
 
-    assert arca.run(temp_repo_func.url,  temp_repo_func.branch, task).output == TEST_UNICODE
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == TEST_UNICODE
     assert arca._pull.call_count == 2
 
 
@@ -70,7 +70,7 @@ def test_pull_efficiency(temp_repo_func, mocker, backend):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
     assert arca._pull.call_count == 2
 
-    replace_text(temp_repo_func.fl, SECOND_RETURN_STR_FUNCTION)
+    temp_repo_func.fl.write_text(SECOND_RETURN_STR_FUNCTION)
     temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
     temp_repo_func.repo.index.commit("Updated function")
 
