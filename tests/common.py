@@ -43,23 +43,11 @@ def return_python_version():
     return "{}.{}.{}".format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro)
 """
 
-RETURN_IS_XSLTPROC_INSTALLED = """
-import subprocess
+RETURN_FREETYPE_VERSION = """
+import freetype
 
-def return_is_xsltproc_installed():
-    try:
-        return subprocess.Popen(["xsltpoc", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
-    except:
-        return False
-"""
-
-RETURN_IS_LXML_INSTALLED = """
-def return_is_lxml_installed():
-    try:
-        import lxml
-        return True
-    except:
-        return False
+def return_freetype_version():
+    return freetype.version()
 """
 
 RETURN_PLATFORM = """

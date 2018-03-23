@@ -3,7 +3,7 @@ import pytest
 from arca import Arca, DockerBackend, Task
 from arca.exceptions import ArcaMisconfigured, PushToRegistryError
 from common import (RETURN_COLORAMA_VERSION_FUNCTION, BASE_DIR, RETURN_PLATFORM,
-                    RETURN_IS_LXML_INSTALLED, RETURN_PYTHON_VERSION_FUNCTION, RETURN_IS_XSLTPROC_INSTALLED)
+                    RETURN_PYTHON_VERSION_FUNCTION, RETURN_FREETYPE_VERSION)
 
 
 def test_keep_container_running(temp_repo_func):
@@ -50,26 +50,19 @@ def test_python_version(temp_repo_func, python_version):
 
 
 def test_apk_dependencies(temp_repo_func):
-    # TODO: maybe find something that installs quicker than lxml. Becase lxml takes a long time to compile.
-    backend = DockerBackend(verbosity=2, apk_dependencies=["libxml2-dev", "libxslt-dev"])
+    backend = DockerBackend(verbosity=2, apk_dependencies=["freetype-dev"])
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    temp_repo_func.fl.write_text(RETURN_IS_XSLTPROC_INSTALLED)
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
-    temp_repo_func.repo.index.commit("Initial")
-
-    task = Task("test_file:return_is_xsltproc_installed")
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == 0
-
     requirements_path = temp_repo_func.path / "requirements.txt"
-    requirements_path.write_text("lxml")
+    requirements_path.write_text("freetype-py")
 
-    temp_repo_func.fl.write_text(RETURN_IS_LXML_INSTALLED)
+    temp_repo_func.fl.write_text(RETURN_FREETYPE_VERSION)
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to lxml")
 
-    task = Task("test_file:return_is_lxml_installed")
+    # ``import freetype`` raises an error if the library ``freetype-dev`` is not installed
+    task = Task("test_file:return_freetype_version")
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output
 
 
@@ -150,6 +143,6 @@ def test_push_to_registry_fail(temp_repo_func):
 
 
 def test_inherit_image_with_dependecies():
-    backend = DockerBackend(inherit_image="python:alpine3.6", apk_dependencies=["libxml2-dev", "libxslt-dev"])
+    backend = DockerBackend(inherit_image="python:alpine3.6", apk_dependencies=["freetype-dev"])
     with pytest.raises(ArcaMisconfigured):
         Arca(backend=backend)
