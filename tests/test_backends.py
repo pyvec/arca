@@ -5,7 +5,7 @@ import pytest
 
 from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
 from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
-    TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION, replace_text
+    TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION
 
 
 @pytest.mark.parametrize(
@@ -52,7 +52,7 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
 
-    replace_text(filepath, SECOND_RETURN_STR_FUNCTION)
+    filepath.write_text(SECOND_RETURN_STR_FUNCTION)
     temp_repo_func.repo.create_head("new_branch")
     temp_repo_func.repo.index.add([str(filepath)])
     temp_repo_func.repo.index.commit("Updated function")
@@ -68,7 +68,7 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
     requirements_path.parent.mkdir(exist_ok=True, parents=True)
     requirements_path.write_text("django==1.11.4")
 
-    replace_text(filepath, RETURN_DJANGO_VERSION_FUNCTION)
+    filepath.write_text(RETURN_DJANGO_VERSION_FUNCTION)
 
     temp_repo_func.repo.index.add([str(filepath), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")

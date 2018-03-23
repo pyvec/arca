@@ -13,7 +13,7 @@ from .exceptions import ArcaMisconfigured, FileOutOfRangeError, PullError
 from .backend import BaseBackend
 from .result import Result
 from .task import Task
-from .utils import load_class, Settings, NOT_SET, logger, LazySettingProperty
+from .utils import load_class, Settings, NOT_SET, logger, LazySettingProperty, is_dirty
 
 BackendDefinitionType = Union[type, BaseBackend, str]
 DepthDefinitionType = Optional[int]
@@ -230,6 +230,19 @@ class Arca:
 
         return git_repo, repo_path
 
+    def get_repo(self, repo: str, branch: str, *,
+                 depth: Optional[int] = None,
+                 shallow_since: Optional[date] = None,
+                 reference: Optional[Path] = None
+                 ) -> Repo:
+        """ Returns a :class:`Repo <git.repo.base.Repo>` instance for the branch.
+
+        See :meth:`run` for arguments descriptions.
+        """
+        git_repo, _ = self.get_files(repo, branch, depth=depth, shallow_since=shallow_since, reference=reference)
+
+        return git_repo
+
     def cache_key(self, repo: str, branch: str, task: Task, git_repo: Repo) -> str:
         return "{repo}_{branch}_{hash}_{task}".format(repo=self.repo_id(repo),
                                                       branch=branch,
@@ -237,11 +250,12 @@ class Arca:
                                                       task=task.serialize())
 
     def is_dirty(self) -> bool:
-        """ Returns if the repository the code is launched from was modified in any way.
-            Returns False if not in a repository.
+        """
+        Returns if the repository the code is launched from was modified in any way.
+        Returns False if not in a repository at all.
         """
         try:
-            return Repo(".", search_parent_directories=True).is_dirty(untracked_files=True)
+            return is_dirty(Repo(".", search_parent_directories=True))
         except InvalidGitRepositoryError:
             return False
 

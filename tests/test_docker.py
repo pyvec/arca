@@ -6,8 +6,7 @@ import pytest
 from arca import Arca, DockerBackend, Task
 from arca.exceptions import ArcaMisconfigured
 from common import (RETURN_DJANGO_VERSION_FUNCTION, BASE_DIR, RETURN_PLATFORM,
-                    RETURN_IS_LXML_INSTALLED, RETURN_PYTHON_VERSION_FUNCTION, RETURN_IS_XSLTPROC_INSTALLED,
-                    replace_text)
+                    RETURN_IS_LXML_INSTALLED, RETURN_PYTHON_VERSION_FUNCTION, RETURN_IS_XSLTPROC_INSTALLED)
 
 
 def test_keep_container_running(temp_repo_func):
@@ -45,7 +44,7 @@ def test_python_version(temp_repo_func, python_version):
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    replace_text(temp_repo_func.fl, RETURN_PYTHON_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_PYTHON_VERSION_FUNCTION)
     temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
     temp_repo_func.repo.index.commit("Initial")
 
@@ -59,7 +58,7 @@ def test_apk_dependencies(temp_repo_func):
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    replace_text(temp_repo_func.fl, RETURN_IS_XSLTPROC_INSTALLED)
+    temp_repo_func.fl.write_text(RETURN_IS_XSLTPROC_INSTALLED)
     temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
     temp_repo_func.repo.index.commit("Initial")
 
@@ -69,7 +68,7 @@ def test_apk_dependencies(temp_repo_func):
     requirements_path = temp_repo_func.path / "requirements.txt"
     requirements_path.write_text("lxml")
 
-    replace_text(temp_repo_func.fl, RETURN_IS_LXML_INSTALLED)
+    temp_repo_func.fl.write_text(RETURN_IS_LXML_INSTALLED)
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to lxml")
 
@@ -85,7 +84,7 @@ def test_inherit_image(temp_repo_func):
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
 
-    replace_text(temp_repo_func.fl, RETURN_PLATFORM)
+    temp_repo_func.fl.write_text(RETURN_PLATFORM)
     temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
     temp_repo_func.repo.index.commit("Platform")
 
@@ -97,7 +96,7 @@ def test_inherit_image(temp_repo_func):
     requirements_path = temp_repo_func.path / backend.requirements_location
     requirements_path.write_text("django==1.11.4")
 
-    replace_text(temp_repo_func.fl, RETURN_DJANGO_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
@@ -124,7 +123,7 @@ def test_push_to_registry(temp_repo_func, mocker):
     backend = LocalDockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test")
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    replace_text(temp_repo_func.fl, RETURN_DJANGO_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
     requirements_path = temp_repo_func.path / backend.requirements_location
     requirements_path.write_text("django==1.11.3")  # Has to be unique!
 

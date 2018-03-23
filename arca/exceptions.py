@@ -34,7 +34,7 @@ class BuildError(ArcaException):
 
 class PushToRegistryError(ArcaException):
 
-    def __init__(self, *args, full_output=None,  **kwargs):
+    def __init__(self, *args, full_output=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.full_output = full_output
 
