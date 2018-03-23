@@ -4,7 +4,7 @@ import pytest
 
 from arca import VagrantBackend, Arca, Task
 from arca.exceptions import ArcaMisconfigured, BuildError
-from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION
+from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION
 
 
 def test_validation():
@@ -52,9 +52,9 @@ def test_vagrant(temp_repo_func, box):
     backend = VagrantBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test", **kwargs)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
     requirements_path = temp_repo_func.path / backend.requirements_location
-    requirements_path.write_text("django==1.11.3")  # Has to be unique in Arca tests.
+    requirements_path.write_text("colorama==0.3.9")
 
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Initial")

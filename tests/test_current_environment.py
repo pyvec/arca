@@ -5,7 +5,7 @@ import pytest
 
 from arca import Arca, CurrentEnvironmentBackend, RequirementsStrategy, Task
 from arca.exceptions import ArcaMisconfigured, BuildError, RequirementsMismatch
-from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION
+from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION
 
 
 def test_current_environment_requirements():
@@ -22,7 +22,7 @@ def test_current_environment_requirements():
         arca.backend.install_requirements()
 
     with pytest.raises(ValueError):
-        arca.backend.install_requirements(requirements=["django"], _action="remove")
+        arca.backend.install_requirements(requirements=["colorama"], _action="remove")
 
 
 def test_requirements_strategy():
@@ -67,15 +67,15 @@ def test_strategy_ignore(mocker, temp_repo_func, strategy):
     temp_repo_func.repo.branches.master.checkout()
 
     requirements_path = temp_repo_func.path / arca.backend.requirements_location
-    requirements_path.write_text("django==1.11.4")
+    requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
 
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
     # now the repository has got requirements
-    # install still not called but the task should fail because django is not installed
+    # install still not called but the task should fail because colorama is not installed
     with pytest.raises(BuildError):
         arca.run(temp_repo_func.url, temp_repo_func.branch, task)
     assert install_requirements.call_count == 0
@@ -84,7 +84,7 @@ def test_strategy_ignore(mocker, temp_repo_func, strategy):
     current_env_requirements_non_existent = Path(BASE_DIR) / (str(uuid4()) + ".txt")
 
     with current_env_requirements.open("w") as fl:
-        fl.write("django==1.11.4")
+        fl.write("colorama==0.3.9")
 
     arca = Arca(backend=CurrentEnvironmentBackend(
         verbosity=2,
@@ -99,7 +99,7 @@ def test_strategy_ignore(mocker, temp_repo_func, strategy):
     ), base_dir=BASE_DIR)
 
     # now both the current env and the repo have requirements
-    # install still not called but the task should fail because django is not installed
+    # install still not called but the task should fail because colorama is not installed
     with pytest.raises(BuildError):
         arca.run(temp_repo_func.url, temp_repo_func.branch, task)
 
@@ -150,9 +150,9 @@ def test_strategy_raise(temp_repo_func, strategy):
     temp_repo_func.repo.branches.master.checkout()
 
     requirements_path = temp_repo_func.path / arca.backend.requirements_location
-    requirements_path.write_text("django==1.11.4")
+    requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
 
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
@@ -166,8 +166,7 @@ def test_strategy_raise(temp_repo_func, strategy):
         arca_non_existent.run(temp_repo_func.url, temp_repo_func.branch, task)
 
     current_env_requirements = Path(BASE_DIR) / (str(uuid4()) + ".txt")
-    with current_env_requirements.open("w") as fl:
-        fl.write("django==1.11.4")
+    current_env_requirements.write_text("colorama==0.3.9")
 
     arca = Arca(backend=CurrentEnvironmentBackend(
         verbosity=2,
@@ -176,7 +175,7 @@ def test_strategy_raise(temp_repo_func, strategy):
     ), base_dir=BASE_DIR)
 
     # now both the current env and the repo have the same requirements
-    # run should fail not because of mismatch, but because django is not actually installed
+    # run should fail not because of mismatch, but because colorama is not actually installed
     with pytest.raises(BuildError):
         arca.run(temp_repo_func.url, temp_repo_func.branch, task)
 
@@ -221,14 +220,14 @@ def test_strategy_install_extra(temp_repo_func, mocker, strategy):
     temp_repo_func.repo.branches.master.checkout()
 
     requirements_path = temp_repo_func.path / arca.backend.requirements_location
-    requirements_path.write_text("django==1.11.4")
-    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
+    requirements_path.write_text("colorama==0.3.9")
+    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
 
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
     # Repository now contains a requirement while the current env has none - install is called with whole file
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.4"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
 
     # but raises exception when can't compare because the current env file is missing
     with pytest.raises(ArcaMisconfigured):
@@ -238,7 +237,7 @@ def test_strategy_install_extra(temp_repo_func, mocker, strategy):
 
     current_env_requirements = Path(BASE_DIR) / (str(uuid4()) + ".txt")
     with current_env_requirements.open("w") as fl:
-        fl.write("django==1.11.4")
+        fl.write("colorama==0.3.9")
 
     arca = Arca(backend=CurrentEnvironmentBackend(
         verbosity=2,
@@ -247,17 +246,17 @@ def test_strategy_install_extra(temp_repo_func, mocker, strategy):
     ), base_dir=BASE_DIR)
 
     # now both the current env and the repo have the same requirements, call count shouldn't increase
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.4"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
     assert install_requirements.call_count == 1
 
     with current_env_requirements.open("w") as fl:
         fl.write("six")
 
     # requirements are now not the same, install is called again
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.4"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
     assert install_requirements.call_count == 2
 
     # and now we test everything still works when the req. file is missing from repo but env. reqs. are set
     assert arca.run(temp_repo_func.url, "no_requirements", task).output == "Some string"
 
-    arca.backend._uninstall("django")
+    arca.backend._uninstall("colorama")
