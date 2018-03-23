@@ -14,7 +14,7 @@ if sys.version_info < (3, 6):
 def long_description():
     return """{}\n\n{}""".format(
         (Path(__file__).resolve().parent / "README.rst").read_text(),
-        (Path(__file__).resolve().parent / "CHANGELOG.rst").read_text()
+        (Path(__file__).resolve().parent / "docs/changes.rst").read_text()
     )
 
 
@@ -37,6 +37,7 @@ setup(
         "python-vagrant",
         "fabric3",
         "entrypoints>=0.2.3",
+        "cached-property",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",  # TODO: update when ready

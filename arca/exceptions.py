@@ -1,25 +1,33 @@
 
 
 class ArcaException(Exception):
-    pass
+    """ A base exception from which all exceptions raised by Arca are subclassed.
+    """
 
 
 class ArcaMisconfigured(ValueError, ArcaException):
-    pass
+    """ An exception for all cases of misconfiguration.
+    """
 
 
 class TaskMisconfigured(ValueError, ArcaException):
-    pass
+    """ Raised if Task is incorrectly defined.
+    """
 
 
 class PullError(ArcaException):
-    pass
+    """ Raised if repository can't be cloned or pulled.
+    """
 
 
 class BuildError(ArcaException):
+    """ Raised if the task fails.
+    """
 
     def __init__(self, *args, extra_info=None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        #: Extra information what failed
         self.extra_info = extra_info
 
     def __str__(self):
@@ -33,9 +41,13 @@ class BuildError(ArcaException):
 
 
 class PushToRegistryError(ArcaException):
+    """ Raised if pushing of images to Docker registry in :class:`DockerBackend` fails.
+    """
 
     def __init__(self, *args, full_output=None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        #: Full output of the push command
         self.full_output = full_output
 
     def __str__(self):
@@ -46,13 +58,24 @@ class PushToRegistryError(ArcaException):
 
 
 class FileOutOfRangeError(ValueError, ArcaException):
-    pass
+    """
+    Raised if ``relative_path`` in :meth:`Arca.static_filename <arca.Arca.static_filename>`
+    leads outside the repository.
+    """
 
 
 class RequirementsMismatch(ValueError, ArcaException):
+    """
+    Raised if the target repository has extra requirements compared to the current environment
+    if the ``requirements_strategy`` of
+    :class:`CurrentEnvironmentBackend <arca.backends.CurrentEnvironmentBackend>`
+    is set to :attr:`arca.backends.RequirementsStrategy.raise`.
+    """
 
     def __init__(self, *args, diff=None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        #: The extra requirements
         self.diff = diff
 
     def __str__(self):
