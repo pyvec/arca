@@ -14,8 +14,9 @@ sudo: required
 services:
 - docker
 install:
-- python setup.py install
 - pip install codecov
+- pip install -r requirements.txt  # so travis pip cache can actually cache something
+- python setup.py install
 before_script:
 - docker login -u "$DOCKER_HUB_USERNAME" -p "$DOCKER_HUB_PASSWORD"
 script:
