@@ -4,7 +4,7 @@ import os
 import pytest
 
 from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
-from common import BASE_DIR, RETURN_DJANGO_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
+from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
     TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION
 
 
@@ -66,36 +66,21 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     requirements_path = temp_repo_func.path / backend.requirements_location
     requirements_path.parent.mkdir(exist_ok=True, parents=True)
-    requirements_path.write_text("django==1.11.4")
+    requirements_path.write_text("colorama==0.3.9")
 
-    filepath.write_text(RETURN_DJANGO_VERSION_FUNCTION)
+    filepath.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
 
     temp_repo_func.repo.index.add([str(filepath), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.4"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
 
-    if not isinstance(backend, CurrentEnvironmentBackend):
-        with pytest.raises(ModuleNotFoundError):
-            import django
-            print(django.__version__)
-    else:
-        import django
-
-    with requirements_path.open("w") as fl:
-        fl.write("django==1.11.5")
+    requirements_path.write_text("colorama==0.3.8")
 
     temp_repo_func.repo.index.add([str(requirements_path)])
     temp_repo_func.repo.index.commit("Updated requirements")
 
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.5"
-
-    django_task = Task("django:get_version")
-
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, django_task).output == "1.11.5"
-
-    if isinstance(backend, CurrentEnvironmentBackend):
-        backend._uninstall("django")
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.8"
 
     filepath.write_text(ARG_STR_FUNCTION)
     temp_repo_func.repo.index.add([str(filepath)])
@@ -114,3 +99,9 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
         "test_file:return_str_function",
         kwargs={"kwarg": TEST_UNICODE}
     )).output == TEST_UNICODE[::-1]
+
+    if isinstance(backend, CurrentEnvironmentBackend):
+        backend._uninstall("colorama")
+
+    with pytest.raises(ModuleNotFoundError):
+        import colorama  # noqa

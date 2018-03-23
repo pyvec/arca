@@ -80,9 +80,9 @@ class BaseRunInSubprocessBackend(BaseBackend):
         script_name, script = self.create_script(task, venv_path)
         script_path = Path(self._arca.base_dir, "scripts", script_name)
         script_path.parent.mkdir(parents=True, exist_ok=True)
+        script_path.write_text(script)
 
-        with script_path.open("w") as f:
-            f.write(script)
+        logger.info("Stored task script at %s", script_path)
 
         st = os.stat(str(script_path))
         script_path.chmod(st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -100,12 +100,17 @@ class BaseRunInSubprocessBackend(BaseBackend):
             else:
                 python_path = sys.executable
 
+            logger.debug("Running with python %s", python_path)
+
             process = subprocess.Popen([python_path, str(script_path.resolve())],
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        cwd=cwd)
 
             out_stream, err_stream = process.communicate()
+
+            logger.debug("stdout output from the command")
+            logger.debug(out_stream)
 
             return Result(json.loads(out_stream.decode("utf-8")))
         except Exception as e:

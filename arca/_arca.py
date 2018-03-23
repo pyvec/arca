@@ -287,10 +287,15 @@ class Arca:
                                              reference=reference)
 
         def create_value():
+            logger.debug("Value not in cache, creating.")
             return self.backend.run(repo, branch, task, git_repo, repo_path)
 
+        cache_key = self.cache_key(repo, branch, task, git_repo)
+
+        logger.debug("Cache key is %s", cache_key)
+
         return self.region.get_or_create(
-            self.cache_key(repo, branch, task, git_repo),
+            cache_key,
             create_value,
             should_cache_fn=self.should_cache_fn
         )

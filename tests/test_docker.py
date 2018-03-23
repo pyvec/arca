@@ -5,7 +5,7 @@ import pytest
 
 from arca import Arca, DockerBackend, Task
 from arca.exceptions import ArcaMisconfigured
-from common import (RETURN_DJANGO_VERSION_FUNCTION, BASE_DIR, RETURN_PLATFORM,
+from common import (RETURN_COLORAMA_VERSION_FUNCTION, BASE_DIR, RETURN_PLATFORM,
                     RETURN_IS_LXML_INSTALLED, RETURN_PYTHON_VERSION_FUNCTION, RETURN_IS_XSLTPROC_INSTALLED)
 
 
@@ -94,15 +94,15 @@ def test_inherit_image(temp_repo_func):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "debian"
 
     requirements_path = temp_repo_func.path / backend.requirements_location
-    requirements_path.write_text("django==1.11.4")
+    requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
-    django_task = Task("test_file:return_str_function")
+    colorama_task = Task("test_file:return_str_function")
 
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, django_task).output == "1.11.4"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task).output == "0.3.9"
 
 
 def test_push_to_registry(temp_repo_func, mocker):
@@ -123,9 +123,9 @@ def test_push_to_registry(temp_repo_func, mocker):
     backend = LocalDockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test")
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    temp_repo_func.fl.write_text(RETURN_DJANGO_VERSION_FUNCTION)
+    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
     requirements_path = temp_repo_func.path / backend.requirements_location
-    requirements_path.write_text("django==1.11.3")  # Has to be unique!
+    requirements_path.write_text("colorama==0.3.7")  # Has to be unique!
 
     temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
     temp_repo_func.repo.index.commit("Initial")
@@ -134,14 +134,14 @@ def test_push_to_registry(temp_repo_func, mocker):
 
     mocker.spy(backend, "create_image")
 
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.3"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.7"
     assert backend.create_image.call_count == 1
 
     image = backend.get_or_create_environment(temp_repo_func.url, temp_repo_func.branch,
                                               temp_repo_func.repo, temp_repo_func.path)
     backend.client.images.remove(image.id, force=True)
 
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.3"
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.7"
     assert backend.create_image.call_count == 1
 
 

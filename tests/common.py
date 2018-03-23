@@ -29,11 +29,11 @@ def return_str_function(*, kwarg):
     return kwarg[::-1]
 """
 
-RETURN_DJANGO_VERSION_FUNCTION = """
-import django
+RETURN_COLORAMA_VERSION_FUNCTION = """
+import colorama
 
 def return_str_function():
-    return django.__version__
+    return colorama.__version__
 """
 
 RETURN_PYTHON_VERSION_FUNCTION = """
