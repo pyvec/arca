@@ -62,7 +62,7 @@ def test_vagrant(temp_repo_func, box):
     task = Task("test_file:return_str_function")
 
     if not box:
-        assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "1.11.3"
+        assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
     else:
         with pytest.raises(BuildError):  # fails because of reasons listed above
             arca.run(temp_repo_func.url, temp_repo_func.branch, task)
