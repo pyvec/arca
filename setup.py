@@ -33,7 +33,7 @@ setup(
         "gitpython==2.1.7",
         "dogpile.cache==0.6.4",
         "requests",
-        "docker~=3.0",
+        "docker~=3.1.0",
         "python-vagrant",
         "fabric3",
         "entrypoints>=0.2.3",
