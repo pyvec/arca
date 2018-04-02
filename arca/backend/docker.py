@@ -653,6 +653,8 @@ class DockerBackend(BaseBackend):
             res = container.exec_run(["python", f"/srv/scripts/{script_name}"], tty=True)
 
             return Result(json.loads(res.output))
+        except BuildError:  # can be raised by  :meth:`Result.__init__`
+            raise
         except Exception as e:
             logger.exception(e)
             if res is not None:

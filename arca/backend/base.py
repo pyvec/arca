@@ -172,6 +172,8 @@ class BaseRunInSubprocessBackend(BaseBackend):
             logger.debug(out_output)
 
             return Result(json.loads(out_output))
+        except BuildError:  # can be raised by  :meth:`Result.__init__`
+            raise
         except Exception as e:
             logger.exception(e)
             raise BuildError("The build failed", extra_info={

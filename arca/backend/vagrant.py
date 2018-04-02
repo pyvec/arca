@@ -188,6 +188,8 @@ class VagrantBackend(DockerBackend):
             res = api.execute(run_script, container_name=container_name, script_name=script_name)
 
             return Result(json.loads(res[vagrant.user_hostname_port()].stdout))
+        except BuildError:  # can be raised by  :meth:`Result.__init__`
+            raise
         except Exception as e:
             logger.exception(e)
             raise BuildError("The build failed", extra_info={
