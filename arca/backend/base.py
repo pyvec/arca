@@ -148,8 +148,8 @@ class BaseRunInSubprocessBackend(BaseBackend):
         st = os.stat(str(script_path))
         script_path.chmod(st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-        out_stream = b""
-        err_stream = b""
+        out_output = ""
+        err_output = ""
 
         cwd = str(repo_path / self.cwd)
 
@@ -165,14 +165,17 @@ class BaseRunInSubprocessBackend(BaseBackend):
 
             out_stream, err_stream = process.communicate()
 
-            logger.debug("stdout output from the command")
-            logger.debug(out_stream)
+            out_output = out_stream.decode("utf-8")
+            err_output = err_stream.decode("utf-8")
 
-            return Result(json.loads(out_stream.decode("utf-8")))
+            logger.debug("stdout output from the command")
+            logger.debug(out_output)
+
+            return Result(json.loads(out_output))
         except Exception as e:
             logger.exception(e)
             raise BuildError("The build failed", extra_info={
                 "exception": e,
-                "out_stream": out_stream,
-                "err_stream": err_stream,
+                "out_output": out_output,
+                "err_output": err_output,
             })

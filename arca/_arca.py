@@ -13,9 +13,9 @@ from .exceptions import ArcaMisconfigured, FileOutOfRangeError, PullError
 from .backend import BaseBackend
 from .result import Result
 from .task import Task
-from .utils import load_class, Settings, NOT_SET, logger, LazySettingProperty, is_dirty
+from .utils import load_class, Settings, NOT_SET, logger, LazySettingProperty, is_dirty, NotSet
 
-BackendDefinitionType = Union[type, BaseBackend, str]
+BackendDefinitionType = Union[type, BaseBackend, str, NotSet]
 DepthDefinitionType = Optional[int]
 ShallowSinceDefinitionType = Optional[Union[str, date]]
 ReferenceDefinitionType = Optional[Union[Path, str]]
@@ -254,7 +254,7 @@ class Arca:
                 raise PullError("There was an error pulling the target repository.")
             return git_repo
         else:
-            kwargs = {}
+            kwargs: Dict[str, Any] = {}
 
             if shallow_since is None:
                 if depth != -1:

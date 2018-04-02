@@ -14,16 +14,17 @@ sudo: required
 services:
 - docker
 install:
-- pip install codecov
+- pip install codecov mypy
 - pip install -r requirements.txt  # so travis pip cache can actually cache something
 - python setup.py install
 before_script:
 - docker login -u "$DOCKER_HUB_USERNAME" -p "$DOCKER_HUB_PASSWORD"
 script:
 - python setup.py test 2>error.log
-- echo "==============================="
-- echo "Captured error out from tests"
+- mypy arca || echo "Optional MyPy check failed"
+after_script:
 - cat error.log
+- sleep 1
 after_success:
 - codecov
 branches:

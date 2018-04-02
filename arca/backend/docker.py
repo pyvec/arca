@@ -228,10 +228,10 @@ class DockerBackend(BaseBackend):
 
         try:
             if build_context is None:
-                dockerfile = BytesIO(bytes(dockerfile, "utf-8"))  # required by the docker library
+                fileobj = BytesIO(bytes(dockerfile, "utf-8"))  # required by the docker library
 
                 self.client.images.build(
-                    fileobj=dockerfile,
+                    fileobj=fileobj,
                     tag=f"{name}:{tag}"
                 )
             else:
@@ -539,7 +539,7 @@ class DockerBackend(BaseBackend):
         """
         tarstream = BytesIO()
         tar = tarfile.TarFile(fileobj=tarstream, mode='w')
-        tar.add(path, arcname="data", recursive=True)
+        tar.add(str(path), arcname="data", recursive=True)
         tar.close()
         return tarstream.getvalue()
 
@@ -553,11 +553,11 @@ class DockerBackend(BaseBackend):
         tar = tarfile.TarFile(fileobj=tarstream, mode='w')
         tarinfo = tarfile.TarInfo(name=name)
 
-        script = script.encode("utf-8")
+        script_bytes = script.encode("utf-8")
 
-        tarinfo.size = len(script)
-        tarinfo.mtime = time.time()
-        tar.addfile(tarinfo, BytesIO(script))
+        tarinfo.size = len(script_bytes)
+        tarinfo.mtime = int(time.time())
+        tar.addfile(tarinfo, BytesIO(script_bytes))
         tar.close()
 
         return tarstream.getvalue()

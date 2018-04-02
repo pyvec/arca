@@ -49,7 +49,7 @@ class Task:
 
         self._args = list(args or [])
         self._kwargs = dict(kwargs or {})
-        self._built_script = None
+        self._built_script: Optional[str] = None
 
     @property
     def entry_point(self):
