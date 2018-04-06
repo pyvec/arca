@@ -10,7 +10,7 @@ from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR
 
 @pytest.mark.parametrize(
     ["backend", "requirements_location", "file_location"], list(itertools.product(
-        (VenvBackend, DockerBackend, CurrentEnvironmentBackend),
+        (CurrentEnvironmentBackend, VenvBackend, DockerBackend),
         (None, "requirements/requirements.txt"),
         (None, "test_package"),
     ))
@@ -54,6 +54,7 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     filepath.write_text(SECOND_RETURN_STR_FUNCTION)
     temp_repo_func.repo.create_head("new_branch")
+    temp_repo_func.repo.create_tag("test_tag")
     temp_repo_func.repo.index.add([str(filepath)])
     temp_repo_func.repo.index.commit("Updated function")
 
@@ -61,6 +62,8 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     # in the other branch there's still the original
     assert arca.run(temp_repo_func.url, "new_branch", task).output == "Some string"
+    # test that tags work as well
+    assert arca.run(temp_repo_func.url, "test_tag", task).output == "Some string"
 
     temp_repo_func.repo.branches.master.checkout()
 
