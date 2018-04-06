@@ -1,6 +1,5 @@
 import hashlib
 import json
-import re
 from pprint import pformat
 from textwrap import dedent, indent
 from typing import Optional, Any, Dict, Iterable
@@ -9,8 +8,6 @@ from cached_property import cached_property
 from entrypoints import EntryPoint, BadEntryPoint
 
 from .exceptions import TaskMisconfigured
-
-custom_pattern = re.compile(r"[.\w]*:[.\w]*")
 
 
 class Task:
@@ -39,17 +36,20 @@ class Task:
                  args: Optional[Iterable[Any]]=None,
                  kwargs: Optional[Dict[str, Any]]=None) -> None:
 
-        if not custom_pattern.match(entry_point):
-            raise TaskMisconfigured("Task entry point must be an object, not a module.")
-
         try:
             self._entry_point = EntryPoint.from_string(entry_point, "task")
         except BadEntryPoint:
             raise TaskMisconfigured("Incorrectly defined entry point.")
 
+        if self._entry_point.object_name is None:
+            raise TaskMisconfigured("Task entry point must be an object, not a module.")
+
         self._args = list(args or [])
         self._kwargs = dict(kwargs or {})
         self._built_script: Optional[str] = None
+
+        if not all([isinstance(x, str) for x in self._kwargs.keys()]):
+            raise TaskMisconfigured("Keywords must be strings")
 
     @property
     def entry_point(self):
