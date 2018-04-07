@@ -125,9 +125,16 @@ class Arca:
                     return null_cache()
                 raise ArcaMisconfigured("Cache backend arguments couldn't be converted to a dictionary.")
 
+        cache_backend = self.get_setting("cache_backend", "dogpile.cache.null")
+
+        if cache_backend == "dogpile.cache.dbm":
+            # if a file backend is used, create the folder for the file (if it doesn't exist)
+            if isinstance(arguments, dict) and "filename" in arguments:
+                Path(arguments["filename"]).parent.mkdir(parents=True, exist_ok=True)
+
         try:
             region = make_region().configure(
-                self.get_setting("cache_backend", "dogpile.cache.null"),
+                cache_backend,
                 expiration_time=self.get_setting("cache_expiration_time", None),
                 arguments=arguments
             )
