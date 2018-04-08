@@ -341,16 +341,6 @@ class Arca:
                                                       hash=self.current_git_hash(repo, branch, git_repo),
                                                       task=task.hash)
 
-    def is_dirty(self) -> bool:
-        """
-        Returns if the repository the code is launched from was modified in any way.
-        Returns False if not in a repository at all.
-        """
-        try:
-            return is_dirty(Repo(".", search_parent_directories=True))
-        except InvalidGitRepositoryError:
-            return False
-
     def run(self, repo: str, branch: str, task: Task, *,
             depth: DepthDefinitionType=None,
             shallow_since: ShallowSinceDefinitionType=None,
