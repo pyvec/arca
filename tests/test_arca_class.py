@@ -1,4 +1,5 @@
 # encoding=utf-8
+import re
 import shutil
 from datetime import datetime, timedelta, date
 from pathlib import Path
@@ -72,14 +73,26 @@ def test_validate_repo_url(url, valid):
     "https://host.xz/path/to/repo",
     "file:///path/to/repo.git",
     "file://~/path/to/repo.git",
+    "https://host.xz/path/to/repo///with///a//lot/of/slashes/git/",
+    "https://host.xz/path/to/repo_with   spaces.git/",
+    "https://host.xz/path/to/repo_with_úňíčóďé_characters.git/",
 ])
 def test_repo_id(url):
-    backend = Arca()
+    arca = Arca()
 
-    repo_id = backend.repo_id(url)
+    repo_id = arca.repo_id(url)
 
-    assert "/" not in repo_id  # its a valid directory name
-    # TODO: more checks?
+    # it's a valid folder name with only alphanumeric, dot or underscore characters
+    assert re.match(r"^[a-zA-Z0-9._]+$", repo_id)
+
+
+def test_repo_id_unique():
+    arca = Arca()
+
+    repo_id_1 = arca.repo_id("http://github.com/pyvec/naucse.python.cz")
+    repo_id_2 = arca.repo_id("http://github.com_pyvec_naucse.python.cz")
+
+    assert repo_id_1 != repo_id_2
 
 
 @pytest.mark.parametrize("file_location", ["", "test_location"])

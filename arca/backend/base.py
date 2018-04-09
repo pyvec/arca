@@ -88,7 +88,7 @@ class BaseBackend:
         """ Returns the generated script from the Task and it's name.
         """
         script = task.build_script()
-        script_hash = hashlib.sha1(bytes(script, "utf-8")).hexdigest()
+        script_hash = hashlib.sha256(bytes(script, "utf-8")).hexdigest()
 
         return f"{script_hash}.py", script
 
@@ -96,7 +96,7 @@ class BaseBackend:
         """ Returns an SHA1 hash of the contents of the ``requirements_path``.
         """
         logger.debug("Hashing: %s%s", requirements_file.read_text(), arca.__version__)
-        return hashlib.sha1(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
+        return hashlib.sha256(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
 
     def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path) -> Result:  # pragma: no cover
         """

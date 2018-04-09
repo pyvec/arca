@@ -1,19 +1,20 @@
+import hashlib
 import json
 import os
+import re
 from collections import defaultdict
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Union, Optional, Dict, Any, Tuple
 
-import re
 from dogpile.cache import make_region, CacheRegion
-from git import Repo, InvalidGitRepositoryError, GitCommandError
+from git import Repo, GitCommandError
 
-from .exceptions import ArcaMisconfigured, FileOutOfRangeError, PullError
 from .backend import BaseBackend
+from .exceptions import ArcaMisconfigured, FileOutOfRangeError, PullError
 from .result import Result
 from .task import Task
-from .utils import load_class, Settings, NOT_SET, logger, LazySettingProperty, is_dirty, NotSet
+from .utils import load_class, Settings, NOT_SET, logger, LazySettingProperty, NotSet
 
 BackendDefinitionType = Union[type, BaseBackend, str, NotSet]
 DepthDefinitionType = Optional[int]
@@ -163,17 +164,21 @@ class Arca:
         """ Returns an unique identifier from a repo URL for the folder the repo is gonna be pulled in.
         """
         if repo.startswith("http"):
-            repo = re.sub(r"https?://(.www)?", "", repo)
-            repo = re.sub(r"\.git/?$", "", repo)
-
-            return "_".join(repo.split("/"))
+            repo_id = re.sub(r"https?://(.www)?", "", repo)
+            repo_id = re.sub(r"\.git/?$", "", repo_id)
         else:
-            repo = repo.replace("file://", "")
-            repo = re.sub(r"\.git/?$", "", repo)
-            if repo.startswith("~"):
-                repo = str(Path(repo).resolve())
+            repo_id = repo.replace("file://", "")
+            repo_id = re.sub(r"\.git/?$", "", repo_id)
+            if repo_id.startswith("~"):
+                repo_id = str(Path(repo_id).resolve())
 
-            return "_".join(repo.split("/"))
+        # replaces everything that isn't alphanumeric, a dot or an underscore
+        # to make sure it's a valid folder name and to keep it readable
+        # multiple consecutive invalid characters replaced with a single underscore
+        repo_id = re.sub(r"[^a-zA-Z0-9._]+", "_", repo_id)
+
+        # and add a hash of the original to make it absolutely unique
+        return repo_id + hashlib.sha256(repo.encode("utf-8")).hexdigest()
 
     def get_setting(self, key: str, default=NOT_SET):
         return self.settings.get(key, default=default)

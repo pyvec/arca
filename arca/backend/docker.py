@@ -158,37 +158,74 @@ class DockerBackend(BaseBackend):
     def get_dependencies_hash(self, dependencies):
         """ Returns a SHA1 hash of the dependencies for usage in image names/tags.
         """
-        return hashlib.sha1(bytes(",".join(dependencies), "utf-8")).hexdigest()
+        return hashlib.sha256(bytes(",".join(dependencies), "utf-8")).hexdigest()
 
     def get_image_tag(self, requirements_file: Optional[Path], dependencies: Optional[List[str]]) -> str:
         """ Returns the tag for images with the dependencies and requirements installed.
 
+        64-byte hexadecimal strings cannot be used as docker tags, so the prefixes are necessary.
+        Double hashing the dependencies and requirements hash to make the final tag shorter.
+
+        Prefixes:
+
+        * Image type:
+
+          * i – Inherit image
+          * a – Arca base image
+
+        * Requirements:
+
+          * r – Does have requirements
+          * s – Doesn't have requirements
+
+        * Dependencies:
+
+          * d – Does have dependencies
+          * e – Doesn't have dependencies
+
         Possible outputs:
 
-        * `no_req` - if inheriting from a specified image
-        * `<requirements_hash>` - if inheriting from a specified image
-        * `no_dep_no_req`
-        * `<dependencies_hash>_no_req`
-        * `no_dep_<requirements_hash>`
-        * `<dependencies_hash>_<requirements_hash>`
+        * Inherited images:
+
+          * `ise` – no requirements
+          * `ide_<requirements_hash>` – with requirements
+
+        * From Arca base image:
+
+          * `ase` – no requirements and no dependencies
+          * `asd_<dependencies_hash>` – only dependencies
+          * `are_<requirements_hash>` – only requirements
+          * `ard_<hash(dependencies_hash + requirements_hash)>` – both requirements and dependencies
         """
+
+        prefix = "i" if self.inherit_image is not None else "a"
+        prefix += "r" if requirements_file is not None else "s"
+        prefix += "d" if dependencies is not None else "e"
+
+        if self.inherit_image is not None:
+            if requirements_file is None:
+                return prefix
+            else:
+                return prefix + "_" + self.get_requirements_hash(requirements_file)
+
         if requirements_file is None:
-            requirements_hash = self.NO_REQUIREMENTS_HASH
+            requirements_hash = ""
         else:
             requirements_hash = self.get_requirements_hash(requirements_file)
 
-        if self.inherit_image is None:
-            if dependencies is None:
-                dependencies_hash = self.NO_DEPENDENCIES_HASH
-            else:
-                dependencies_hash = self.get_dependencies_hash(dependencies)
-
-            if dependencies is not None and requirements_file is not None:
-                return f"{dependencies_hash[:25]}_{requirements_hash[:25]}"
-
-            return f"{dependencies_hash}_{requirements_hash}"
+        if dependencies is None:
+            dependencies_hash = ""
         else:
-            return requirements_hash
+            dependencies_hash = self.get_dependencies_hash(dependencies)
+
+        if requirements_hash and dependencies_hash:
+            return prefix + "_" + hashlib.sha256(bytes(requirements_hash + dependencies_hash, "utf-8")).hexdigest()
+        elif requirements_hash:
+            return f"{prefix}_{requirements_hash}"
+        elif requirements_hash:
+            return f"{prefix}_{requirements_hash}"
+        else:
+            return prefix
 
     def get_arca_base_name(self):
         return "docker.io/mikicz/arca"
@@ -401,7 +438,7 @@ class DockerBackend(BaseBackend):
         :return: The Image instance.
         """
         if self.inherit_image is not None:
-            return self.build_image_from_inherited_image(image_tag, image_tag, build_context, requirements_file)
+            return self.build_image_from_inherited_image(image_name, image_tag, build_context, requirements_file)
 
         if requirements_file is None:  # requirements file doesn't exist in the repo
 

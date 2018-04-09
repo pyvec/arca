@@ -130,7 +130,7 @@ class Task:
     def hash(self):
         """ Returns a SHA1 hash of the Task for usage in cache keys.
         """
-        return hashlib.sha1(bytes(json.dumps({
+        return hashlib.sha256(bytes(json.dumps({
             "entry_point": self.entry_point.__repr__(),
             "args": self.args,
             "kwargs": self.kwargs,
