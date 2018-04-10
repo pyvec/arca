@@ -151,10 +151,11 @@ def get_last_commit_modifying_files(repo: Repo, *files) -> str:
     return repo.git.log(*files, n=1, format="%H")
 
 
-def get_tree_hash_for_file(repo: Repo, path: Union[str, Path]) -> str:
-    """ Returns the tree hash for the specified path.
+def get_hash_for_file(repo: Repo, path: Union[str, Path]) -> str:
+    """ Returns the hash for the specified path.
 
     Equivalent to ``git rev-parse HEAD:X``
+
     :param repo: The repo to check in
     :param path: The path to a file or folder to get hash for
     :return: The hash

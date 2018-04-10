@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from arca.utils import is_dirty, get_last_commit_modifying_files, get_tree_hash_for_file
+from arca.utils import is_dirty, get_last_commit_modifying_files, get_hash_for_file
 
 
 def test_is_dirty(temp_repo_static):
@@ -43,12 +43,12 @@ def test_get_last_commit_modifying_files(temp_repo_static):
     assert get_last_commit_modifying_files(temp_repo_static.repo, first_file.name, second_file.name) == second_hash
 
 
-def test_get_tree_hash_for_file(temp_repo_static):
-    tree_hash = get_tree_hash_for_file(temp_repo_static.repo, temp_repo_static.fl.name)
+def test_get_hash_for_file(temp_repo_static):
+    file_hash = get_hash_for_file(temp_repo_static.repo, temp_repo_static.fl.name)
 
     temp_repo_static.fl.write_text(str(uuid4()))
 
     temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
     temp_repo_static.repo.index.commit("Updated")
 
-    assert get_tree_hash_for_file(temp_repo_static.repo, temp_repo_static.fl.name) != tree_hash
+    assert get_hash_for_file(temp_repo_static.repo, temp_repo_static.fl.name) != file_hash
