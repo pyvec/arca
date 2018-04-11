@@ -1,6 +1,2 @@
 [flake8]
 max-line-length = 120
-ignore =
-    # remove when https://gitlab.com/pycqa/flake8/issues/118 is resolved
-    F401,
-    E501,
