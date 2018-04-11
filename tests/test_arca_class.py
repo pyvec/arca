@@ -339,3 +339,30 @@ def test_get_repo(temp_repo_static):
     pulled_repo = arca.get_repo(temp_repo_static.url, temp_repo_static.branch)
 
     assert pulled_repo.head.object.hexsha == temp_repo_static.repo.head.object.hexsha
+
+
+def test_fetch_and_reset(temp_repo_static):
+    """
+    Tests updating already cloned repo, which was rebased.
+    Prevents ``fatal: refusing to merge unrelated histories``.
+    """
+    arca = Arca(base_dir=BASE_DIR)
+
+    initial_value = str(uuid4())
+    temp_repo_static.file_path.write_text(initial_value)
+    temp_repo_static.repo.index.add([str(temp_repo_static.file_path)])
+    temp_repo_static.repo.index.commit("Update")
+    initial_commit = temp_repo_static.repo.head.object.hexsha
+
+    for _ in range(5):
+        temp_repo_static.file_path.write_text(str(uuid4()))
+        temp_repo_static.repo.index.add([str(temp_repo_static.file_path)])
+        temp_repo_static.repo.index.commit("Update")
+
+    arca.get_files(temp_repo_static.url, temp_repo_static.branch)
+
+    temp_repo_static.repo.head.reset(initial_commit)
+
+    _, path_to_cloned = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
+
+    assert (path_to_cloned / temp_repo_static.file_path.name).read_text() == initial_value

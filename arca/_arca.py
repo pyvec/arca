@@ -257,7 +257,9 @@ class Arca:
         """
         if git_repo is not None:
             try:
-                git_repo.remote().pull()
+                git_repo.remote().fetch(branch)
+                # equivalent to git reset --hard origin/branch
+                git_repo.head.reset(f"origin/{branch}", index=True, working_tree=True)
             except GitCommandError:
                 raise PullError("There was an error pulling the target repository.")
             return git_repo
@@ -301,7 +303,7 @@ class Arca:
             repo_id = self.repo_id(repo)
             if not self.single_pull or self._current_hashes[repo_id].get(branch) is None:
                 logger.info("Single pull not enabled, no pull hasn't been done yet or pull forced, pulling")
-                self._pull(git_repo=git_repo)
+                self._pull(git_repo=git_repo, branch=branch)
             else:
                 logger.info("Single pull enabled and already pulled in this initialization of backend")
         else:
