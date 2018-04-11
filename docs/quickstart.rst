@@ -7,7 +7,7 @@ Glossary
 .. remember to update README when updating this
 
 * **Arca** - name of the library. When written as :class:`Arca <arca.Arca>`, the main interface class is being referenced.
-* **Task** - definition of the script, consists of a reference to a callable object and arguments.
+* **Task** - definition of the function (callable), consists of a reference to the object and arguments.
 * **Backend** - a way of running tasks.
 
 Example

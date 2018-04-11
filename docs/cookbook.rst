@@ -6,7 +6,7 @@ Cookbook
 I need some files from the repositories
 ---------------------------------------
 
-Besides running scripts from the repositories, there also might be some files in the repositories that you need,
+Besides running functions from the repositories, there also might be some files in the repositories that you need,
 e.g. images for a webpage. With the :class:`Arca <arca.Arca>` method :meth:`static_filename <arca.Arca.static_filename>`
 you can get the absolute path to that file, to where Arca cloned it.
 The method accepts a relative path (can be a :class:`pathlib.Path` or :class:`str`) to the file in the repository.

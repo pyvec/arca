@@ -16,8 +16,8 @@ Arca
 .. image:: https://img.shields.io/readthedocs/arca.svg
    :target: https://arca.readthedocs.io/
 
-Arca is a library for running Python scripts from git repositories in various states of isolation.
-Arca can also cache the results of these scripts using `dogpile.cache <https://dogpilecache.readthedocs.io/en/latest/>`_.
+Arca is a library for running Python functions (callables) from git repositories in various states of isolation.
+Arca can also cache the results of these callables using `dogpile.cache <https://dogpilecache.readthedocs.io/en/latest/>`_.
 
 Getting started
 ***************
@@ -26,7 +26,7 @@ Glossary
 ++++++++
 
 * **Arca** - name of the library. When written as ``Arca``, the main interface class is being referenced.
-* **Task** - definition of the script, consists of a reference to a callable object and arguments.
+* **Task** - definition of the function (callable), consists of a reference to the object and arguments.
 * **Backend** - a way of running tasks.
 
 Installation
@@ -65,7 +65,7 @@ To run a Hello World example you'll only need the ``arca.Arca`` and ``arca.Task`
 ``Task`` is used for defining the task that's supposed to be run in the repositories.
 ``Arca`` takes care of all the settings and provides the basic API for running the tasks.
 
-Let's day we have the following file, called ``hello_world.py``,
+Let's say we have the following file, called ``hello_world.py``,
 in a repository ``https://example.com/hello_word.git``, on branch ``master``.
 
 .. code-block:: python

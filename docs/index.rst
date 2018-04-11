@@ -21,8 +21,8 @@ Arca's documentation!
 .. image:: https://img.shields.io/readthedocs/arca.svg
    :target: https://arca.readthedocs.io/
 
-Arca is a library for running Python scripts from git repositories in various states of isolation.
-Arca can also cache the results of these scripts using `dogpile.cache <https://dogpilecache.readthedocs.io/en/latest/>`_.
+Arca is a library for running Python functions (callables) from git repositories in various states of isolation.
+Arca can also cache the results of these callables using `dogpile.cache <https://dogpilecache.readthedocs.io/en/latest/>`_.
 
 .. toctree::
    :maxdepth: 2

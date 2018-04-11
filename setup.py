@@ -23,7 +23,8 @@ setup(
     version="0.0.4",
     author="Mikuláš Poul",
     author_email="mikulaspoul@gmail.com",
-    description="A tool to launch possibly dangerous code from different git repositories in a isolated environment",
+    description="A library for running Python functions (callables) from git repositories "
+                "in various states of isolation with integrating caching.",
     # keywords=[""],  # TODO
     license="MIT",
     url="https://github.com/mikicz/arca",
