@@ -66,12 +66,12 @@ def test_strategy_ignore(mocker, temp_repo_func, strategy):
     temp_repo_func.repo.create_head("no_requirements")
     temp_repo_func.repo.branches.master.checkout()
 
-    requirements_path = temp_repo_func.path / arca.backend.requirements_location
+    requirements_path = temp_repo_func.repo_path / arca.backend.requirements_location
     requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
 
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
     # now the repository has got requirements
@@ -149,12 +149,12 @@ def test_strategy_raise(temp_repo_func, strategy):
     temp_repo_func.repo.create_head("no_requirements")
     temp_repo_func.repo.branches.master.checkout()
 
-    requirements_path = temp_repo_func.path / arca.backend.requirements_location
+    requirements_path = temp_repo_func.repo_path / arca.backend.requirements_location
     requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
 
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
     # Run should raise a exception because there's now extra requirements in the repo
@@ -219,11 +219,11 @@ def test_strategy_install_extra(temp_repo_func, mocker, strategy):
     temp_repo_func.repo.create_head("no_requirements")
     temp_repo_func.repo.branches.master.checkout()
 
-    requirements_path = temp_repo_func.path / arca.backend.requirements_location
+    requirements_path = temp_repo_func.repo_path / arca.backend.requirements_location
     requirements_path.write_text("colorama==0.3.9")
-    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
 
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
     # Repository now contains a requirement while the current env has none - install is called with whole file

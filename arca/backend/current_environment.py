@@ -46,17 +46,17 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
                                                 default=RequirementsStrategy.RAISE,
                                                 convert=RequirementsStrategy)
 
-    def install_requirements(self, *, fl: Optional[Path]=None, requirements: Optional[Iterable[str]]=None,
-                             _action: str="install"):
+    def install_requirements(self, *, path: Optional[Path] = None, requirements: Optional[Iterable[str]] = None,
+                             _action: str = "install"):
         """
         Installs requirements, either from a file or from a iterable of strings.
 
-        :param fl: :class:`Path <pathlib.Path>` to a ``requirements.txt`` file. Has priority over ``requirements``.
+        :param path: :class:`Path <pathlib.Path>` to a ``requirements.txt`` file. Has priority over ``requirements``.
         :param requirements: A iterable of strings of requirements to install.
         :param _action: For testing purposes, can be either ``install`` or ``uninstall``
 
         :raise BuildError: If installing fails.
-        :raise ValueError: If both ``fl`` and ``requirements`` are undefined.
+        :raise ValueError: If both ``file`` and ``requirements`` are undefined.
         :raise ValueError: If ``_action`` not ``install`` or ``uninstall``.
         """
         if _action not in ["install", "uninstall"]:
@@ -67,12 +67,12 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
         if _action == "uninstall":
             cmd += ["-y"]
 
-        if fl is not None:
-            cmd += ["-r", str(fl)]
+        if path is not None:
+            cmd += ["-r", str(path)]
         elif requirements is not None:
             cmd += list(requirements)
         else:
-            raise ValueError("Either fl or requirements has to be provided")
+            raise ValueError("Either path or requirements has to be provided")
 
         logger.info("Installing requirements with command: %s", cmd)
 
@@ -93,12 +93,12 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
                 "returncode": process.returncode
             })
 
-    def get_requirements_set(self, fl: Path) -> Set[str]:
+    def get_requirements_set(self, file: Path) -> Set[str]:
         """
-        :param fl: :class:`Path <pathlib.Path>` to a ``requirements.txt`` file.
+        :param file: :class:`Path <pathlib.Path>` to a ``requirements.txt`` file.
         :return: Set of the requirements from the file with newlines and extra characters removed.
         """
-        return set([x.strip() for x in fl.read_text().split("\n") if x.strip()])
+        return set([x.strip() for x in file.read_text().split("\n") if x.strip()])
 
     def get_or_create_environment(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> str:
         """
@@ -131,7 +131,7 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
                     raise RequirementsMismatch(f"There are extra requirements in repository {repo}, branch {branch}.",
                                                diff=requirements.read_text())
 
-                self.install_requirements(fl=requirements)
+                self.install_requirements(path=requirements)
 
         # requirements for current environment configured
         else:

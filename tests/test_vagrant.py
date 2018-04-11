@@ -52,11 +52,11 @@ def test_vagrant(temp_repo_func, box):
     backend = VagrantBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test", **kwargs)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
-    requirements_path = temp_repo_func.path / backend.requirements_location
+    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    requirements_path = temp_repo_func.repo_path / backend.requirements_location
     requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Initial")
 
     task = Task("test_file:return_str_function")

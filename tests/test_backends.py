@@ -38,13 +38,13 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     if file_location is None:
-        filepath = temp_repo_func.fl
+        filepath = temp_repo_func.file_path
     else:
-        filepath = temp_repo_func.path / file_location / "test_file.py"
+        filepath = temp_repo_func.repo_path / file_location / "test_file.py"
         filepath.parent.mkdir(exist_ok=True, parents=True)
-        temp_repo_func.fl.replace(filepath)
+        temp_repo_func.file_path.replace(filepath)
 
-        temp_repo_func.repo.index.remove([str(temp_repo_func.fl)])
+        temp_repo_func.repo.index.remove([str(temp_repo_func.file_path)])
         temp_repo_func.repo.index.add([str(filepath)])
         temp_repo_func.repo.index.commit("Initial")
 
@@ -67,7 +67,7 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     temp_repo_func.repo.branches.master.checkout()
 
-    requirements_path = temp_repo_func.path / backend.requirements_location
+    requirements_path = temp_repo_func.repo_path / backend.requirements_location
     requirements_path.parent.mkdir(exist_ok=True, parents=True)
     requirements_path.write_text("colorama==0.3.9")
 

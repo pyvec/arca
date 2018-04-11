@@ -99,9 +99,9 @@ def test_repo_id_unique():
 def test_static_files(temp_repo_static, file_location):
     arca = Arca(base_dir=BASE_DIR)
 
-    filepath = temp_repo_static.fl
+    filepath = temp_repo_static.file_path
     if file_location:
-        new_filepath = temp_repo_static.path / file_location / "test_file.txt"
+        new_filepath = temp_repo_static.repo_path / file_location / "test_file.txt"
         new_filepath.parent.mkdir(exist_ok=True, parents=True)
 
         filepath.replace(new_filepath)
@@ -159,8 +159,8 @@ def test_depth(temp_repo_static):
     arca = Arca(base_dir=BASE_DIR)
 
     for _ in range(19):  # since one commit is made in the fixture
-        temp_repo_static.fl.write_text(str(uuid4()))
-        temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
+        temp_repo_static.file_path.write_text(str(uuid4()))
+        temp_repo_static.repo.index.add([str(temp_repo_static.file_path)])
         temp_repo_static.repo.index.commit("Initial")
 
     # test that in default settings, the whole repo is pulled in one go
@@ -170,8 +170,8 @@ def test_depth(temp_repo_static):
 
     # test when pulled again, the depth is increased since the local copy is stored
 
-    temp_repo_static.fl.write_text(str(uuid4()))
-    temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
+    temp_repo_static.file_path.write_text(str(uuid4()))
+    temp_repo_static.repo.index.add([str(temp_repo_static.file_path)])
     temp_repo_static.repo.index.commit("Initial")
 
     cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
@@ -187,8 +187,8 @@ def test_depth(temp_repo_static):
 
     # test when pulled again, the depth setting is ignored
 
-    temp_repo_static.fl.write_text(str(uuid4()))
-    temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
+    temp_repo_static.file_path.write_text(str(uuid4()))
+    temp_repo_static.repo.index.add([str(temp_repo_static.file_path)])
     temp_repo_static.repo.index.commit("Initial")
 
     cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
