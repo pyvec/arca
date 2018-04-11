@@ -25,16 +25,18 @@ logger.setLevel(logging.DEBUG)
 
 
 def load_class(location: str) -> type:
-    """ Loads a class from a string and returns it
-
-    :raise ArcaMisconfigured: If the class can't be loaded.
+    """ Loads a class from a string and returns it.
 
     >>> from arca.utils import load_class
     >>> load_class("arca.backend.BaseBackend")
     <class 'arca.backend.base.BaseBackend'>
+
+    :raise ArcaMisconfigured: If the class can't be loaded.
     """
-    module_name = ".".join(location.split(".")[:-1])
-    class_name = location.split(".")[-1]
+    module_name, _, class_name = location.rpartition(".")
+
+    if not module_name:
+        raise ArcaMisconfigured(f"The module is not specified, can't load class from '{location}'")
 
     try:
         imported_module = importlib.import_module(module_name)
