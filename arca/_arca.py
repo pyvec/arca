@@ -91,7 +91,7 @@ class Arca:
 
         for key, val in os.environ.items():
             if key.startswith(Settings.PREFIX):
-                _settings[key] = val
+                _settings.set(key, val)
 
         return _settings
 

@@ -74,13 +74,16 @@ class LazySettingProperty:
 
 
 class Settings:
-    """ A wrapper around dict for handling :class:`Arca <arca.Arca>` settings.
+    """ A class for handling :class:`Arca <arca.Arca>` settings.
     """
 
     PREFIX = "ARCA"
 
     def __init__(self, data: Optional[Dict[str, Any]]=None) -> None:
-        self.data = data or {}
+        self._data = data or {}
+
+    def set(self, key, value):
+        self._data[key] = value
 
     def get(self, *keys: str, default: Any = NOT_SET) -> Any:
         """ Returns values from the settings in the order of keys, the first value encountered is used.
@@ -117,8 +120,8 @@ class Settings:
 
         for option in keys:
             key = f"{self.PREFIX}_{option.upper()}"
-            if key in self:
-                return self[key]
+            if key in self._data:
+                return self._data[key]
 
         if default is NOT_SET:
             raise KeyError("None of the following key is present in settings and no default is set: {}".format(
@@ -126,15 +129,6 @@ class Settings:
             ))
 
         return default
-
-    def __getitem__(self, item):
-        return self.data[item]
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
-
-    def __contains__(self, item):
-        return item in self.data
 
 
 def is_dirty(repo: Repo) -> bool:
