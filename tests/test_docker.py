@@ -41,8 +41,8 @@ def test_python_version(temp_repo_func, python_version):
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    temp_repo_func.fl.write_text(RETURN_PYTHON_VERSION_FUNCTION)
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
+    temp_repo_func.file_path.write_text(RETURN_PYTHON_VERSION_FUNCTION)
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])
     temp_repo_func.repo.index.commit("Initial")
 
     task = Task("test_file:return_python_version")
@@ -54,11 +54,11 @@ def test_apk_dependencies(temp_repo_func):
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    requirements_path = temp_repo_func.path / "requirements.txt"
+    requirements_path = temp_repo_func.repo_path / "requirements.txt"
     requirements_path.write_text("freetype-py")
 
-    temp_repo_func.fl.write_text(RETURN_FREETYPE_VERSION)
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.file_path.write_text(RETURN_FREETYPE_VERSION)
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to lxml")
 
     # ``import freetype`` raises an error if the library ``freetype-dev`` is not installed
@@ -74,8 +74,8 @@ def test_inherit_image(temp_repo_func):
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
 
-    temp_repo_func.fl.write_text(RETURN_PLATFORM)
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
+    temp_repo_func.file_path.write_text(RETURN_PLATFORM)
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])
     temp_repo_func.repo.index.commit("Platform")
 
     task = Task("test_file:return_platform")
@@ -83,11 +83,11 @@ def test_inherit_image(temp_repo_func):
     # alpine is the default, dist() returns ('', '', '') on - so this fails when the default image is used
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "debian"
 
-    requirements_path = temp_repo_func.path / backend.requirements_location
+    requirements_path = temp_repo_func.repo_path / backend.requirements_location
     requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
     colorama_task = Task("test_file:return_str_function")
@@ -99,11 +99,11 @@ def test_push_to_registry(temp_repo_func, mocker):
     backend = DockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test")
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
-    requirements_path = temp_repo_func.path / backend.requirements_location
+    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    requirements_path = temp_repo_func.repo_path / backend.requirements_location
     requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Initial")
 
     task = Task("test_file:return_str_function")
@@ -114,7 +114,7 @@ def test_push_to_registry(temp_repo_func, mocker):
     mocker.stopall()
 
     image = backend.get_image_for_repo(temp_repo_func.url, temp_repo_func.branch,
-                                       temp_repo_func.repo, temp_repo_func.path)
+                                       temp_repo_func.repo, temp_repo_func.repo_path)
 
     backend.client.images.remove(image.id, force=True)
 
@@ -129,11 +129,11 @@ def test_push_to_registry_fail(temp_repo_func):
     backend = DockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz-unknown-user/arca-test")
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
-    requirements_path = temp_repo_func.path / backend.requirements_location
+    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    requirements_path = temp_repo_func.repo_path / backend.requirements_location
     requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl), str(requirements_path)])
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Initial")
 
     task = Task("test_file:return_str_function")

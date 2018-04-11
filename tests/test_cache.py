@@ -46,12 +46,12 @@ def test_cache(mocker, temp_repo_func, backend, cache_backend, arguments):
                     "ARCA_CACHE_BACKEND_ARGUMENTS": arguments
                 })
 
-    requirements_path = temp_repo_func.path / "requirements.txt"
+    requirements_path = temp_repo_func.repo_path / "requirements.txt"
     requirements_path.write_text("colorama==0.3.9")
     temp_repo_func.repo.index.add([str(requirements_path)])
 
-    temp_repo_func.fl.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
-    temp_repo_func.repo.index.add([str(temp_repo_func.fl)])
+    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])
     temp_repo_func.repo.index.commit("Added requirements")
 
     colorama_task = Task("test_file:return_str_function")
