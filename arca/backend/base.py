@@ -53,7 +53,7 @@ class BaseBackend:
     def snake_case_backend_name(self):
         """ CamelCase -> camel_case
         """
-        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', self.__class__.__name__)
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', type(self).__name__)
         return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
     def get_settings_keys(self, key):

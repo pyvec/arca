@@ -17,6 +17,7 @@ def test_arca_backend():
     assert isinstance(Arca(VenvBackend()).backend, VenvBackend)
     assert isinstance(Arca(VenvBackend).backend, VenvBackend)
     assert isinstance(Arca("arca.backend.VenvBackend").backend, VenvBackend)
+    assert isinstance(Arca(lambda: VenvBackend()).backend, VenvBackend)
 
     with pytest.raises(ArcaMisconfigured):
         Arca("arca.backend_test.TestBackend")

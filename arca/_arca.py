@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from datetime import datetime, date, timedelta
 from pathlib import Path
-from typing import Union, Optional, Dict, Any, Tuple
+from typing import Union, Optional, Dict, Any, Tuple, Callable
 
 from dogpile.cache import make_region, CacheRegion
 from git import Repo, GitCommandError
@@ -16,7 +16,7 @@ from .result import Result
 from .task import Task
 from .utils import load_class, Settings, NOT_SET, logger, LazySettingProperty, NotSet
 
-BackendDefinitionType = Union[type, BaseBackend, str, NotSet]
+BackendDefinitionType = Union[Callable, BaseBackend, str, NotSet]
 DepthDefinitionType = Optional[int]
 ShallowSinceDefinitionType = Optional[Union[str, date]]
 ReferenceDefinitionType = Optional[Union[Path, str]]
@@ -71,11 +71,11 @@ class Arca:
         if isinstance(backend, str):
             backend = load_class(backend)
 
-        if isinstance(backend, type):
+        if callable(backend):
             backend = backend()
 
-        if not issubclass(backend.__class__, BaseBackend):
-            raise ArcaMisconfigured(f"{backend.__class__} is not an subclass of BaseBackend")
+        if not issubclass(type(backend), BaseBackend):
+            raise ArcaMisconfigured(f"{type(backend)} is not an subclass of BaseBackend")
 
         return backend
 
