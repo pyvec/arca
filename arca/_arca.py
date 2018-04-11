@@ -3,7 +3,7 @@ import json
 import os
 import re
 from collections import defaultdict
-from datetime import datetime, date, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Union, Optional, Dict, Any, Tuple, Callable
 
@@ -18,7 +18,6 @@ from .utils import load_class, Settings, NOT_SET, logger, LazySettingProperty, N
 
 BackendDefinitionType = Union[Callable, BaseBackend, str, NotSet]
 DepthDefinitionType = Optional[int]
-ShallowSinceDefinitionType = Optional[Union[str, date]]
 ReferenceDefinitionType = Optional[Union[Path, str]]
 
 
@@ -251,9 +250,8 @@ class Arca:
                 pass
 
     def _pull(self, *, repo_path: Path=None, git_repo: Repo=None, repo: str=None, branch: str=None,
-              depth: Optional[int] = None,
-              shallow_since: Optional[date] = None,
-              reference: Optional[Path] = None
+              depth: Optional[int]=None,
+              reference: Optional[Path]=None
               ) -> Repo:
         """
         Returns a :class:`Repo <git.repo.base.Repo>` instance, either pulls existing or
@@ -268,11 +266,8 @@ class Arca:
         else:
             kwargs: Dict[str, Any] = {}
 
-            if shallow_since is None:
-                if depth != -1:
-                    kwargs["depth"] = depth or 1
-            else:
-                kwargs["shallow-since"] = (shallow_since - timedelta(days=1)).strftime("%Y-%m-%d")
+            if depth is not None:
+                kwargs["depth"] = depth
 
             if reference is not None:
                 kwargs["reference-if-able"] = str(reference.absolute())
@@ -284,9 +279,8 @@ class Arca:
                 raise PullError("There was an error cloning the target repository.")
 
     def get_files(self, repo: str, branch: str, *,
-                  depth: Optional[int] = None,
-                  shallow_since: Optional[date] = None,
-                  reference: Optional[Path] = None
+                  depth: Optional[int]=1,
+                  reference: Optional[Path]=None
                   ) -> Tuple[Repo, Path]:
         """
         Either clones the repository if it's not cloned already or pulls from origin.
@@ -295,7 +289,6 @@ class Arca:
         :param repo: Repo URL
         :param branch: Branch name
         :param depth:  See :meth:`run`
-        :param shallow_since: See :meth:`run`
         :param reference: See :meth:`run`
 
         :return: A :class:`Repo <git.repo.base.Repo>` instance for the repo
@@ -318,7 +311,6 @@ class Arca:
             logger.info("Initial pull")
             git_repo = self._pull(repo_path=repo_path, repo=repo, branch=branch,
                                   depth=depth,
-                                  shallow_since=shallow_since,
                                   reference=reference)
 
         self.save_hash(repo, branch, git_repo)
@@ -326,15 +318,14 @@ class Arca:
         return git_repo, repo_path
 
     def get_repo(self, repo: str, branch: str, *,
-                 depth: Optional[int] = None,
-                 shallow_since: Optional[date] = None,
-                 reference: Optional[Path] = None
+                 depth: Optional[int]=1,
+                 reference: Optional[Path]=None
                  ) -> Repo:
         """ Returns a :class:`Repo <git.repo.base.Repo>` instance for the branch.
 
         See :meth:`run` for arguments descriptions.
         """
-        git_repo, _ = self.get_files(repo, branch, depth=depth, shallow_since=shallow_since, reference=reference)
+        git_repo, _ = self.get_files(repo, branch, depth=depth, reference=reference)
 
         return git_repo
 
@@ -347,8 +338,7 @@ class Arca:
                                                       task=task.hash)
 
     def run(self, repo: str, branch: str, task: Task, *,
-            depth: DepthDefinitionType=None,
-            shallow_since: ShallowSinceDefinitionType=None,
+            depth: DepthDefinitionType=1,
             reference: ReferenceDefinitionType=None
             ) -> Result:
         """ Runs the ``task`` using the configured backend.
@@ -357,8 +347,7 @@ class Arca:
         :param branch: Target git branch
         :param task: Task which will be run in the target repository
         :param depth: How many commits back should the repo be cloned in case the target repository isn't cloned yet.
-                      Defaults to 1, ignored if `shallow_since` is set. -1 means no limit, otherwise must be positive.
-        :param shallow_since: Shallow clone in case the target repository isn't cloned yet, including the date.
+                      Defaults to 1, must be bigger than 0. No limit will be used if ``None`` is set.
         :param reference: A path to a repository from which the target repository is forked,
                           to save bandwidth, `--dissociate` is used if set.
 
@@ -369,14 +358,12 @@ class Arca:
         """
         self.validate_repo_url(repo)
         depth = self.validate_depth(depth)
-        shallow_since = self.validate_shallow_since(shallow_since)
         reference = self.validate_reference(reference)
 
         logger.info("Running Arca task %r for repo '%s' in branch '%s'", task, repo, branch)
 
         git_repo, repo_path = self.get_files(repo, branch,
                                              depth=depth,
-                                             shallow_since=shallow_since,
                                              reference=reference)
 
         def create_value():
@@ -401,9 +388,8 @@ class Arca:
         return True
 
     def static_filename(self, repo: str, branch: str, relative_path: Union[str, Path], *,
-                        depth: DepthDefinitionType = None,
-                        shallow_since: ShallowSinceDefinitionType = None,
-                        reference: ReferenceDefinitionType = None
+                        depth: DepthDefinitionType=1,
+                        reference: ReferenceDefinitionType=None
                         ) -> Path:
         """
         Returns an absolute path to where a file from the repo was cloned to.
@@ -412,7 +398,6 @@ class Arca:
         :param branch: Branch name
         :param relative_path: Relative path to the requested file
         :param depth: See :meth:`run`
-        :param shallow_since: See :meth:`run`
         :param reference: See :meth:`run`
 
         :return: Absolute path to the file in the target repository
@@ -422,7 +407,6 @@ class Arca:
         """
         self.validate_repo_url(repo)
         depth = self.validate_depth(depth)
-        shallow_since = self.validate_shallow_since(shallow_since)
         reference = self.validate_reference(reference)
 
         if not isinstance(relative_path, Path):
@@ -430,7 +414,6 @@ class Arca:
 
         _, repo_path = self.get_files(repo, branch,
                                       depth=depth,
-                                      shallow_since=shallow_since,
                                       reference=reference)
 
         result = repo_path / relative_path
@@ -457,27 +440,10 @@ class Arca:
             except ValueError:
                 raise ValueError(f"Depth '{depth}' can't be converted to int.")
 
-            if not (depth == -1 or depth > 0):
-                raise ValueError(f"Depth '{depth}' isn't positive or -1 to indicate no limit")
+            if depth < 1:
+                raise ValueError(f"Depth '{depth}' isn't a positive number")
+
             return depth
-        return None
-
-    def validate_shallow_since(self, shallow_since: ShallowSinceDefinitionType) -> Optional[date]:
-        """ Converts to date
-
-        :raise ValueError: If ``shallow_since`` isn't valid.
-        """
-        if shallow_since is not None:
-            if isinstance(shallow_since, datetime):
-                return shallow_since.date()
-            elif isinstance(shallow_since, date):
-                return shallow_since
-            try:
-                return datetime.strptime(shallow_since, "%Y-%m-%d").date()
-            except ValueError:
-                raise ValueError(f"Shallows since value '{shallow_since}' isn't a date or a string in format "
-                                 "YYYY-MM-DD")
-
         return None
 
     def validate_reference(self, reference: ReferenceDefinitionType) -> Optional[Path]:

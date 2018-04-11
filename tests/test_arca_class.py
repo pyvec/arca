@@ -182,7 +182,7 @@ def test_depth(temp_repo_static):
 
     # test no limit
 
-    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch, depth=-1)
+    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch, depth=None)
 
     assert cloned_repo.commit().count() == 22  # 20 plus the 2 extra commits
 
@@ -193,9 +193,9 @@ def test_depth(temp_repo_static):
     ("5", True),
     (None, True),
     ("asddf", False),
-    (-1, True),
-    (0, False),
+    (-1, False),
     (-2, False),
+    (0, False),
 ])
 def test_depth_validate(temp_repo_static, depth, valid):
     arca = Arca(base_dir=BASE_DIR)
@@ -281,47 +281,6 @@ def test_reference_validate(temp_repo_static, reference, valid):
     else:
         with pytest.raises(ValueError):
             arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path, reference=reference)
-
-
-def test_shallow_since(temp_repo_static):
-    arca = Arca(base_dir=BASE_DIR)
-
-    now = datetime.now()
-
-    for i in range(19, 0, -1):
-        temp_repo_static.fl.write_text(str(uuid4()))
-        temp_repo_static.repo.index.add([str(temp_repo_static.fl)])
-        temp_repo_static.repo.index.commit(
-            "Initial",
-            commit_date=(now - timedelta(days=i, hours=5)).strftime("%Y-%m-%dT%H:%M:%S"),
-            author_date=(now - timedelta(days=i, hours=5)).strftime("%Y-%m-%dT%H:%M:%S")
-        )
-
-    cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch,
-                                                   shallow_since=(now - timedelta(days=10)).date())
-    assert cloned_repo.commit().count() == 10
-
-
-@pytest.mark.parametrize("shallow_since,valid", [
-    (date(year=2018, month=1, day=1), True),
-    ("2018-01-01", True),
-    (datetime(year=2017, month=1, day=1), True),
-    ("2018-01-01T01:00:00", False),
-    ("sasdfasdf", False),
-    (None, True)
-])
-def test_shallow_since_validate(temp_repo_static, shallow_since, valid):
-    arca = Arca(base_dir=BASE_DIR)
-
-    relative_path = Path("test_file.txt")
-
-    if valid:
-        arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path,
-                             shallow_since=shallow_since)
-    else:
-        with pytest.raises(ValueError):
-            arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path,
-                                 shallow_since=shallow_since)
 
 
 def test_pull_error():
