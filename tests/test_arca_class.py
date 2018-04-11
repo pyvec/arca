@@ -130,6 +130,31 @@ def test_static_files(temp_repo_static, file_location):
         arca.static_filename(temp_repo_static.url, temp_repo_static.branch, nonexistent_relative_path)
 
 
+def test_current_git_hash(temp_repo_static):
+    """
+    Test that the :meth:`Arca.current_git_hash <arca.Arca.current_git_hash>` behaves the same when ``single_pull``
+    is disabled or enabled.
+    """
+    arca = Arca(base_dir=BASE_DIR)
+    repo, _ = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
+
+    long_hash = arca.current_git_hash(temp_repo_static.url, temp_repo_static.branch, repo)
+    short_hash = arca.current_git_hash(temp_repo_static.url, temp_repo_static.branch, repo, short=True)
+
+    assert len(short_hash) < len(long_hash)
+    assert long_hash.startswith(short_hash)
+
+    arca = Arca(base_dir=BASE_DIR, single_pull=True)
+
+    repo, _ = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
+
+    long_hash_single_pull = arca.current_git_hash(temp_repo_static.url, temp_repo_static.branch, repo)
+    short_hash_single_pull = arca.current_git_hash(temp_repo_static.url, temp_repo_static.branch, repo, short=True)
+
+    assert long_hash == long_hash_single_pull
+    assert short_hash == short_hash_single_pull
+
+
 def test_depth(temp_repo_static):
     arca = Arca(base_dir=BASE_DIR)
 

@@ -216,15 +216,13 @@ class Arca:
         :param short: Should the short version be returned?
         :return: Commit hash of the currently pulled version for the specified repo/branch
         """
-        current_hash = self._current_hashes[self.repo_id(repo)].get(branch)
-
-        if current_hash is not None:
-            return current_hash
+        current_hash = self._current_hashes[self.repo_id(repo)].get(branch, git_repo.head.object.hexsha)
 
         if short:
-            return git_repo.git.rev_parse(git_repo.head.object.hexsha, short=7)
+            # shortens to minimum 7 characters, however git can make it longer on bigger repos
+            return git_repo.git.rev_parse(current_hash, short=7)
         else:
-            return git_repo.head.object.hexsha
+            return current_hash
 
     def pull_again(self, repo: Optional[str]=None, branch: Optional[str]=None) -> None:
         """ When ``single_pull`` is enables, tells Arca to pull again.
