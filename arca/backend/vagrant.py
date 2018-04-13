@@ -34,7 +34,7 @@ class VagrantBackend(DockerBackend):
     * **apk_dependencies**
     * **disable_pull**
     * **inherit_image**
-    * **push_to_registry_name**
+    * **use_registry_name**
 
     Adds new settings:
 
@@ -57,11 +57,11 @@ class VagrantBackend(DockerBackend):
 
         * ``box`` format
         * ``provider`` format
-        * ``push_to_registry_name`` is set
+        * ``use_registry_name`` is set
         """
         super(VagrantBackend, self).validate_settings()
 
-        if self.push_to_registry_name is None:
+        if self.use_registry_name is None:
             raise ArcaMisconfigured("Push to registry setting is required for VagrantBackend")
 
         if not re.match(r"^[a-z]+/[a-zA-Z0-9\-_]+$", self.box):
@@ -69,6 +69,9 @@ class VagrantBackend(DockerBackend):
 
         if not re.match(r"^[a-z_]+$", self.provider):
             raise ArcaMisconfigured("Provided Vagrant provider is not valid")
+
+        if self.registry_pull_only:
+            raise ArcaMisconfigured("Push must be enabled for VagrantBackend")
 
     def check_vagrant_access(self):
         """
@@ -101,7 +104,7 @@ class VagrantBackend(DockerBackend):
         requirements_file = self.get_requirements_file(repo_path)
         dependencies = self.get_dependencies()
         image_tag = self.get_image_tag(requirements_file, dependencies)
-        image_name = self.push_to_registry_name
+        image_name = self.use_registry_name
 
         logger.info("Creating Vagrantfile with image %s:%s", image_name, image_tag)
 

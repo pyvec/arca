@@ -17,24 +17,29 @@ def test_validation():
         Arca(backend=backend)
 
     # validation passes
-    backend = VagrantBackend(push_to_registry_name="docker.io/mikicz/arca-test")
+    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test")
     Arca(backend=backend)
 
+    # push must be enabled
+    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", registry_pull_only=True)
+    with pytest.raises(ArcaMisconfigured):
+        Arca(backend=backend)
+
     # valid different box
-    backend = VagrantBackend(push_to_registry_name="docker.io/mikicz/arca-test", box="hashicorp/precise64")
+    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", box="hashicorp/precise64")
     assert Arca(backend=backend).backend.box == "hashicorp/precise64"
 
     # invalid box
-    backend = VagrantBackend(push_to_registry_name="docker.io/mikicz/arca-test", box="ubuntu rusty64\"")
+    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", box="ubuntu rusty64\"")
     with pytest.raises(ArcaMisconfigured):
         Arca(backend=backend)
 
     # valid different provider
-    backend = VagrantBackend(push_to_registry_name="docker.io/mikicz/arca-test", provider="vmware_fusion")
+    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", provider="vmware_fusion")
     assert Arca(backend=backend).backend.provider == "vmware_fusion"
 
     # invalid provider
-    backend = VagrantBackend(push_to_registry_name="docker.io/mikicz/arca-test", provider="libvirst\"")
+    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", provider="libvirst\"")
     with pytest.raises(ArcaMisconfigured):
         Arca(backend=backend)
 
@@ -49,7 +54,7 @@ def test_vagrant(temp_repo_func, box):
     kwargs = {}
     if box:
         kwargs["box"] = box
-    backend = VagrantBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test", **kwargs)
+    backend = VagrantBackend(verbosity=2, use_registry_name="docker.io/mikicz/arca-test", **kwargs)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
