@@ -1,7 +1,5 @@
 import hashlib
 import json
-from pprint import pformat
-from textwrap import dedent, indent
 from typing import Optional, Any, Dict, Iterable
 
 from cached_property import cached_property
@@ -44,12 +42,19 @@ class Task:
         if self._entry_point.object_name is None:
             raise TaskMisconfigured("Task entry point must be an object, not a module.")
 
-        self._args = list(args or [])
-        self._kwargs = dict(kwargs or {})
-        self._built_script: Optional[str] = None
+        try:
+            self._args = list(args or [])
+            self._kwargs = dict(kwargs or {})
+        except (TypeError, ValueError):
+            raise TaskMisconfigured("Provided arguments cannot be converted to list or dict.")
 
         if not all([isinstance(x, str) for x in self._kwargs.keys()]):
             raise TaskMisconfigured("Keywords must be strings")
+
+        try:
+            assert isinstance(self.json, str)
+        except (AssertionError, ValueError):
+            raise TaskMisconfigured("Provided arguments are not JSON-serializable") from None
 
     @property
     def entry_point(self):
@@ -66,72 +71,25 @@ class Task:
     def __repr__(self):
         return f"Task({self.entry_point})"
 
-    def build_function_call(self):
-        if len(self.args) and len(self.kwargs):
-            return "{!r}.load()(*{}, **{})".format(
-                self.entry_point,
-                pformat(self.args),
-                pformat(self.kwargs)
-            )
-        elif len(self.args):
-            return "{!r}.load()(*{})".format(
-                self.entry_point,
-                pformat(self.args)
-            )
-        elif len(self.kwargs):
-            return "{!r}.load()(**{})".format(
-                self.entry_point,
-                pformat(self.kwargs)
-            )
-        else:
-            return "{!r}.load()()".format(self.entry_point)
+    @cached_property
+    def json(self):
+        return json.dumps(self.serialized)
 
-    def build_script(self) -> str:
-        """ Returns a Python script for the Task, with all the required imports, serializing and error handling.
-        """
-        if self._built_script is not None:
-            return self._built_script
-
-        function_call = self.build_function_call()
-        function_call = indent(function_call, " " * 12, lambda x: not x.startswith("EntryPoint"))
-
-        script = dedent(f"""
-        # encoding=utf-8
-        import json
-        import traceback
-        import sys
-        import os
-        from importlib import import_module
-
-        class EntryPoint:
-            def __init__(self, name, module_name, object_name, *args, **kwargs):
-                self.module_name = module_name
-                self.object_name = object_name
-
-            def load(self):
-                mod = import_module(self.module_name)
-                obj = mod
-                for attr in self.object_name.split('.'):
-                    obj = getattr(obj, attr)
-                return obj
-
-        sys.path.insert(1, os.getcwd())
-        try:
-            res = {function_call}
-            print(json.dumps({{"success": True, "result": res}}))
-        except:
-            print(json.dumps({{"success": False, "error": traceback.format_exc()}}))
-        """)
-        self._built_script = script
-
-        return script
+    @cached_property
+    def serialized(self):
+        import arca
+        return {
+            "version": arca.__version__,
+            "entry_point": {
+                "module_name": self._entry_point.module_name,
+                "object_name": self._entry_point.object_name
+            },
+            "args": self._args,
+            "kwargs": self._kwargs
+        }
 
     @cached_property
     def hash(self):
         """ Returns a SHA1 hash of the Task for usage in cache keys.
         """
-        return hashlib.sha256(bytes(json.dumps({
-            "entry_point": self.entry_point.__repr__(),
-            "args": self.args,
-            "kwargs": self.kwargs,
-        }), "utf-8")).hexdigest()
+        return hashlib.sha256(bytes(self.json, "utf-8")).hexdigest()

@@ -32,6 +32,8 @@ class Arca:
 
     """
 
+    RUNNER = Path(__file__).parent.resolve() / "_runner.py"
+
     base_dir: str = LazySettingProperty(key="base_dir", default=".arca")
     single_pull: bool = LazySettingProperty(key="single_pull", default=False, convert=bool)
     ignore_cache_errors: bool = LazySettingProperty(key="ignore_cache_errors", default=False, convert=bool)

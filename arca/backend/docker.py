@@ -582,17 +582,34 @@ class DockerBackend(BaseBackend):
         tar.close()
         return tarstream.getvalue()
 
-    def tar_script(self, name: str, script: str) -> bytes:
-        """ Returns a tar with the script to launch in the container.
+    def tar_runner(self):
+        """ Returns a tar with the runner script.
+        """
+        script_bytes = self._arca.RUNNER.read_bytes()
 
-        :param name: Name of the script (``<hash>.py``)
-        :param script: The text of the script, utf-8.
+        tarstream = BytesIO()
+        tar = tarfile.TarFile(fileobj=tarstream, mode='w')
+
+        tarinfo = tarfile.TarInfo(name="runner.py")
+        tarinfo.size = len(script_bytes)
+        tarinfo.mtime = int(time.time())
+
+        tar.addfile(tarinfo, BytesIO(script_bytes))
+        tar.close()
+
+        return tarstream.getvalue()
+
+    def tar_task_definition(self, name: str, contents: str) -> bytes:
+        """ Returns a tar with the task definition.
+
+        :param name: Name of the file
+        :param contents: Contens of the definition, utf-8
         """
         tarstream = BytesIO()
         tar = tarfile.TarFile(fileobj=tarstream, mode='w')
         tarinfo = tarfile.TarInfo(name=name)
 
-        script_bytes = script.encode("utf-8")
+        script_bytes = contents.encode("utf-8")
 
         tarinfo.size = len(script_bytes)
         tarinfo.mtime = int(time.time())
@@ -608,8 +625,9 @@ class DockerBackend(BaseBackend):
                                                working_dir=str((Path("/srv/data") / self.cwd).resolve()),
                                                auto_remove=True)
 
-        container.exec_run(["mkdir", "-p", "/srv"])
+        container.exec_run(["mkdir", "-p", "/srv/scripts"])
         container.put_archive("/srv", self.tar_files(repo_path))
+        container.put_archive("/srv/scripts", self.tar_runner())
 
         return container
 
@@ -681,15 +699,17 @@ class DockerBackend(BaseBackend):
 
             container = self.start_container(image, container_name, repo_path)
 
-        script_name, script = self.create_script(task)
+        task_filename, task_json = self.serialized_task(task)
 
-        container.exec_run(["mkdir", "-p", "/srv/scripts"])
-        container.put_archive("/srv/scripts", self.tar_script(script_name, script))
+        container.put_archive("/srv/scripts", self.tar_task_definition(task_filename, task_json))
 
         res: Optional[ExecResult] = None
 
         try:
-            res = container.exec_run(["python", f"/srv/scripts/{script_name}"], tty=True)
+            res = container.exec_run(["python",
+                                      "/srv/scripts/runner.py",
+                                      f"/srv/scripts/{task_filename}"],
+                                     tty=True)
 
             return Result(json.loads(res.output))
         except BuildError:  # can be raised by  :meth:`Result.__init__`
