@@ -20,12 +20,12 @@ def long_description():
 
 setup(
     name="arca",
-    version="0.0.4",
+    version="0.1.0a0",
     author="Mikuláš Poul",
     author_email="mikulaspoul@gmail.com",
     description="A library for running Python functions (callables) from git repositories "
                 "in various states of isolation with integrating caching.",
-    # keywords=[""],  # TODO
+    keywords=["sandboxing", "git", "docker", "vagrant"],
     license="MIT",
     url="https://github.com/mikicz/arca",
     packages=find_packages(),
@@ -41,7 +41,7 @@ setup(
         "cached-property",
     ],
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",  # TODO: update when ready
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",

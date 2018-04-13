@@ -1,1 +1,1 @@
-include setup.py README.rst LICENSE
+include setup.py README.rst LICENSE docs
