@@ -1,40 +1,24 @@
 # encoding=utf-8
 import json
-import os
 from pathlib import Path
 
 import pytest
 from dogpile.cache.api import NO_VALUE
 
-from arca import Arca, VenvBackend, Task, DockerBackend, CurrentEnvironmentBackend
+from arca import Arca, Task, CurrentEnvironmentBackend
 from arca.exceptions import ArcaMisconfigured
 from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION
 
-cache_arguments = [
-    ["dogpile.cache.dbm", {"filename": str(Path(BASE_DIR) / "cachefile.dbm")}],
-    ['dogpile.cache.memory_pickle', None],
-]
 
-
-def generate_arguments():
-    for backend in [VenvBackend, DockerBackend, CurrentEnvironmentBackend]:
-        for arguments in cache_arguments:
-            yield [backend] + arguments
-
-
-@pytest.mark.parametrize(["backend", "cache_backend", "arguments"], list(generate_arguments()))
-def test_cache(mocker, temp_repo_func, backend, cache_backend, arguments):
-    if backend == VenvBackend and bool(os.environ.get("TRAVIS", False)):
-        pytest.skip("Venv backend doesn't work on Travis")
-
+@pytest.mark.parametrize(["cache_backend", "arguments"], [
+    ("dogpile.cache.dbm", {"filename": str(Path(BASE_DIR) / "cachefile.dbm")}),
+    ('dogpile.cache.memory_pickle', None),
+])
+def test_cache(mocker, temp_repo_func, cache_backend, arguments):
     base_dir = Path(BASE_DIR)
 
-    kwargs = {}
-    if backend == CurrentEnvironmentBackend:
-        kwargs["current_environment_requirements"] = None
-        kwargs["requirements_strategy"] = "install_extra"
-
-    backend = backend(verbosity=2, **kwargs)
+    backend = CurrentEnvironmentBackend(verbosity=2, current_environment_requirements=None,
+                                        requirements_strategy="install_extra")
 
     base_dir.mkdir(parents=True, exist_ok=True)
 
