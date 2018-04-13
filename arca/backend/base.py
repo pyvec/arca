@@ -1,8 +1,6 @@
 import hashlib
 import json
-import os
 import re
-import stat
 import subprocess
 from pathlib import Path
 from typing import Optional, Tuple
@@ -84,13 +82,10 @@ class BaseBackend:
             return None
         return requirements_file
 
-    def create_script(self, task: Task) -> Tuple[str, str]:
-        """ Returns the generated script from the Task and it's name.
+    def serialized_task(self, task: Task) -> Tuple[str, str]:
+        """ Returns the name of the task definition file and its contents.
         """
-        script = task.build_script()
-        script_hash = hashlib.sha256(bytes(script, "utf-8")).hexdigest()
-
-        return f"{script_hash}.py", script
+        return f"{task.hash}.json", task.json
 
     def get_requirements_hash(self, requirements_file: Path) -> str:
         """ Returns an SHA1 hash of the contents of the ``requirements_path``.
@@ -138,15 +133,13 @@ class BaseRunInSubprocessBackend(BaseBackend):
         """
         python_path = self.get_or_create_environment(repo, branch, git_repo, repo_path)
 
-        script_name, script = self.create_script(task)
-        script_path = Path(self._arca.base_dir, "scripts", script_name)
-        script_path.parent.mkdir(parents=True, exist_ok=True)
-        script_path.write_text(script)
+        task_filename, task_json = self.serialized_task(task)
 
-        logger.info("Stored task script at %s", script_path)
+        task_path = Path(self._arca.base_dir, "tasks", task_filename)
+        task_path.parent.mkdir(parents=True, exist_ok=True)
+        task_path.write_text(task_json)
 
-        st = os.stat(str(script_path))
-        script_path.chmod(st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        logger.info("Stored task definition at %s", task_path)
 
         out_output = ""
         err_output = ""
@@ -158,7 +151,9 @@ class BaseRunInSubprocessBackend(BaseBackend):
         try:
             logger.debug("Running with python %s", python_path)
 
-            process = subprocess.Popen([python_path, str(script_path.resolve())],
+            process = subprocess.Popen([python_path,
+                                        str(self._arca.RUNNER),
+                                        str(task_path.resolve())],
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        cwd=cwd)

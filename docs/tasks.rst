@@ -36,7 +36,7 @@ Arguments
 ---------
 
 Both positional and keyword arguments can be provided to the task,
-however they need to be json-serializable (so types ``dict``, ``list``, ``str``, ``int``, ``bool`` or ``None``).
+however they need to be json-serializable (so types ``dict``, ``list``, ``str``, ``int``, ``float``, ``bool`` or ``None``).
 
 Let's say we the following file ``test.py`` in the repository:
 

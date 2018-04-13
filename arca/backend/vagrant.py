@@ -16,13 +16,14 @@ from .docker import DockerBackend
 
 
 @api.task
-def run_script(container_name, script_name):
+def run_script(container_name, definition_filename):
     """ Sequence to run inside the VM, copies data and script to the container and runs the script.
     """
     api.run(f"docker exec {container_name} mkdir -p /srv/scripts")
     api.run(f"docker cp /srv/data {container_name}:/srv")
-    api.run(f"docker cp /vagrant/{script_name} {container_name}:/srv/scripts/")
-    return api.run(f"docker exec -t {container_name} python /srv/scripts/{script_name}")
+    api.run(f"docker cp /vagrant/runner.py {container_name}:/srv/scripts/")
+    api.run(f"docker cp /vagrant/{definition_filename} {container_name}:/srv/scripts/")
+    return api.run(f"docker exec -t {container_name} python /srv/scripts/runner.py /srv/scripts/{definition_filename}")
 
 
 class VagrantBackend(DockerBackend):
@@ -136,6 +137,8 @@ class VagrantBackend(DockerBackend):
         end
         """))
 
+        (vagrant_file.parent / "runner.py").write_text(self._arca.RUNNER.read_text())
+
     def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path):
         """ Gets or creates Vagrantfile, starts up a VM with it, executes Fabric script over SSH, returns result.
         """
@@ -152,9 +155,9 @@ class VagrantBackend(DockerBackend):
 
         logger.info("Vagrantfile in folder %s", vagrant_file)
 
-        script_name, script = self.create_script(task)
+        task_filename, task_json = self.serialized_task(task)
 
-        (vagrant_file / script_name).write_text(script)
+        (vagrant_file / task_filename).write_text(task_json)
 
         container_name = "arca_{}_{}_{}".format(
             self._arca.repo_id(repo),
@@ -185,7 +188,7 @@ class VagrantBackend(DockerBackend):
             api.output.everything = True
 
         try:
-            res = api.execute(run_script, container_name=container_name, script_name=script_name)
+            res = api.execute(run_script, container_name=container_name, definition_filename=task_filename)
 
             return Result(json.loads(res[vagrant.user_hostname_port()].stdout))
         except BuildError:  # can be raised by  :meth:`Result.__init__`
