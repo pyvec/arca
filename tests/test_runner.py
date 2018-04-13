@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import arca._runner as runner
+from arca import Task, Result
 
 
 @pytest.mark.parametrize("definition", [
@@ -101,5 +102,31 @@ def test_run(mocker, func, result):
     else:
         assert output["success"] is False
         assert result.__name__ in output["error"]
+
+    file.unlink()
+
+
+@pytest.mark.parametrize("args,kwargs,result", [
+    ([2], None, 4),
+    (None, {"カ": 2}, 4),
+    (["片仮名"], None, "片仮名片仮名"),
+    (None, {"カ": "片仮名"}, "片仮名片仮名"),
+])
+def test_unicode(mocker, args, kwargs, result):
+    load = mocker.patch("arca._runner.EntryPoint.load")
+
+    def func(カ):
+        return カ * 2
+
+    load.return_value = func
+
+    _, file = tempfile.mkstemp()
+    file = Path(file)
+
+    file.write_text(Task("library.mod:func", args=args, kwargs=kwargs).json)
+
+    output = runner.run(str(file))
+
+    assert Result(output).output == result
 
     file.unlink()
