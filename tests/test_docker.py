@@ -96,7 +96,7 @@ def test_inherit_image(temp_repo_func):
 
 
 def test_push_to_registry(temp_repo_func, mocker):
-    backend = DockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz/arca-test")
+    backend = DockerBackend(verbosity=2, use_registry_name="docker.io/mikicz/arca-test")
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
@@ -123,10 +123,28 @@ def test_push_to_registry(temp_repo_func, mocker):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
     assert backend.build_image.call_count == 0
 
+    # test push disabled
+    mocker.patch.object(backend, "try_pull_image_from_registry", lambda *args: None)
+
+    # untag the image so Arca thinks the images was just built and that it needs to be pushed
+    for image in backend.client.images.list("docker.io/mikicz/arca-test"):
+        for tag in image.tags:
+            if tag.startswith("docker.io/mikicz/arca-test"):
+                backend.client.images.remove(tag)
+
+    backend = DockerBackend(verbosity=2, use_registry_name="docker.io/mikicz/arca-test",
+                            registry_pull_only=True)
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
+
+    mocker.spy(backend, "push_to_registry")
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
+    assert backend.push_to_registry.call_count == 0
+
 
 def test_push_to_registry_fail(temp_repo_func):
     # when a unused repository name is used, it's created -> different username has to be used
-    backend = DockerBackend(verbosity=2, push_to_registry_name="docker.io/mikicz-unknown-user/arca-test")
+    backend = DockerBackend(verbosity=2, use_registry_name="docker.io/mikicz-unknown-user/arca-test")
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
