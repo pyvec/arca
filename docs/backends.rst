@@ -108,8 +108,9 @@ You can then kill the containers by calling ``DockerBackend`` method ``stop_cont
 
 If you're using arca on a CI/CD tool or somewhere docker images are not kept long-term, you can setup pushing
 images with the installed requirements and dependencies to a docker registry and they will be pulled next time instead
-of building them each time. It's set using ``push_to_registry_name`` and you'll have to be logged in to docker
-using ``docker login``.
+of building them each time. It's set using ``use_registry_name`` and you'll have to be logged in to docker
+using ``docker login``. If you can't use ``docker login`` (for example in PRs on Travis CI), you can set
+``registry_pull_only`` and Arca will only attempt to pull from the registry and not push new images.
 
 Settings:
 
@@ -126,8 +127,9 @@ Settings:
   determined how to install requirements on an unknown system.
 * **disable_pull**: Disable pulling prebuilt arca images from Docker Hub and build even the base images locally.
 * **inherit_image**: If you don't wish to use the arca images you can specify what image should be used instead.
-* **push_to_registry_name**: Pushes all built images with installed requirements and dependencies to
-  docker registry with this name, tries to pull image from the registry before building it locally to save time.
+* **use_registry_name**: Uses this registry to store images with installed requirements and dependencies to,
+tries to pull image from the registry before building it locally to save time.
+* **registry_pull_only**: Disables pushing to registry.
 
 (possible settings prefixes: ``ARCA_DOCKER_BACKEND_`` and ``ARCA_BACKEND_``)
 

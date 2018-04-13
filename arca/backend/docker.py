@@ -29,12 +29,13 @@ class DockerBackend(BaseBackend):
 
     Available settings:
 
-    * **python_version** - Set a specific version, current env. python version by default
-    * **keep_container_running** - Stop the container right away (default) or keep it running
+    * **python_version** - set a specific version, current env. python version by default
+    * **keep_container_running** - stop the container right away (default) or keep it running
     * **apk_dependencies** - a list of dependencies to install via alpine
     * **disable_pull** - build all locally
     * **inherit_image** - instead of using the default base Arca image, use this one
-    * **push_to_registry_name** - after installing requirements and dependencies, push the image to registry
+    * **use_registry_name** - use this registry to store images with requirements and dependencies
+    * **registry_pull_only** - only use the registry to pull images, don't push updated
     """
 
     python_version = LazySettingProperty(key="python_version", default=None)
@@ -42,7 +43,8 @@ class DockerBackend(BaseBackend):
     apk_dependencies = LazySettingProperty(key="apk_dependencies", default=None)
     disable_pull = LazySettingProperty(key="disable_pull", default=False)  # so the build can be tested
     inherit_image = LazySettingProperty(key="inherit_image", default=None)
-    push_to_registry_name = LazySettingProperty(key="push_to_registry_name", default=None)
+    use_registry_name = LazySettingProperty(key="use_registry_name", default=None)
+    registry_pull_only = LazySettingProperty(key="registry_pull_only", default=False)
 
     NO_REQUIREMENTS_HASH = "no_req"
     NO_DEPENDENCIES_HASH = "no_dep"
@@ -72,7 +74,7 @@ class DockerBackend(BaseBackend):
         Validates the provided settings.
 
         * Checks ``inherit_image`` format.
-        * Checks ``push_to_registry_name`` format.
+        * Checks ``use_registry_name`` format.
         * Checks that ``apk_dependencies`` is not set when ``inherit_image`` is set.
 
         :raise ArcaMisconfigured: If some of the settings aren't valid.
@@ -90,12 +92,12 @@ class DockerBackend(BaseBackend):
             raise ArcaMisconfigured("An external image is used as a base image, "
                                     "therefore Arca can't install dependencies.")
 
-        if self.push_to_registry_name is not None:
+        if self.use_registry_name is not None:
             try:
                 assert 2 >= len(str(self.inherit_image).split("/")) <= 3
             except ValueError:
-                raise ArcaMisconfigured(f"Registry '{self.push_to_registry_name}' is not valid value for the "
-                                        f"'push_to_registry_name' setting.")
+                raise ArcaMisconfigured(f"Registry '{self.use_registry_name}' is not valid value for the "
+                                        f"'use_registry_name' setting.")
 
     def check_docker_access(self):
         """ Creates a :class:`DockerClient <docker.client.DockerClient>` for the instance and checks the connection.
@@ -490,17 +492,17 @@ class DockerBackend(BaseBackend):
             return self.get_image(image_name, image_tag)
 
     def push_to_registry(self, image: Image, image_tag: str):
-        """ Pushes a local image to a registry based on the ``push_to_registry_name`` setting.
+        """ Pushes a local image to a registry based on the ``use_registry_name`` setting.
 
         :raise PushToRegistryError: If the push fails.
         """
         # already tagged, so it's already pushed
-        if f"{self.push_to_registry_name}:{image_tag}" in image.tags:
+        if f"{self.use_registry_name}:{image_tag}" in image.tags:
             return
 
-        image.tag(self.push_to_registry_name, image_tag)
+        image.tag(self.use_registry_name, image_tag)
 
-        result = self.client.images.push(self.push_to_registry_name, image_tag)
+        result = self.client.images.push(self.use_registry_name, image_tag)
 
         result = result.strip()  # remove empty line at the end of output
 
@@ -513,10 +515,10 @@ class DockerBackend(BaseBackend):
         last_line = json.loads(result.split("\n")[-1])
 
         if "error" in last_line:
-            self.client.images.remove(f"{self.push_to_registry_name}:{image_tag}")
+            self.client.images.remove(f"{self.use_registry_name}:{image_tag}")
             raise PushToRegistryError(f"Push of the image failed because of: {last_line['error']}", full_output=result)
 
-        logger.info("Pushed image to registry %s:%s", self.push_to_registry_name, image_tag)
+        logger.info("Pushed image to registry %s:%s", self.use_registry_name, image_tag)
         logger.debug("Info:\n%s", result)
 
     def image_exists(self, image_name, image_tag):
@@ -535,19 +537,19 @@ class DockerBackend(BaseBackend):
 
     def try_pull_image_from_registry(self, image_name, image_tag) -> Optional[Image]:
         """
-        Tries to pull a image with the tag ``image_tag`` from registry set by ``push_to_registry_name``.
+        Tries to pull a image with the tag ``image_tag`` from registry set by ``use_registry_name``.
         After the image is pulled, it's tagged with ``image_name``:``image_tag`` so lookup can
         be made locally next time.
 
         :return: A :class:`Image <docker.models.images.Image>` instance if the image exists, ``None`` otherwise.
         """
         try:
-            image: Image = self.client.images.pull(self.push_to_registry_name, image_tag)
+            image: Image = self.client.images.pull(self.use_registry_name, image_tag)
         except (docker.errors.ImageNotFound, docker.errors.NotFound):  # the image doesn't exist
-            logger.info("Tried to pull %s:%s from a registry, not found", self.push_to_registry_name, image_tag)
+            logger.info("Tried to pull %s:%s from a registry, not found", self.use_registry_name, image_tag)
             return None
 
-        logger.info("Pulled %s:%s from registry, tagged %s:%s", self.push_to_registry_name, image_tag,
+        logger.info("Pulled %s:%s from registry, tagged %s:%s", self.use_registry_name, image_tag,
                     image_name, image_tag)
 
         # the name and tag are different on the repo, let's tag it with local name so exists checks run smoothly
@@ -616,9 +618,9 @@ class DockerBackend(BaseBackend):
         Returns an image for the specific repo (based on settings and requirements).
 
         1. Checks if the image already exists locally
-        2. Tries to pull it from registry (if ``push_to_registry_name`` is set)
+        2. Tries to pull it from registry (if ``use_registry_name`` is set)
         3. Builds the image
-        4. Pushes the image to registry so the image is available next time (if ``push_to_registry_name`` is set)
+        4. Pushes the image to registry so the image is available next time (if ``registry_pull_only`` is not set)
 
         See :meth:`run` for parameters descriptions.
         """
@@ -632,21 +634,21 @@ class DockerBackend(BaseBackend):
             image = self.get_image(image_name, image_tag)
 
             # in case the push to registry was set later and the image wasn't pushed when built
-            if self.push_to_registry_name is not None:
+            if self.use_registry_name is not None and not self.registry_pull_only:
                 self.push_to_registry(image, image_tag)
 
             return image
 
-        if self.push_to_registry_name is not None:
+        if self.use_registry_name is not None:
             # the target image might have been built and pushed in a previous run already, let's try to pull it
-            img = self.try_pull_image_from_registry(image_name, image_tag)
+            image = self.try_pull_image_from_registry(image_name, image_tag)
 
-            if img is not None:  # image wasn't found
-                return img
+            if image is not None:  # image wasn't found
+                return image
 
         image = self.build_image(image_name, image_tag, repo_path.parent, requirements_file, dependencies)
 
-        if self.push_to_registry_name is not None:
+        if self.use_registry_name is not None and not self.registry_pull_only:
             self.push_to_registry(image, image_tag)
 
         return image
