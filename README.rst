@@ -8,7 +8,7 @@ Arca
    :target: https://codecov.io/gh/mikicz/arca
 
 .. image:: https://img.shields.io/pypi/v/arca.svg
-   :target: https://pypi.python.org/pypi/arca
+   :target: https://pypi.org/project/arca/
 
 .. image:: https://img.shields.io/github/license/mikicz/arca.svg?style=flat
    :target: https://github.com/mikicz/arca/blob/master/LICENSE
