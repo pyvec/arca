@@ -116,6 +116,8 @@ Contributing
 
 I am developing this library as my bachelor thesis and will be not accepting any PRs at the moment.
 
+.. split_here
+
 Links
 *****
 

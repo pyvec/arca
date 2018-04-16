@@ -13,7 +13,7 @@ if sys.version_info < (3, 6):
 
 def long_description():
     return """{}\n\n{}""".format(
-        (Path(__file__).resolve().parent / "README.rst").read_text(),
+        (Path(__file__).resolve().parent / "README.rst").read_text().split(".. split_here")[0],
         (Path(__file__).resolve().parent / "docs/changes.rst").read_text()
     )
 
@@ -58,5 +58,10 @@ setup(
     tests_require=["pytest", "pytest-flake8", "pytest-cov", "pytest-mock"],
     cmdclass={
         "deploy_docker_bases": DeployDockerBasesCommand
-    }
+    },
+    project_urls={
+        "Documentation": "https://arca.readthedocs.io/",
+        "CI": "https://travis-ci.org/mikicz/arca",
+        "Test coverage": "https://codecov.io/gh/mikicz/arca",
+    },
 )
