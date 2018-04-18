@@ -39,10 +39,10 @@ setup(
     ],
     extras_require={
         "docker": [
-            "docker~=3.1.0",
+            "docker~=3.2.1",
         ],
         "vagrant": [
-            "docker~=3.1.0",
+            "docker~=3.2.1",
             "python-vagrant",
             "fabric3",
         ],
