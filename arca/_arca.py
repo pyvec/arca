@@ -249,6 +249,35 @@ class Arca:
             except KeyError:
                 pass
 
+    def get_reference_repository(self, reference: Optional[Path], repo: str) -> Optional[Path]:
+        """
+        Returns a repository to use in clone command, if there is one to be referenced.
+        Either provided by the user of generated from already cloned branches (master is preferred).
+
+        :param reference: Path to a local repository provided by the user or None.
+        :param repo: Reference for which remote repository.
+        """
+        if reference is not None:
+            return reference.absolute()
+
+        repo_path = self.get_path_to_repo(repo)
+
+        if not repo_path.exists():
+            return None
+
+        master = repo_path / "master"
+
+        if master.exists() and master.is_dir():
+            return master
+
+        for existing_branch in repo_path.iterdir():
+            if not existing_branch.is_dir():
+                continue
+
+            return existing_branch.resolve()
+
+        return None
+
     def _pull(self, *, repo_path: Path=None, git_repo: Repo=None, repo: str=None, branch: str=None,
               depth: Optional[int]=None,
               reference: Optional[Path]=None
@@ -271,8 +300,10 @@ class Arca:
             if depth is not None:
                 kwargs["depth"] = depth
 
+            reference = self.get_reference_repository(reference, repo)
+
             if reference is not None:
-                kwargs["reference-if-able"] = str(reference.absolute())
+                kwargs["reference-if-able"] = str(reference)
                 kwargs["dissociate"] = True
 
             try:
