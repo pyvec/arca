@@ -5,7 +5,6 @@ from pathlib import Path
 from textwrap import dedent
 from uuid import uuid4
 
-from fabric import api
 from git import Repo
 
 from arca.exceptions import ArcaMisconfigured, BuildError
@@ -13,17 +12,6 @@ from arca.result import Result
 from arca.task import Task
 from arca.utils import LazySettingProperty, logger
 from .docker import DockerBackend
-
-
-@api.task
-def run_script(container_name, definition_filename):
-    """ Sequence to run inside the VM, copies data and script to the container and runs the script.
-    """
-    api.run(f"docker exec {container_name} mkdir -p /srv/scripts")
-    api.run(f"docker cp /srv/data {container_name}:/srv")
-    api.run(f"docker cp /vagrant/runner.py {container_name}:/srv/scripts/")
-    api.run(f"docker cp /vagrant/{definition_filename} {container_name}:/srv/scripts/")
-    return api.run(f"docker exec -t {container_name} python /srv/scripts/runner.py /srv/scripts/{definition_filename}")
 
 
 class VagrantBackend(DockerBackend):
@@ -53,6 +41,27 @@ class VagrantBackend(DockerBackend):
     quiet = LazySettingProperty(key="quiet", default=True, convert=bool)
     destroy = LazySettingProperty(key="destroy", default=True, convert=bool)
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        try:
+            import docker  # noqa: F401
+        except ImportError:
+            raise ArcaMisconfigured(ArcaMisconfigured.PACKAGE_MISSING.format("docker"))
+
+        try:
+            import vagrant
+        except ImportError:
+            raise ArcaMisconfigured(ArcaMisconfigured.PACKAGE_MISSING.format("python-vagrant"))
+
+        try:
+            import fabric  # noqa: F401
+        except ImportError:
+            raise ArcaMisconfigured(ArcaMisconfigured.PACKAGE_MISSING.format("fabric3"))
+
+        if vagrant.get_vagrant_executable() is None:
+            raise ArcaMisconfigured("Vagrant executable is not accessible!")
+
     def validate_settings(self):
         """ Runs :meth:`arca.DockerBackend.validate_settings` and checks extra:
 
@@ -73,15 +82,6 @@ class VagrantBackend(DockerBackend):
 
         if self.registry_pull_only:
             raise ArcaMisconfigured("Push must be enabled for VagrantBackend")
-
-    def check_vagrant_access(self):
-        """
-        :raise BuildError: If Vagrant is not installed.
-        """
-        from vagrant import get_vagrant_executable
-
-        if get_vagrant_executable() is None:
-            raise BuildError("Vagrant executable is not accessible!")
 
     def get_vagrant_file_location(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> Path:
         """ Returns a directory where Vagrantfile should be. Based on repo, branch and tag of the used docker image.
@@ -142,13 +142,33 @@ class VagrantBackend(DockerBackend):
 
         (vagrant_file.parent / "runner.py").write_text(self._arca.RUNNER.read_text())
 
+    @property
+    def fabric_task(self):
+        """ Returns a fabric task which executes the script in the Vagrant VM
+        """
+        from fabric import api
+
+        @api.task
+        def run_script(container_name, definition_filename):
+            """ Sequence to run inside the VM, copies data and script to the container and runs the script.
+            """
+            api.run(f"docker exec {container_name} mkdir -p /srv/scripts")
+            api.run(f"docker cp /srv/data {container_name}:/srv")
+            api.run(f"docker cp /vagrant/runner.py {container_name}:/srv/scripts/")
+            api.run(f"docker cp /vagrant/{definition_filename} {container_name}:/srv/scripts/")
+            return api.run(" ".join([
+                "docker", "exec", "-t", container_name,
+                "python", "/srv/scripts/runner.py", f"/srv/scripts/{definition_filename}",
+            ]))
+
+        return run_script
+
     def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path):
         """ Gets or creates Vagrantfile, starts up a VM with it, executes Fabric script over SSH, returns result.
         """
         # importing here, prints out warning when vagrant is missing even when the backend is not used otherwise
         from vagrant import Vagrant, make_file_cm
-
-        self.check_vagrant_access()
+        from fabric import api
 
         vagrant_file = self.get_vagrant_file_location(repo, branch, git_repo, repo_path)
 
@@ -191,7 +211,7 @@ class VagrantBackend(DockerBackend):
             api.output.everything = True
 
         try:
-            res = api.execute(run_script, container_name=container_name, definition_filename=task_filename)
+            res = api.execute(self.fabric_task, container_name=container_name, definition_filename=task_filename)
 
             return Result(json.loads(res[vagrant.user_hostname_port()].stdout))
         except BuildError:  # can be raised by  :meth:`Result.__init__`

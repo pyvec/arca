@@ -9,6 +9,9 @@ class ArcaMisconfigured(ValueError, ArcaException):
     """ An exception for all cases of misconfiguration.
     """
 
+    PACKAGE_MISSING = "Couldn't import package '{}' that is required for this backend. " \
+                      "Did you install the extra requirements for this backend?"
+
 
 class TaskMisconfigured(ValueError, ArcaException):
     """ Raised if Task is incorrectly defined.
