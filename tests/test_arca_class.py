@@ -307,6 +307,30 @@ def test_reference_validate(temp_repo_static, reference, valid):
             arca.static_filename(temp_repo_static.url, temp_repo_static.branch, relative_path, reference=reference)
 
 
+def test_get_reference_repository(temp_repo_static):
+    """
+    Test that the :meth:`Arca.get_reference_repository` works when reference is not provided by the user
+    or when branch `master` is not pulled first (as it is in other tests).
+    """
+    temp_repo_static.file_path.write_text("master")
+    temp_repo_static.repo.index.add([str(temp_repo_static.file_path)])
+    temp_repo_static.repo.index.commit("Initial")
+
+    for branch in "branch1", "branch2", "branch3":
+        temp_repo_static.repo.create_head(branch)
+        temp_repo_static.repo.branches[branch].checkout()
+        temp_repo_static.file_path.write_text(branch)
+        temp_repo_static.repo.index.add([str(temp_repo_static.file_path)])
+        temp_repo_static.repo.index.commit(branch)
+
+    arca = Arca(base_dir=BASE_DIR)
+
+    for branch in "branch1", "branch2", "master", "branch3":
+        _, path = arca.get_files(temp_repo_static.url, branch)
+
+        assert (path / temp_repo_static.file_path.name).read_text() == branch
+
+
 def test_pull_error():
     arca = Arca(base_dir=BASE_DIR)
 
