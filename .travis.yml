@@ -29,7 +29,8 @@ after_success:
 - codecov
 branches:
   only:
-    master
+  - master
+  - /release-v[0-9]+/
 deploy:
   provider: script
   skip_cleanup: true
