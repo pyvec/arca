@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.1.0 (2018-04-18)
+******************
+
+Initial release
+
+Changes:
+ * Updated PyPI description and metadata
+
 0.1.0a0 (2018-04-13)
 ********************
 
