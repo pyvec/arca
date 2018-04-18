@@ -9,10 +9,12 @@ from io import BytesIO
 from pathlib import Path
 from typing import Optional, List, Tuple, Union, Callable
 
-import docker
-import docker.errors
-from docker.models.containers import Container, ExecResult
-from docker.models.images import Image
+try:
+    import docker
+    import docker.errors
+except ImportError:
+    docker = None
+
 from git import Repo
 from requests.exceptions import ConnectionError
 
@@ -65,6 +67,9 @@ class DockerBackend(BaseBackend):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        if docker is None:
+            raise ArcaMisconfigured(ArcaMisconfigured.PACKAGE_MISSING.format("docker"))
 
         self._containers = set()
         self.client = None
@@ -367,12 +372,14 @@ class DockerBackend(BaseBackend):
 
     def build_image_from_inherited_image(self, image_name: str, image_tag: str,
                                          build_context: Path,
-                                         requirements_file: Optional[Path]) -> Image:
+                                         requirements_file: Optional[Path]):
         """
         Builds a image with installed requirements from the inherited image. (Or just tags the image
         if there are no requirements.)
 
         See :meth:`build_image` for parameters descriptions.
+
+        :rtype: docker.models.images.Image
         """
 
         base_name, base_tag = self.get_inherit_image()
@@ -429,7 +436,7 @@ class DockerBackend(BaseBackend):
     def build_image(self, image_name: str, image_tag: str,
                     build_context: Path,
                     requirements_file: Optional[Path],
-                    dependencies: Optional[List[str]]) -> Image:
+                    dependencies: Optional[List[str]]):
         """ Builds an image for specific requirements and dependencies, based on the settings.
 
         :param image_name: How the image should be named
@@ -438,6 +445,7 @@ class DockerBackend(BaseBackend):
         :param requirements_file: Path to the requirements file in the repository (or ``None`` if it doesn't exist)
         :param dependencies: List of dependencies (in the formalized format)
         :return: The Image instance.
+        :rtype: docker.models.images.Image
         """
         if self.inherit_image is not None:
             return self.build_image_from_inherited_image(image_name, image_tag, build_context, requirements_file)
@@ -491,9 +499,10 @@ class DockerBackend(BaseBackend):
 
             return self.get_image(image_name, image_tag)
 
-    def push_to_registry(self, image: Image, image_tag: str):
+    def push_to_registry(self, image, image_tag: str):
         """ Pushes a local image to a registry based on the ``use_registry_name`` setting.
 
+        :type image: docker.models.images.Image
         :raise PushToRegistryError: If the push fails.
         """
         # already tagged, so it's already pushed
@@ -530,21 +539,24 @@ class DockerBackend(BaseBackend):
         except docker.errors.ImageNotFound:
             return False
 
-    def get_image(self, image_name, image_tag) -> Image:
+    def get_image(self, image_name, image_tag):
         """ Returns a :class:`Image <docker.models.images.Image>` instance for the provided name and tag.
+
+        :rtype: docker.models.images.Image
         """
         return self.client.images.get(f"{image_name}:{image_tag}")
 
-    def try_pull_image_from_registry(self, image_name, image_tag) -> Optional[Image]:
+    def try_pull_image_from_registry(self, image_name, image_tag):
         """
         Tries to pull a image with the tag ``image_tag`` from registry set by ``use_registry_name``.
         After the image is pulled, it's tagged with ``image_name``:``image_tag`` so lookup can
         be made locally next time.
 
         :return: A :class:`Image <docker.models.images.Image>` instance if the image exists, ``None`` otherwise.
+        :rtype: Optional[docker.models.images.Image]
         """
         try:
-            image: Image = self.client.images.pull(self.use_registry_name, image_tag)
+            image = self.client.images.pull(self.use_registry_name, image_tag)
         except (docker.errors.ImageNotFound, docker.errors.NotFound):  # the image doesn't exist
             logger.info("Tried to pull %s:%s from a registry, not found", self.use_registry_name, image_tag)
             return None
@@ -557,11 +569,12 @@ class DockerBackend(BaseBackend):
 
         return image
 
-    def container_running(self, container_name) -> Optional[Container]:
+    def container_running(self, container_name):
         """
         Finds out if a container with name ``container_name`` is running.
 
         :return: :class:`Container <docker.models.containers.Container>` if it's running, ``None`` otherwise.
+        :rtype: Optional[docker.models.container.Container]
         """
         filters = {
             "name": container_name,
@@ -618,8 +631,11 @@ class DockerBackend(BaseBackend):
 
         return tarstream.getvalue()
 
-    def start_container(self, image: Image, container_name: str, repo_path: Path) -> Container:
+    def start_container(self, image, container_name: str, repo_path: Path):
         """ Starts a container with the image and name ``container_name`` and copies the repository into the container.
+
+        :type image: docker.models.images.Image
+        :rtype: docker.models.container.Container
         """
         container = self.client.containers.run(image, command="bash -i", detach=True, tty=True, name=container_name,
                                                working_dir=str((Path("/srv/data") / self.cwd).resolve()),
@@ -631,7 +647,7 @@ class DockerBackend(BaseBackend):
 
         return container
 
-    def get_image_for_repo(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> Image:
+    def get_image_for_repo(self, repo: str, branch: str, git_repo: Repo, repo_path: Path):
         """
         Returns an image for the specific repo (based on settings and requirements).
 
@@ -641,6 +657,8 @@ class DockerBackend(BaseBackend):
         4. Pushes the image to registry so the image is available next time (if ``registry_pull_only`` is not set)
 
         See :meth:`run` for parameters descriptions.
+
+        :rtype: docker.models.images.Image
         """
         requirements_file = self.get_requirements_file(repo_path)
         dependencies = self.get_dependencies()
@@ -703,7 +721,7 @@ class DockerBackend(BaseBackend):
 
         container.put_archive("/srv/scripts", self.tar_task_definition(task_filename, task_json))
 
-        res: Optional[ExecResult] = None
+        res = None
 
         try:
             res = container.exec_run(["python",

@@ -128,7 +128,7 @@ Settings:
 * **disable_pull**: Disable pulling prebuilt arca images from Docker Hub and build even the base images locally.
 * **inherit_image**: If you don't wish to use the arca images you can specify what image should be used instead.
 * **use_registry_name**: Uses this registry to store images with installed requirements and dependencies to,
-tries to pull image from the registry before building it locally to save time.
+  tries to pull image from the registry before building it locally to save time.
 * **registry_pull_only**: Disables pushing to registry.
 
 (possible settings prefixes: ``ARCA_DOCKER_BACKEND_`` and ``ARCA_BACKEND_``)

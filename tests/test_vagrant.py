@@ -8,8 +8,9 @@ from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION
 
 
 def test_validation():
-    """ These tests work on Travis
-    """
+    if os.environ.get("TRAVIS", False):
+        pytest.skip("Vagrant doesn't work on Travis")
+
     backend = VagrantBackend()
 
     # VagrantBackend requires `push_to_registry`
