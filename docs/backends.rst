@@ -97,7 +97,8 @@ with ``docker`` (see `documentation <https://docs.docker.com/install/linux/linux
 This backend firstly creates an image with requirements and dependencies installed so the installation only runs one.
 By default the images are based on `custom images <https://hub.docker.com/r/mikicz/arca/tags/>`_, which have Python
 and several build tools pre-installed.
-These images are based on ``alpine`` and use `pyenv <https://github.com/pyenv/pyenv>`_ to install Python.
+These images are based on ``debian`` (slim ``stretch`` version) and use `pyenv <https://github.com/pyenv/pyenv>`_
+to install Python.
 You can specify you want to base your images on a different image with the ``inherit_image`` setting.
 
 Once arca has an image with the requirements installed, it launches a container for each task and
@@ -120,9 +121,9 @@ Settings:
   but only CPython 3.6 has been tested. The default is the Python version of the current environment.
   This setting is ignored if ``inherit_image`` is set.
 * **keep_container_running**: When ``True``, containers aren't killed once the task finishes. Default is ``False``.
-* **apk_dependencies**: For some python libraries, system dependencies are required,
+* **apt_dependencies**: For some python libraries, system dependencies are required,
   for example ``libxml2-dev`` and ``libxslt-dev`` are needed for ``lxml``.
-  With this settings you can specify a list of system dependencies that will be installed via alpine ``apk``.
+  With this settings you can specify a list of system dependencies that will be installed via debian ``apt-get``.
   This setting is ignored if ``inherit_image`` is set since arca can't
   determined how to install requirements on an unknown system.
 * **disable_pull**: Disable pulling prebuilt arca images from Docker Hub and build even the base images locally.
