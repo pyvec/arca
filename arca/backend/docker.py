@@ -38,13 +38,13 @@ class DockerBackend(BaseBackend):
     * **registry_pull_only** - only use the registry to pull images, don't push updated
     """
 
-    python_version = LazySettingProperty(key="python_version", default=None)
-    keep_container_running = LazySettingProperty(key="keep_container_running", default=False)
-    apk_dependencies = LazySettingProperty(key="apk_dependencies", default=None)
-    disable_pull = LazySettingProperty(key="disable_pull", default=False)  # so the build can be tested
-    inherit_image = LazySettingProperty(key="inherit_image", default=None)
-    use_registry_name = LazySettingProperty(key="use_registry_name", default=None)
-    registry_pull_only = LazySettingProperty(key="registry_pull_only", default=False)
+    python_version = LazySettingProperty(default=None)
+    keep_container_running = LazySettingProperty(default=False)
+    apk_dependencies = LazySettingProperty(default=None)
+    disable_pull = LazySettingProperty(default=False)  # so the build can be tested
+    inherit_image = LazySettingProperty(default=None)
+    use_registry_name = LazySettingProperty(default=None)
+    registry_pull_only = LazySettingProperty(default=False)
 
     NO_REQUIREMENTS_HASH = "no_req"
     NO_DEPENDENCIES_HASH = "no_dep"

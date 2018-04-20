@@ -1,6 +1,5 @@
 import hashlib
 import json
-import os
 import re
 from collections import defaultdict
 from datetime import datetime
@@ -34,16 +33,16 @@ class Arca:
 
     RUNNER = Path(__file__).parent.resolve() / "_runner.py"
 
-    base_dir: str = LazySettingProperty(key="base_dir", default=".arca")
-    single_pull: bool = LazySettingProperty(key="single_pull", default=False, convert=bool)
-    ignore_cache_errors: bool = LazySettingProperty(key="ignore_cache_errors", default=False, convert=bool)
+    base_dir: str = LazySettingProperty(default=".arca")
+    single_pull: bool = LazySettingProperty(default=False, convert=bool)
+    ignore_cache_errors: bool = LazySettingProperty(default=False, convert=bool)
 
     def __init__(self, backend: BackendDefinitionType=NOT_SET,
                  settings=None,
                  single_pull=None,
                  base_dir=None,
                  ignore_cache_errors=None) -> None:
-        self.settings: Settings = self._get_settings(settings)
+        self.settings: Settings = Settings(settings)
 
         if ignore_cache_errors is not None:
             self.ignore_cache_errors = bool(ignore_cache_errors)
@@ -79,22 +78,6 @@ class Arca:
             raise ArcaMisconfigured(f"{type(backend)} is not an subclass of BaseBackend")
 
         return backend
-
-    def _get_settings(self, settings: Optional[Dict[str, Any]]) -> Settings:
-        """
-        Returns a initialized a :class:`arca.utils.Settings` instance,
-        from the provided dictionary and from environment variables
-        """
-        if settings is not None:
-            _settings = Settings(settings)
-        else:
-            _settings = Settings()
-
-        for key, val in os.environ.items():
-            if key.startswith(Settings.PREFIX):
-                _settings.set(key, val)
-
-        return _settings
 
     def make_region(self) -> CacheRegion:
         """

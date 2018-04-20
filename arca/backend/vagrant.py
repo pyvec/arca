@@ -48,10 +48,10 @@ class VagrantBackend(DockerBackend):
 
     # Box has to either not contain docker at all (will be installed in that case, takes a long time)
     # or has to contain Docker with version >= 1.8 (Versions < 1.8 can't copy files from host to container)
-    box = LazySettingProperty(key="box", default="ailispaw/barge")
-    provider = LazySettingProperty(key="provider", default="virtualbox")
-    quiet = LazySettingProperty(key="quiet", default=True, convert=bool)
-    destroy = LazySettingProperty(key="destroy", default=True, convert=bool)
+    box = LazySettingProperty(default="ailispaw/barge")
+    provider = LazySettingProperty(default="virtualbox")
+    quiet = LazySettingProperty(default=True, convert=bool)
+    destroy = LazySettingProperty(default=True, convert=bool)
 
     def validate_settings(self):
         """ Runs :meth:`arca.DockerBackend.validate_settings` and checks extra:
