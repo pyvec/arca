@@ -1,5 +1,6 @@
 import importlib
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Callable, Union
 
@@ -50,18 +51,24 @@ class LazySettingProperty:
     The property is evaluated lazily when accessed, getting the value from settings
     using the instances method ``get_setting``. The property can be overridden by the constructor.
     """
-    def __init__(self, *, key, default=NOT_SET, convert: Callable=None) -> None:
+    class SettingsNotReady(Exception):
+        pass
+
+    def __init__(self, *, key=None, default=NOT_SET, convert: Callable=None) -> None:
         self.key = key
         self.default = default
         self.convert = convert
 
     def __set_name__(self, cls, name):
         self.name = name
+        if self.key is None:
+            self.key = name
 
     def __get__(self, instance, cls):
-        if instance is None or (hasattr(instance, "_arca") and instance._arca is None):
+        try:
+            result = instance.get_setting(self.key, self.default)
+        except self.SettingsNotReady:
             return self
-        result = instance.get_setting(self.key, self.default)
 
         if self.convert is not None:
             result = self.convert(result)
@@ -77,7 +84,11 @@ class Settings:
     PREFIX = "ARCA"
 
     def __init__(self, data: Optional[Dict[str, Any]]=None) -> None:
-        self._data = data or {}
+        self._data = dict(data) if data else {}
+
+        for key, val in os.environ.items():
+            if key.startswith(Settings.PREFIX):
+                self.set(key, val)
 
     def set(self, key, value):
         self._data[key] = value

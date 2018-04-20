@@ -40,10 +40,8 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
 
     """
 
-    current_environment_requirements = LazySettingProperty(key="current_environment_requirements",
-                                                           default="requirements.txt")
-    requirements_strategy = LazySettingProperty(key="requirements_strategy",
-                                                default=RequirementsStrategy.RAISE,
+    current_environment_requirements = LazySettingProperty(default="requirements.txt")
+    requirements_strategy = LazySettingProperty(default=RequirementsStrategy.RAISE,
                                                 convert=RequirementsStrategy)
 
     def install_requirements(self, *, path: Optional[Path] = None, requirements: Optional[Iterable[str]] = None,
