@@ -33,7 +33,7 @@ class DockerBackend(BaseBackend):
 
     * **python_version** - set a specific version, current env. python version by default
     * **keep_container_running** - stop the container right away (default) or keep it running
-    * **apk_dependencies** - a list of dependencies to install via alpine
+    * **apt_dependencies** - a list of dependencies to install via ``apt-get``
     * **disable_pull** - build all locally
     * **inherit_image** - instead of using the default base Arca image, use this one
     * **use_registry_name** - use this registry to store images with requirements and dependencies
@@ -42,7 +42,7 @@ class DockerBackend(BaseBackend):
 
     python_version = LazySettingProperty(default=None)
     keep_container_running = LazySettingProperty(default=False)
-    apk_dependencies = LazySettingProperty(default=None)
+    apt_dependencies = LazySettingProperty(default=None)
     disable_pull = LazySettingProperty(default=False)  # so the build can be tested
     inherit_image = LazySettingProperty(default=None)
     use_registry_name = LazySettingProperty(default=None)
@@ -60,8 +60,11 @@ class DockerBackend(BaseBackend):
 
     INSTALL_DEPENDENCIES = """
         FROM {name}:{tag}
-        RUN apk update
-        RUN apk add --no-cache {dependencies}
+        USER root
+        RUN apt-get update && \
+            apt-get install --no-install-recommends -y --autoremove {dependencies} && \
+            apt-get clean
+        USER arca
         CMD bash -i
     """
 
@@ -80,7 +83,7 @@ class DockerBackend(BaseBackend):
 
         * Checks ``inherit_image`` format.
         * Checks ``use_registry_name`` format.
-        * Checks that ``apk_dependencies`` is not set when ``inherit_image`` is set.
+        * Checks that ``apt_dependencies`` is not set when ``inherit_image`` is set.
 
         :raise ArcaMisconfigured: If some of the settings aren't valid.
         """
@@ -118,17 +121,17 @@ class DockerBackend(BaseBackend):
             raise BuildError("Docker is not running or the current user doesn't have permissions to access docker.")
 
     def get_dependencies(self) -> Optional[List[str]]:
-        """ Returns the ``apk_dependencies`` setting to a standardized format.
+        """ Returns the ``apt_dependencies`` setting to a standardized format.
 
         :raise ArcaMisconfigured: if the dependencies can't be converted into a list of strings
         :return: List of dependencies, ``None`` if there are none.
         """
 
-        if not self.apk_dependencies:
+        if not self.apt_dependencies:
             return None
 
         try:
-            dependencies = list([str(x).strip() for x in self.apk_dependencies])
+            dependencies = list([str(x).strip() for x in self.apt_dependencies])
         except (TypeError, ValueError):
             raise ArcaMisconfigured("Apk dependencies can't be converted into a list of strings")
 
@@ -303,23 +306,34 @@ class DockerBackend(BaseBackend):
 
         pyenv_installer = "https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer"
         dockerfile = f"""
-            FROM alpine:3.5
-            RUN apk add --no-cache curl bash git nano g++ make jpeg-dev zlib-dev ca-certificates openssl-dev \
-                                   readline-dev bzip2-dev sqlite-dev ncurses-dev linux-headers build-base \
-                                   openssh
+            FROM debian:stretch-slim
+            RUN apt-get update && \
+                apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+                                   libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+                                   xz-utils tk-dev libffi-dev git && \
+                apt-get clean
 
-            RUN curl -L {pyenv_installer} -o /pyenv-installer && \
-                  touch /root/.bashrc && \
-                  /bin/ln -s /root/.bashrc /root/.bash_profile && \
-                  /bin/bash /pyenv-installer && \
-                  rm /pyenv-installer && \
-                  echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bash_profile && \
-                  echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bash_profile && \
-                  echo 'eval "$(pyenv init -)"' >> ~/.bash_profile
+            RUN adduser --system --disabled-password --shell /bin/bash arca
 
-            ENV HOME  /root
-            ENV PYENV_ROOT $HOME/.pyenv
-            ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
+            USER arca
+            WORKDIR /home/arca
+            RUN echo "source $HOME/.bash_profile" >> .bashrc
+
+            RUN curl -L {pyenv_installer} -o ~/pyenv-installer && \
+                  /bin/bash ~/pyenv-installer && \
+                  rm ~/pyenv-installer && \
+                  echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /home/arca/.bash_profile && \
+                  echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> /home/arca/.bash_profile && \
+                  echo 'eval "$(pyenv init -)"' >> /home/arca/.bash_profile
+
+            USER root
+
+            RUN apt-get remove -y --autoremove curl && \
+                apt-get clean -y
+
+            RUN mkdir /srv/scripts
+
+            USER arca
 
             SHELL ["bash", "-lc"]
             CMD bash -i
@@ -341,10 +355,10 @@ class DockerBackend(BaseBackend):
 
             return f"""
                 FROM {base_arca_name}:{base_arca_tag}
-                RUN pyenv update
-                RUN pyenv install {python_version}
+                RUN pyenv update && \
+                    pyenv install {python_version}
                 ENV PYENV_VERSION {python_version}
-                RUN mkdir /srv/scripts
+                ENV PATH "/home/arca/.pyenv/shims:$PATH"
                 CMD bash -i
             """
 
@@ -407,7 +421,7 @@ class DockerBackend(BaseBackend):
                                               dependencies: Optional[List[str]]) -> Tuple[str, str]:
         """
         Return name and tag of a image, based on the Arca python image, with installed dependencies defined
-        by ``apk_dependencies``.
+        by ``apt_dependencies``.
 
         :param image_name: Name of the image which will be ultimately used for the image.
         :param dependencies: List of dependencies in the standardized format.
@@ -637,7 +651,11 @@ class DockerBackend(BaseBackend):
         :type image: docker.models.images.Image
         :rtype: docker.models.container.Container
         """
-        container = self.client.containers.run(image, command="bash -i", detach=True, tty=True, name=container_name,
+        command = "bash -i"
+        if self.inherit_image:
+            command = "sh -i"
+
+        container = self.client.containers.run(image, command=command, detach=True, tty=True, name=container_name,
                                                working_dir=str((Path("/srv/data") / self.cwd).resolve()),
                                                auto_remove=True)
 
