@@ -25,8 +25,8 @@ class BaseBackend:
     * **cwd**: Relative path to the required working directory. (default is ``""``, the root of the repo)
     """
 
-    requirements_location: str = LazySettingProperty(key="requirements_location", default="requirements.txt")
-    cwd: str = LazySettingProperty(key="cwd", default="")
+    requirements_location: str = LazySettingProperty(default="requirements.txt")
+    cwd: str = LazySettingProperty(default="")
 
     def __init__(self, **settings):
         self._arca = None
@@ -66,6 +66,8 @@ class BaseBackend:
 
         :raise KeyError: If the key is not set and default isn't provided.
         """
+        if self._arca is None:
+            raise LazySettingProperty.SettingsNotReady
         return self._arca.settings.get(*self.get_settings_keys(key), default=default)
 
     def get_requirements_file(self, path: Path) -> Optional[Path]:
