@@ -37,17 +37,17 @@ def return_str_function():
 """
 
 RETURN_PYTHON_VERSION_FUNCTION = """
-import sys
+import platform
 
 def return_python_version():
-    return "{}.{}.{}".format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro)
+    return platform.python_version()
 """
 
-RETURN_FREETYPE_VERSION = """
-import freetype
+RETURN_ALSAAUDIO_INSTALLED = """
+import alsaaudio
 
-def return_freetype_version():
-    return freetype.version()
+def return_alsaaudio_installed():
+    return alsaaudio is not None
 """
 
 RETURN_PLATFORM = """

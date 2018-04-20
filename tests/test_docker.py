@@ -1,9 +1,11 @@
+import platform
+
 import pytest
 
 from arca import Arca, DockerBackend, Task
 from arca.exceptions import ArcaMisconfigured, PushToRegistryError
 from common import (RETURN_COLORAMA_VERSION_FUNCTION, BASE_DIR, RETURN_PLATFORM,
-                    RETURN_PYTHON_VERSION_FUNCTION, RETURN_FREETYPE_VERSION)
+                    RETURN_PYTHON_VERSION_FUNCTION, RETURN_ALSAAUDIO_INSTALLED)
 
 
 def test_keep_container_running(temp_repo_func):
@@ -35,7 +37,7 @@ def test_keep_container_running(temp_repo_func):
     assert count_after_stop == container_count
 
 
-@pytest.mark.parametrize("python_version", ["3.6.0", "3.6.3"])
+@pytest.mark.parametrize("python_version", ["3.6.0", platform.python_version()])
 def test_python_version(temp_repo_func, python_version):
     backend = DockerBackend(verbosity=2, python_version=python_version)
 
@@ -49,25 +51,25 @@ def test_python_version(temp_repo_func, python_version):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == python_version
 
 
-def test_apk_dependencies(temp_repo_func):
-    backend = DockerBackend(verbosity=2, apk_dependencies=["freetype-dev"])
+def test_apt_dependencies(temp_repo_func):
+    backend = DockerBackend(verbosity=2, apt_dependencies=["libasound2-dev"])
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     requirements_path = temp_repo_func.repo_path / "requirements.txt"
-    requirements_path.write_text("freetype-py")
+    requirements_path.write_text("pyalsaaudio==0.8.4")
 
-    temp_repo_func.file_path.write_text(RETURN_FREETYPE_VERSION)
+    temp_repo_func.file_path.write_text(RETURN_ALSAAUDIO_INSTALLED)
     temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to lxml")
 
-    # ``import freetype`` raises an error if the library ``freetype-dev`` is not installed
-    task = Task("test_file:return_freetype_version")
+    # pyalsaaudio can't be installed if libasound2-dev is missing
+    task = Task("test_file:return_alsaaudio_installed")
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output
 
 
 def test_inherit_image(temp_repo_func):
-    backend = DockerBackend(verbosity=2, inherit_image="python:3.6")
+    backend = DockerBackend(verbosity=2, inherit_image="python:alpine3.6")
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
     task = Task("test_file:return_str_function")
@@ -80,8 +82,8 @@ def test_inherit_image(temp_repo_func):
 
     task = Task("test_file:return_platform")
 
-    # alpine is the default, dist() returns ('', '', '') on - so this fails when the default image is used
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "debian"
+    # debian is the default, alpine dist() returns ('', '', '') on - so this fails when the default image is used
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output != "debian"
 
     requirements_path = temp_repo_func.repo_path / backend.requirements_location
     requirements_path.write_text("colorama==0.3.9")
@@ -161,6 +163,6 @@ def test_push_to_registry_fail(temp_repo_func):
 
 
 def test_inherit_image_with_dependecies():
-    backend = DockerBackend(inherit_image="python:alpine3.6", apk_dependencies=["freetype-dev"])
+    backend = DockerBackend(inherit_image="python:alpine3.6", apt_dependencies=["libasound2-dev"])
     with pytest.raises(ArcaMisconfigured):
         Arca(backend=backend)
