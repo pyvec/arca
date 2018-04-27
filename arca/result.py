@@ -1,4 +1,5 @@
-from typing import Dict, Any
+import json
+from typing import Dict, Any, Union
 
 from arca.exceptions import BuildError
 
@@ -7,7 +8,14 @@ class Result:
     """ For storing results of the tasks. So far only has one attribute, :attr:`output`.
     """
 
-    def __init__(self, result: Dict[str, Any]) -> None:
+    def __init__(self, result: Union[str, Dict[str, Any]]) -> None:
+        if isinstance(result, (str, bytes, bytearray)):
+            try:
+                result = json.loads(result)
+            except ValueError:
+                raise BuildError("The build failed (the output was corrupted, "
+                                 "possibly by the callable printing something)")
+
         if not isinstance(result, dict):
             raise BuildError("The build failed (the value returned from the runner was not valid)")
 

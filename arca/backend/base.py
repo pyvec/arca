@@ -1,5 +1,4 @@
 import hashlib
-import json
 import re
 import subprocess
 from pathlib import Path
@@ -168,7 +167,7 @@ class BaseRunInSubprocessBackend(BaseBackend):
             logger.debug("stdout output from the command")
             logger.debug(out_output)
 
-            return Result(json.loads(out_output))
+            return Result(out_output)
         except BuildError:  # can be raised by  :meth:`Result.__init__`
             raise
         except Exception as e:

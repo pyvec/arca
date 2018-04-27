@@ -1,4 +1,4 @@
-""" This file is the code which actually launches the tasks, the serialized jsons.
+""" This file is the code which actually launches the tasks, the serialized JSONs.
 """
 import json
 import traceback
@@ -46,7 +46,6 @@ def run(filename):
         # KeyError: keys can be missing from the parsed json
         # TypeError: task_definition["entry_point"] is a list
         # AttributeError: task_definition["entry_point"] isn't a dict
-
         return {"success": False, "reason": "corrupted_definition", "error": traceback.format_exc()}
 
     try:

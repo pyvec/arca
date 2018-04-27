@@ -39,18 +39,18 @@ class Arca:
 
     def __init__(self, backend: BackendDefinitionType=NOT_SET,
                  settings=None,
-                 single_pull=None,
-                 base_dir=None,
-                 ignore_cache_errors=None) -> None:
+                 single_pull=NOT_SET,
+                 base_dir=NOT_SET,
+                 ignore_cache_errors=NOT_SET) -> None:
         self.settings: Settings = Settings(settings)
 
-        if ignore_cache_errors is not None:
+        if ignore_cache_errors is not NOT_SET:
             self.ignore_cache_errors = bool(ignore_cache_errors)
 
-        if single_pull is not None:
+        if single_pull is not NOT_SET:
             self.single_pull = bool(single_pull)
 
-        if base_dir is not None:
+        if base_dir is not NOT_SET:
             self.base_dir = base_dir
 
         self.region: CacheRegion = self.make_region()
@@ -378,9 +378,7 @@ class Arca:
 
         logger.info("Running Arca task %r for repo '%s' in branch '%s'", task, repo, branch)
 
-        git_repo, repo_path = self.get_files(repo, branch,
-                                             depth=depth,
-                                             reference=reference)
+        git_repo, repo_path = self.get_files(repo, branch, depth=depth, reference=reference)
 
         def create_value():
             logger.debug("Value not in cache, creating.")
@@ -428,9 +426,7 @@ class Arca:
         if not isinstance(relative_path, Path):
             relative_path = Path(relative_path)
 
-        _, repo_path = self.get_files(repo, branch,
-                                      depth=depth,
-                                      reference=reference)
+        _, repo_path = self.get_files(repo, branch, depth=depth, reference=reference)
 
         result = repo_path / relative_path
         result = result.resolve()
