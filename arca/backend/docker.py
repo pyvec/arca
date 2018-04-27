@@ -69,6 +69,8 @@ class DockerBackend(BaseBackend):
     """
 
     def __init__(self, **kwargs):
+        """ Initializes the instance and checks that the docker package is installed.
+        """
         super().__init__(**kwargs)
 
         if docker is None:

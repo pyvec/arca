@@ -1,4 +1,5 @@
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from textwrap import dedent
@@ -19,17 +20,19 @@ class VagrantBackend(DockerBackend):
     Inherits settings from :class:`DockerBackend`:
 
     * **python_version**
-    * **apk_dependencies**
+    * **apt_dependencies**
     * **disable_pull**
     * **inherit_image**
     * **use_registry_name**
+    * **keep_containers_running** - applies for containers inside the VM, default is ``True`` here.
 
     Adds new settings:
 
-    * **box** - what Vagrant box to use (must include docker >= 1.8 or no docker)
-    * **provider** - what provider should Vagrant user
-    * **quiet** - Keeps the extra vagrant logs quiet.
-    * **destroy** - Destroy or just halt the VMs (default is ``True``)
+    * **box** - what Vagrant box to use (must include docker >= 1.8 or no docker), ``ailispaw/barge`` being the default
+    * **provider** - what provider should Vagrant user, ``virtualbox`` being the default
+    * **quiet** - Keeps the extra vagrant logs quiet, ``True`` being the default
+    * **keep_vm_running** - Keeps the VM up until ``stop_vm`` is called, ``False`` being the default
+    * **destroy** - Destroy the VM (instead of halt) when stopping it, ``False`` being the default
 
     """
 
@@ -38,9 +41,13 @@ class VagrantBackend(DockerBackend):
     box = LazySettingProperty(default="ailispaw/barge")
     provider = LazySettingProperty(default="virtualbox")
     quiet = LazySettingProperty(default=True, convert=bool)
-    destroy = LazySettingProperty(default=True, convert=bool)
+    keep_container_running = LazySettingProperty(default=True, convert=bool)
+    keep_vm_running = LazySettingProperty(default=False, convert=bool)
+    destroy = LazySettingProperty(default=False, convert=bool)
 
     def __init__(self, **kwargs):
+        """ Initializes the instance and checks that docker and vagrant are installed.
+        """
         super().__init__(**kwargs)
 
         try:
@@ -61,17 +68,32 @@ class VagrantBackend(DockerBackend):
         if vagrant.get_vagrant_executable() is None:
             raise ArcaMisconfigured("Vagrant executable is not accessible!")
 
+        self.vagrant: vagrant.Vagrant = None
+
+    def inject_arca(self, arca):
+        """ Creates log file for this instance.
+        """
+        super().inject_arca(arca)
+
+        import vagrant
+
+        self.log_path = Path(self._arca.base_dir) / "logs" / (str(uuid4()) + ".log")
+        self.log_path.parent.mkdir(exist_ok=True, parents=True)
+        logger.info("Storing vagrant log in %s", self.log_path)
+
+        self.log_cm = vagrant.make_file_cm(self.log_path)
+
     def validate_settings(self):
         """ Runs :meth:`arca.DockerBackend.validate_settings` and checks extra:
 
         * ``box`` format
         * ``provider`` format
-        * ``use_registry_name`` is set
+        * ``use_registry_name`` is set and ``registry_pull_only`` is not enabled.
         """
         super().validate_settings()
 
         if self.use_registry_name is None:
-            raise ArcaMisconfigured("Push to registry setting is required for VagrantBackend")
+            raise ArcaMisconfigured("Use registry name setting is required for VagrantBackend")
 
         if not re.match(r"^[a-z]+/[a-zA-Z0-9\-_]+$", self.box):
             raise ArcaMisconfigured("Provided Vagrant box is not valid")
@@ -82,41 +104,25 @@ class VagrantBackend(DockerBackend):
         if self.registry_pull_only:
             raise ArcaMisconfigured("Push must be enabled for VagrantBackend")
 
-    def get_vagrant_file_location(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> Path:
-        """ Returns a directory where Vagrantfile should be. Based on repo, branch and tag of the used docker image.
+    def get_vm_location(self) -> Path:
+        """ Returns a directory where a Vagrantfile should be - folder called ``vagrant`` in the Arca base dir.
         """
-        path = Path(self._arca.base_dir) / "vagrant"
-        path /= self._arca.repo_id(repo)
-        path /= branch
-        path /= self.get_image_tag(self.get_requirements_file(repo_path), self.get_dependencies())
-        return path
+        return Path(self._arca.base_dir) / "vagrant"
 
-    def create_vagrant_file(self, repo: str, branch: str, git_repo: Repo, repo_path: Path):
-        """ Creates a Vagrantfile in the target dir with the required settings and the required docker image.
-            The image is built locally if not already pushed.
+    def init_vagrant(self, vagrant_file):
+        """ Creates a Vagrantfile in the target dir, with only the base image pulled.
+            Copies the runner script to the directory so it's accessible from the VM.
         """
-        vagrant_file = self.get_vagrant_file_location(repo, branch, git_repo, repo_path) / "Vagrantfile"
+        if self.inherit_image:
+            image_name, image_tag = str(self.inherit_image).split(":")
+        else:
+            image_name = self.get_arca_base_name()
+            image_tag = self.get_python_base_tag(self.get_python_version())
 
-        self.check_docker_access()
+        logger.info("Creating Vagrantfile located in %s, base image %s:%s", vagrant_file, image_name, image_tag)
 
-        self.get_image_for_repo(repo, branch, git_repo, repo_path)
-
-        requirements_file = self.get_requirements_file(repo_path)
-        dependencies = self.get_dependencies()
-        image_tag = self.get_image_tag(requirements_file, dependencies)
-        image_name = self.use_registry_name
-
-        logger.info("Creating Vagrantfile with image %s:%s", image_name, image_tag)
-
-        container_name = "arca_{}_{}_{}".format(
-            self._arca.repo_id(repo),
-            branch,
-            self._arca.current_git_hash(repo, branch, git_repo, short=True)
-        )
-        workdir = str((Path("/srv/data") / self.cwd))
-
+        repos_dir = (Path(self._arca.base_dir) / 'repos').resolve()
         vagrant_file.parent.mkdir(exist_ok=True, parents=True)
-
         vagrant_file.write_text(dedent(f"""
         # -*- mode: ruby -*-
         # vi: set ft=ruby :
@@ -126,14 +132,10 @@ class VagrantBackend(DockerBackend):
           config.ssh.insert_key = true
           config.vm.provision "docker" do |d|
             d.pull_images "{image_name}:{image_tag}"
-            d.run "{image_name}:{image_tag}",
-              name: "{container_name}",
-              args: "-t -w {workdir}",
-              cmd: "bash -i"
           end
 
           config.vm.synced_folder ".", "/vagrant"
-          config.vm.synced_folder "{repo_path}", "/srv/data"
+          config.vm.synced_folder "{repos_dir}", "/srv/repos"
           config.vm.provider "{self.provider}"
 
         end
@@ -148,59 +150,102 @@ class VagrantBackend(DockerBackend):
         from fabric import api
 
         @api.task
-        def run_script(container_name, definition_filename):
-            """ Sequence to run inside the VM, copies data and script to the container and runs the script.
+        def run_script(container_name, definition_filename, image_name, image_tag, repository):
+            """ Sequence to run inside the VM.
+                Starts up the container if the container is not running
+                (and copies over the data and the runner script)
+                Then the definition is copied over and the script launched.
+                If the VM is gonna be shut down then kills the container as well.
             """
-            api.run(f"docker exec {container_name} mkdir -p /srv/scripts")
-            api.run(f"docker cp /srv/data {container_name}:/srv")
-            api.run(f"docker cp /vagrant/runner.py {container_name}:/srv/scripts/")
+            workdir = str((Path("/srv/data") / self.cwd).resolve())
+            cmd = "sh" if self.inherit_image else "bash"
+
+            api.run(f"docker pull {image_name}:{image_tag}")
+
+            container_running = int(api.run(f"docker ps --format '{{.Names}}' -f name={container_name} | wc -l"))
+            container_stopped = int(api.run(f"docker ps -a --format '{{.Names}}' -f name={container_name} | wc -l"))
+
+            if container_running == 0:
+                if container_stopped:
+                    api.run(f"docker rm -f {container_name}")
+
+                api.run(f"docker run "
+                        f"--name {container_name} "
+                        f"--workdir \"{workdir}\" "
+                        f"-dt {image_name}:{image_tag} "
+                        f"{cmd} -i")
+
+                api.run(f"docker exec {container_name} mkdir -p /srv/scripts")
+                api.run(f"docker cp /srv/repos/{repository} {container_name}:/srv/branch")
+                api.run(f"docker exec --user root {container_name} bash -c 'mv /srv/branch/* /srv/data'")
+                api.run(f"docker exec --user root {container_name} rm -rf /srv/branch")
+                api.run(f"docker cp /vagrant/runner.py {container_name}:/srv/scripts/")
+
             api.run(f"docker cp /vagrant/{definition_filename} {container_name}:/srv/scripts/")
-            return api.run(" ".join([
-                "docker", "exec", "-t", container_name,
+
+            output = api.run(" ".join([
+                "docker", "exec", container_name,
                 "python", "/srv/scripts/runner.py", f"/srv/scripts/{definition_filename}",
             ]))
 
+            if not self.keep_container_running:
+                api.run(f"docker kill {container_name}")
+
+            return output
+
         return run_script
 
-    def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path):
-        """ Gets or creates Vagrantfile, starts up a VM with it, executes Fabric script over SSH, returns result.
+    def ensure_vm_running(self, vm_location):
+        """ Gets or creates a Vagrantfile in ``vm_location`` and calls ``vagrant up`` if the VM is not running.
         """
-        # importing here, prints out warning when vagrant is missing even when the backend is not used otherwise
-        from vagrant import Vagrant, make_file_cm
+        import vagrant
+
+        if self.vagrant is None:
+            vagrant_file = vm_location / "Vagrantfile"
+            if not vagrant_file.exists():
+                self.init_vagrant(vagrant_file)
+
+            self.vagrant = vagrant.Vagrant(vm_location,
+                                           quiet_stdout=self.quiet,
+                                           quiet_stderr=self.quiet,
+                                           out_cm=self.log_cm,
+                                           err_cm=self.log_cm)
+
+        status = [x for x in self.vagrant.status() if x.name == "default"][0]
+
+        if status.state != "running":
+            try:
+                self.vagrant.up()
+            except subprocess.CalledProcessError:
+                raise BuildError("Vagrant VM couldn't up launched. See output for details.")
+
+    def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path):
+        """ Starts up a VM, builds an docker image and gets it to the VM, runs the script over SSH, returns result.
+            Stops the VM if ``keep_vm_running`` is not set.
+        """
         from fabric import api
 
-        vagrant_file = self.get_vagrant_file_location(repo, branch, git_repo, repo_path)
+        # start up or get running VM
+        vm_location = self.get_vm_location()
+        self.ensure_vm_running(vm_location)
+        logger.info("Running with VM located at %s", vm_location)
 
-        if not vagrant_file.exists():
-            logger.info("Vagrantfile doesn't exist, creating")
-            self.create_vagrant_file(repo, branch, git_repo, repo_path)
+        # pushes the image to the registry so it can be pulled in the VM
+        self.check_docker_access()  # init client
+        self.get_image_for_repo(repo, branch, git_repo, repo_path)
 
-        logger.info("Vagrantfile in folder %s", vagrant_file)
+        # getting things needed for execution over SSH
+        image_tag = self.get_image_tag(self.get_requirements_file(repo_path), self.get_dependencies())
+        image_name = self.use_registry_name
 
         task_filename, task_json = self.serialized_task(task)
+        (vm_location / task_filename).write_text(task_json)
 
-        (vagrant_file / task_filename).write_text(task_json)
+        container_name = self.get_container_name(repo, branch, git_repo)
 
-        container_name = "arca_{}_{}_{}".format(
-            self._arca.repo_id(repo),
-            branch,
-            self._arca.current_git_hash(repo, branch, git_repo, short=True)
-        )
-
-        log_path = Path(self._arca.base_dir) / "logs" / (str(uuid4()) + ".log")
-        log_path.parent.mkdir(exist_ok=True, parents=True)
-        log_cm = make_file_cm(log_path)
-        logger.info("Storing vagrant log in %s", log_path)
-
-        vagrant = Vagrant(root=vagrant_file, quiet_stdout=self.quiet, quiet_stderr=self.quiet,
-                          out_cm=log_cm, err_cm=log_cm)
-        try:
-            vagrant.up()
-        except subprocess.CalledProcessError:
-            raise BuildError("Vagrant VM couldn't up launched. See output for details.")
-
-        api.env.hosts = [vagrant.user_hostname_port()]
-        api.env.key_filename = vagrant.keyfile()
+        # setting up Fabric
+        api.env.hosts = [self.vagrant.user_hostname_port()]
+        api.env.key_filename = self.vagrant.keyfile()
         api.env.disable_known_hosts = True  # useful for when the vagrant box ip changes.
         api.env.abort_exception = BuildError  # raises SystemExit otherwise
         api.env.shell = "/bin/sh -l -c"
@@ -209,10 +254,16 @@ class VagrantBackend(DockerBackend):
         else:
             api.output.everything = True
 
+        # executes the task
         try:
-            res = api.execute(self.fabric_task, container_name=container_name, definition_filename=task_filename)
+            res = api.execute(self.fabric_task,
+                              container_name=container_name,
+                              definition_filename=task_filename,
+                              image_name=image_name,
+                              image_tag=image_tag,
+                              repository=str(repo_path.relative_to(Path(self._arca.base_dir).resolve() / 'repos')))
 
-            return Result(res[vagrant.user_hostname_port()].stdout)
+            return Result(res[self.vagrant.user_hostname_port()].stdout)
         except BuildError:  # can be raised by  :meth:`Result.__init__`
             raise
         except Exception as e:
@@ -221,7 +272,24 @@ class VagrantBackend(DockerBackend):
                 "exception": e
             })
         finally:
-            if self.destroy:
-                vagrant.destroy()
-            else:
-                vagrant.halt()
+            # stops or destroys the VM if it should not be kept running
+            if not self.keep_vm_running:
+                if self.destroy:
+                    self.vagrant.destroy()
+                    shutil.rmtree(self.vagrant.root, ignore_errors=True)
+                    self.vagrant = None
+                else:
+                    self.vagrant.halt()
+
+    def stop_containers(self):
+        raise ValueError("Can't be used here, stop the entire VM instead.")
+
+    def stop_vm(self):
+        """ Stops or destroys the VM used to launch tasks.
+        """
+        if self.destroy:
+            self.vagrant.destroy()
+            shutil.rmtree(self.vagrant.root, ignore_errors=True)
+            self.vagrant = None
+        else:
+            self.vagrant.halt()
