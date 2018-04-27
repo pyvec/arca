@@ -24,6 +24,8 @@ class BaseBackend:
     * **cwd**: Relative path to the required working directory. (default is ``""``, the root of the repo)
     """
 
+    RUNNER = Path(__file__).parent.parent.resolve() / "_runner.py"
+
     requirements_location: str = LazySettingProperty(default="requirements.txt")
     cwd: str = LazySettingProperty(default="")
 
@@ -153,7 +155,7 @@ class BaseRunInSubprocessBackend(BaseBackend):
             logger.debug("Running with python %s", python_path)
 
             process = subprocess.Popen([python_path,
-                                        str(self._arca.RUNNER),
+                                        str(self.RUNNER),
                                         str(task_path.resolve())],
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,

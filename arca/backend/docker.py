@@ -614,7 +614,7 @@ class DockerBackend(BaseBackend):
     def tar_runner(self):
         """ Returns a tar with the runner script.
         """
-        script_bytes = self._arca.RUNNER.read_bytes()
+        script_bytes = self.RUNNER.read_bytes()
 
         tarstream = BytesIO()
         tar = tarfile.TarFile(fileobj=tarstream, mode='w')
