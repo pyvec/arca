@@ -24,14 +24,14 @@ class VagrantBackend(DockerBackend):
     * **disable_pull**
     * **inherit_image**
     * **use_registry_name**
-    * **keep_containers_running** - applies for containers inside the VM, default is ``True`` here.
+    * **keep_containers_running** - applies for containers inside the VM, default being ``True`` for this backend
 
     Adds new settings:
 
     * **box** - what Vagrant box to use (must include docker >= 1.8 or no docker), ``ailispaw/barge`` being the default
     * **provider** - what provider should Vagrant user, ``virtualbox`` being the default
     * **quiet** - Keeps the extra vagrant logs quiet, ``True`` being the default
-    * **keep_vm_running** - Keeps the VM up until ``stop_vm`` is called, ``False`` being the default
+    * **keep_vm_running** - Keeps the VM up until :meth:`stop_vm` is called, ``False`` being the default
     * **destroy** - Destroy the VM (instead of halt) when stopping it, ``False`` being the default
 
     """
@@ -71,7 +71,7 @@ class VagrantBackend(DockerBackend):
         self.vagrant: vagrant.Vagrant = None
 
     def inject_arca(self, arca):
-        """ Creates log file for this instance.
+        """ Apart from the usual validation stuff it also creates log file for this instance.
         """
         super().inject_arca(arca)
 
@@ -282,6 +282,8 @@ class VagrantBackend(DockerBackend):
                     self.vagrant.halt()
 
     def stop_containers(self):
+        """ Raises an exception in this backend, can't be used. Stop the entire VM instead.
+        """
         raise ValueError("Can't be used here, stop the entire VM instead.")
 
     def stop_vm(self):
