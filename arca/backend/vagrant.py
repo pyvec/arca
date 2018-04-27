@@ -1,4 +1,3 @@
-import json
 import re
 import subprocess
 from pathlib import Path
@@ -69,7 +68,7 @@ class VagrantBackend(DockerBackend):
         * ``provider`` format
         * ``use_registry_name`` is set
         """
-        super(VagrantBackend, self).validate_settings()
+        super().validate_settings()
 
         if self.use_registry_name is None:
             raise ArcaMisconfigured("Push to registry setting is required for VagrantBackend")
@@ -213,7 +212,7 @@ class VagrantBackend(DockerBackend):
         try:
             res = api.execute(self.fabric_task, container_name=container_name, definition_filename=task_filename)
 
-            return Result(json.loads(res[vagrant.user_hostname_port()].stdout))
+            return Result(res[vagrant.user_hostname_port()].stdout)
         except BuildError:  # can be raised by  :meth:`Result.__init__`
             raise
         except Exception as e:

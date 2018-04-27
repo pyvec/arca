@@ -747,7 +747,7 @@ class DockerBackend(BaseBackend):
                                       f"/srv/scripts/{task_filename}"],
                                      tty=True)
 
-            return Result(json.loads(res.output))
+            return Result(res.output)
         except BuildError:  # can be raised by  :meth:`Result.__init__`
             raise
         except Exception as e:
