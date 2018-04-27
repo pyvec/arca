@@ -141,16 +141,16 @@ Vagrant
 
 *arca.backend.VagrantBackend*
 
-**This backend might be reworked completely, consider its API unstable.**
-
-If you're extra paranoid you can use Vagrant to completely isolate the tasks.
+If you're extra paranoid you can use Vagrant to completely isolate the runtime in a Virtual Machine (VM).
 This backend is actually a subclass of ``DockerBackend`` and uses docker in the VM to run the tasks.
-Currently the backend works by building the image with requirements and dependencies locally and pushing it to registry
-(``push_to_registry_name`` is required), spinning up a VM for each repository,
-pulling the image in the VM and running the task. Docker and Vagrant must be runnable by the current user.
+Docker and Vagrant must be runnable by the current user.
 
-The backend inherits all the settings of ``DockerBackend`` except
-for ``keep_container_running`` and has these extra settings:
+The backend works by building the image with requirements and dependencies locally and pushing it to registry using ``use_to_registry_name``.
+Then a VM is launched and the image is pulled there from the registry.
+This takes some time when first launching the VM, but if the VM is reused often, the upload/download time is shorted.
+The built images are also not lost when the VM is destroyed.
+
+The backend inherits all the settings of ``DockerBackend`` (**keep_containers_running** is by default ``True``) has these extra settings:
 
 * **box**: Vagrant box used in the VM. Either has to have docker version >= 1.8 or not have docker at all, in which case
   it will be installed when spinning up the VM.
@@ -160,8 +160,10 @@ for ``keep_container_running`` and has these extra settings:
 * **quiet**: Tells Vagrant and Fabric (which is used to run the task in the VM) to be quiet. Default is ``True``.
   Vagrant and Docker output is logged in separate files for each run in a folder ``logs`` in the :class:`Arca <arca.Arca>` ``base_dir``.
   The filename is logged in the arca logger (see bellow)
-* **destroy**: Destroy the VM right after the task is finished if ``True`` (default).
-  If ``False`` is set, the VM is only halted.
+* **keep_vm_running**: Should the VM be kept up once a task finishes? By default ``False``.
+  If set to ``True``, :meth:`stop_vm <arca.VagrantBackend.stop_vm>` can be used to stop the VM.
+* **destroy**: When stopping the VM (either after a task or after :meth:`stop_vm` is called), should the VM be destroyed (= deleted) or just halted?
+  ``False`` by default.
 
 (possible settings prefixes: ``ARCA_VAGRANT_BACKEND_`` and ``ARCA_BACKEND_``)
 
