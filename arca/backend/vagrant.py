@@ -141,7 +141,7 @@ class VagrantBackend(DockerBackend):
         end
         """))
 
-        (vagrant_file.parent / "runner.py").write_text(self._arca.RUNNER.read_text())
+        (vagrant_file.parent / "runner.py").write_text(self.RUNNER.read_text())
 
     @property
     def fabric_task(self):
