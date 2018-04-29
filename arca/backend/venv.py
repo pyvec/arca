@@ -25,7 +25,7 @@ class VenvBackend(BaseRunInSubprocessBackend):
 
         Either:
 
-        * SHA1 of the requirements file and Arca version
+        * hash of the requirements file and Arca version
         * ``no_requirements_file`` if the requirements file doesn't exist.
 
         :param requirements_file: :class:`Path <pathlib.Path>` to where the requirements file
@@ -37,7 +37,7 @@ class VenvBackend(BaseRunInSubprocessBackend):
         else:
             return self.get_requirements_hash(requirements_file)
 
-    def create_or_get_venv(self, path: Path) -> Path:
+    def get_or_create_venv(self, path: Path) -> Path:
         """
         Gets the name of the virtualenv from :meth:`get_virtualenv_name`, checks if it exists already,
         creates it and installs requirements otherwise. The virtualenvs are stored in a folder based
@@ -46,9 +46,9 @@ class VenvBackend(BaseRunInSubprocessBackend):
         :param path: :class:`Path <pathlib.Path>` to the cloned repository.
         """
         requirements_file = self.get_requirements_file(path)
-        requirements_name = self.get_virtualenv_name(requirements_file)
+        venv_name = self.get_virtualenv_name(requirements_file)
 
-        venv_path = Path(self._arca.base_dir) / "venvs" / requirements_name
+        venv_path = Path(self._arca.base_dir) / "venvs" / venv_name
 
         if not venv_path.exists():
             logger.info(f"Creating a venv in {venv_path}")
@@ -91,4 +91,4 @@ class VenvBackend(BaseRunInSubprocessBackend):
     def get_or_create_environment(self, repo: str, branch: str, git_repo: Repo, repo_path: Path) -> str:
         """ Handles the requirements in the target repository, returns a path to a executable of the virtualenv.
         """
-        return str(self.create_or_get_venv(repo_path).resolve() / "bin" / "python")
+        return str(self.get_or_create_venv(repo_path).resolve() / "bin" / "python")

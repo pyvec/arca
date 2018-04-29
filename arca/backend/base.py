@@ -43,9 +43,9 @@ class BaseBackend:
         """
         self._arca = arca
 
-        self.validate_settings()
+        self.validate_configuration()
 
-    def validate_settings(self):
+    def validate_configuration(self):
         pass
 
     @cached_property

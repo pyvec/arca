@@ -79,7 +79,7 @@ class DockerBackend(BaseBackend):
         self._containers = set()
         self.client = None
 
-    def validate_settings(self):
+    def validate_configuration(self):
         """
         Validates the provided settings.
 
@@ -89,7 +89,7 @@ class DockerBackend(BaseBackend):
 
         :raise ArcaMisconfigured: If some of the settings aren't valid.
         """
-        super().validate_settings()
+        super().validate_configuration()
 
         if self.inherit_image is not None:
             try:

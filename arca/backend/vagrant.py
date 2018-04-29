@@ -83,14 +83,14 @@ class VagrantBackend(DockerBackend):
 
         self.log_cm = vagrant.make_file_cm(self.log_path)
 
-    def validate_settings(self):
-        """ Runs :meth:`arca.DockerBackend.validate_settings` and checks extra:
+    def validate_configuration(self):
+        """ Runs :meth:`arca.DockerBackend.validate_configuration` and checks extra:
 
         * ``box`` format
         * ``provider`` format
         * ``use_registry_name`` is set and ``registry_pull_only`` is not enabled.
         """
-        super().validate_settings()
+        super().validate_configuration()
 
         if self.use_registry_name is None:
             raise ArcaMisconfigured("Use registry name setting is required for VagrantBackend")
