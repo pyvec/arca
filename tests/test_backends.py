@@ -5,7 +5,8 @@ import pytest
 
 from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
 from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
-    TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION
+    TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION, WAITING_FUNCTION
+from arca.exceptions import BuildTimeoutError
 
 
 @pytest.mark.parametrize(
@@ -48,7 +49,7 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
         temp_repo_func.repo.index.add([str(filepath)])
         temp_repo_func.repo.index.commit("Initial")
 
-    task = Task("test_file:return_str_function",)
+    task = Task("test_file:return_str_function")
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
 
@@ -102,6 +103,18 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
         "test_file:return_str_function",
         kwargs={"kwarg": TEST_UNICODE}
     )).output == TEST_UNICODE[::-1]
+
+    filepath.write_text(WAITING_FUNCTION)
+    temp_repo_func.repo.index.add([str(filepath)])
+    temp_repo_func.repo.index.commit("Waiting function")
+
+    task_1_second = Task("test_file:return_str_function", timeout=1)
+    task_3_seconds = Task("test_file:return_str_function", timeout=3)
+
+    with pytest.raises(BuildTimeoutError):
+        assert arca.run(temp_repo_func.url, temp_repo_func.branch, task_1_second).output == "Some string"
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task_3_seconds).output == "Some string"
 
     if isinstance(backend, CurrentEnvironmentBackend):
         backend._uninstall("colorama")

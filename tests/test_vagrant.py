@@ -5,8 +5,9 @@ import pytest
 from vagrant import Vagrant
 
 from arca import VagrantBackend, Arca, Task
-from arca.exceptions import ArcaMisconfigured
-from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, TEST_UNICODE
+from arca.exceptions import ArcaMisconfigured, BuildTimeoutError
+from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, TEST_UNICODE, \
+    WAITING_FUNCTION
 
 
 def test_validation():
@@ -99,6 +100,20 @@ def test_vagrant(temp_repo_func, destroy=False):
     # test that two branches can work next to each other
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
     assert arca.run(temp_repo_func.url, "branch", task).output == TEST_UNICODE
+
+    # test timeout
+    temp_repo_func.repo.branches.master.checkout()
+    temp_repo_func.file_path.write_text(WAITING_FUNCTION)
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])
+    temp_repo_func.repo.index.commit("Waiting function")
+
+    task_1_second = Task("test_file:return_str_function", timeout=1)
+    task_3_seconds = Task("test_file:return_str_function", timeout=3)
+
+    with pytest.raises(BuildTimeoutError):
+        assert arca.run(temp_repo_func.url, temp_repo_func.branch, task_1_second).output == "Some string"
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task_3_seconds).output == "Some string"
 
     backend.stop_vm()
 

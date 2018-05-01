@@ -19,7 +19,7 @@ from git import Repo
 from requests.exceptions import ConnectionError
 
 import arca
-from arca.exceptions import ArcaMisconfigured, BuildError, PushToRegistryError
+from arca.exceptions import ArcaMisconfigured, BuildError, PushToRegistryError, BuildTimeoutError
 from arca.result import Result
 from arca.task import Task
 from arca.utils import logger, LazySettingProperty
@@ -744,10 +744,15 @@ class DockerBackend(BaseBackend):
         res = None
 
         try:
-            res = container.exec_run(["python",
+            res = container.exec_run(["timeout",
+                                      str(task.timeout),
+                                      "python",
                                       "/srv/scripts/runner.py",
                                       f"/srv/scripts/{task_filename}"],
                                      tty=True)
+
+            if res.exit_code == 124:
+                raise BuildTimeoutError(f"The task timeouted after {task.timeout} seconds.")
 
             return Result(res.output)
         except BuildError:  # can be raised by  :meth:`Result.__init__`
