@@ -134,7 +134,7 @@ class Arca:
         return region
 
     def validate_repo_url(self, repo: str):
-        """ Validates repo URL - if it's a valid git URL and if Arca can handle that type or repo URL
+        """ Validates repo URL - if it's a valid git URL and if Arca can handle that type of repo URL
 
         :raise ValueError: If the URL is not valid
         """

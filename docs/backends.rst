@@ -150,7 +150,7 @@ Then a VM is launched and the image is pulled there from the registry.
 This takes some time when first launching the VM, but if the VM is reused often, the upload/download time is shorted.
 The built images are also not lost when the VM is destroyed.
 
-The backend inherits all the settings of ``DockerBackend`` (**keep_containers_running** is by default ``True``) has these extra settings:
+The backend inherits all the settings of ``DockerBackend`` (**keep_containers_running** is ``True`` by default) and has these extra settings:
 
 * **box**: Vagrant box used in the VM. Either has to have docker version >= 1.8 or not have docker at all, in which case
   it will be installed when spinning up the VM.
