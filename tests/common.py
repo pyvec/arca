@@ -14,9 +14,9 @@ def return_str_function():
 
 TEST_UNICODE = "Nechť již hříšné saxofony ďáblů rozezvučí síň úděsnými tóny waltzu, tanga a\xa0quickstepu.→"
 
-SECOND_RETURN_STR_FUNCTION = """
+SECOND_RETURN_STR_FUNCTION = f"""
 def return_str_function():
-    return "Nechť již hříšné saxofony ďáblů rozezvučí síň úděsnými tóny waltzu, tanga a\xa0quickstepu.→"
+    return "{TEST_UNICODE}"
 """
 
 ARG_STR_FUNCTION = """
