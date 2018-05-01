@@ -1,3 +1,4 @@
+import math
 import re
 import shutil
 import subprocess
@@ -5,9 +6,10 @@ from pathlib import Path
 from textwrap import dedent
 from uuid import uuid4
 
+from fabric.exceptions import CommandTimeout
 from git import Repo
 
-from arca.exceptions import ArcaMisconfigured, BuildError
+from arca.exceptions import ArcaMisconfigured, BuildError, BuildTimeoutError
 from arca.result import Result
 from arca.task import Task
 from arca.utils import LazySettingProperty, logger
@@ -150,7 +152,7 @@ class VagrantBackend(DockerBackend):
         from fabric import api
 
         @api.task
-        def run_script(container_name, definition_filename, image_name, image_tag, repository):
+        def run_script(container_name, definition_filename, image_name, image_tag, repository, timeout):
             """ Sequence to run inside the VM.
                 Starts up the container if the container is not running
                 (and copies over the data and the runner script)
@@ -184,9 +186,11 @@ class VagrantBackend(DockerBackend):
             api.run(f"docker cp /vagrant/{definition_filename} {container_name}:/srv/scripts/")
 
             output = api.run(" ".join([
-                "docker", "exec", container_name,
-                "python", "/srv/scripts/runner.py", f"/srv/scripts/{definition_filename}",
-            ]))
+                    "docker", "exec", container_name,
+                    "python", "/srv/scripts/runner.py", f"/srv/scripts/{definition_filename}",
+                ]),
+                timeout=math.ceil(timeout)
+            )
 
             if not self.keep_container_running:
                 api.run(f"docker kill {container_name}")
@@ -261,9 +265,12 @@ class VagrantBackend(DockerBackend):
                               definition_filename=task_filename,
                               image_name=image_name,
                               image_tag=image_tag,
-                              repository=str(repo_path.relative_to(Path(self._arca.base_dir).resolve() / 'repos')))
+                              repository=str(repo_path.relative_to(Path(self._arca.base_dir).resolve() / 'repos')),
+                              timeout=task.timeout)
 
             return Result(res[self.vagrant.user_hostname_port()].stdout)
+        except CommandTimeout:
+            raise BuildTimeoutError(f"The task timeouted after {task.timeout} seconds.")
         except BuildError:  # can be raised by  :meth:`Result.__init__`
             raise
         except Exception as e:
