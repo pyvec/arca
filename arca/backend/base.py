@@ -8,7 +8,7 @@ from cached_property import cached_property
 from git import Repo
 
 import arca
-from arca.exceptions import BuildError
+from arca.exceptions import BuildError, BuildTimeoutError
 from arca.result import Result
 from arca.task import Task
 from arca.utils import NOT_SET, LazySettingProperty, logger
@@ -161,7 +161,7 @@ class BaseRunInSubprocessBackend(BaseBackend):
                                        stderr=subprocess.PIPE,
                                        cwd=cwd)
 
-            out_stream, err_stream = process.communicate()
+            out_stream, err_stream = process.communicate(timeout=task.timeout)
 
             out_output = out_stream.decode("utf-8")
             err_output = err_stream.decode("utf-8")
@@ -170,6 +170,8 @@ class BaseRunInSubprocessBackend(BaseBackend):
             logger.debug(out_output)
 
             return Result(out_output)
+        except subprocess.TimeoutExpired:
+            raise BuildTimeoutError(f"The task timeouted after {task.timeout} seconds.")
         except BuildError:  # can be raised by  :meth:`Result.__init__`
             raise
         except Exception as e:

@@ -43,6 +43,11 @@ class BuildError(ArcaException):
         )
 
 
+class BuildTimeoutError(BuildError):
+    """ Raised if the task takes too long.
+    """
+
+
 class PushToRegistryError(ArcaException):
     """ Raised if pushing of images to Docker registry in :class:`DockerBackend` fails.
     """

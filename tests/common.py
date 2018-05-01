@@ -56,3 +56,11 @@ import platform
 def return_platform():
     return platform.dist()[0]
 """
+
+WAITING_FUNCTION = """
+import time
+
+def return_str_function():
+    time.sleep(2)
+    return "Some string"
+"""

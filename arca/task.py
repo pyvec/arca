@@ -31,6 +31,7 @@ class Task:
     """
 
     def __init__(self, entry_point: str, *,
+                 timeout: int=5,
                  args: Optional[Iterable[Any]]=None,
                  kwargs: Optional[Dict[str, Any]]=None) -> None:
 
@@ -41,6 +42,11 @@ class Task:
 
         if self._entry_point.object_name is None:
             raise TaskMisconfigured("Task entry point must be an object, not a module.")
+
+        try:
+            self._timeout = int(timeout)
+        except ValueError:
+            raise TaskMisconfigured("Provided timeout could not be converted to int.")
 
         try:
             self._args = list(args or [])
@@ -67,6 +73,10 @@ class Task:
     @property
     def kwargs(self):
         return self._kwargs
+
+    @property
+    def timeout(self):
+        return self._timeout
 
     def __repr__(self):
         return f"Task({self.entry_point})"
