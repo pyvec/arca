@@ -10,7 +10,8 @@ from .exceptions import TaskMisconfigured
 
 class Task:
     """ A class for defining tasks the run in the repositories. The task is defined by an entry point,
-    arguments and keyword arguments. The class uses :class:`entrypoints.EntryPoint` to load the callables.
+    timeout (5 seconds by default), arguments and keyword arguments.
+    The class uses :class:`entrypoints.EntryPoint` to load the callables.
     As apposed to :class:`EntryPoint <entrypoints.EntryPoint>`, only objects are allowed, not modules.
 
     Let's presume we have this function in a package ``library.module``:
@@ -45,6 +46,9 @@ class Task:
 
         try:
             self._timeout = int(timeout)
+
+            if self._timeout < 1:
+                raise ValueError
         except ValueError:
             raise TaskMisconfigured("Provided timeout could not be converted to int.")
 
