@@ -60,6 +60,15 @@ set up like this:
   task1 = Task("test:func", args=[5], kwargs={"y": 10})  # -> 50
   task2 = Task("test:func", kwargs={"x": 5, "y": 10})  # -> 50 again
 
+Timeout
+-------
+
+The :class:`arca.Task` class allows for a timeout to be defined with the task with the keyword argument ``timeout``.
+It must be a positive integer.
+The default value is 5 seconds.
+
+When a task exceeds a timeout, :class:`arca.exceptions.BuildTimeoutError` is raised.
+
 Result
 ------
 
