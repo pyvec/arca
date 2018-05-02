@@ -647,6 +647,21 @@ class DockerBackend(BaseBackend):
 
         return tarstream.getvalue()
 
+    def tar_alpine_alias(self):
+        """ Returns a tar with a file with an alias definition thats needed for Alpine.
+        """
+        tarstream = BytesIO()
+        tar = tarfile.TarFile(fileobj=tarstream, mode='w')
+        tarinfo = tarfile.TarInfo(name=".profile")
+
+        script_bytes = "if grep -q Alpine /etc/issue; then alias timeout=\"timeout -t\"; fi".encode("utf-8")
+        tarinfo.size = len(script_bytes)
+        tarinfo.mtime = int(time.time())
+        tar.addfile(tarinfo, BytesIO(script_bytes))
+        tar.close()
+
+        return tarstream.getvalue()
+
     def start_container(self, image, container_name: str, repo_path: Path):
         """ Starts a container with the image and name ``container_name`` and copies the repository into the container.
 
@@ -654,14 +669,23 @@ class DockerBackend(BaseBackend):
         :rtype: docker.models.container.Container
         """
         command = "bash -i"
+        env = {}
+
         if self.inherit_image:
             command = "sh -i"
+            env = {"ENV": "/root/.profile"}
 
         container = self.client.containers.run(image, command=command, detach=True, tty=True, name=container_name,
                                                working_dir=str((Path("/srv/data") / self.cwd).resolve()),
-                                               auto_remove=True)
+                                               auto_remove=True, environment=env)
 
         container.exec_run(["mkdir", "-p", "/srv/scripts"])
+
+        # alpine uses a different timeout, an alias is needed
+        if self.inherit_image:
+            container.put_archive("/root", self.tar_alpine_alias())
+            container.exec_run(["chmod", "+x", "/root/.profile"])
+
         container.put_archive("/srv", self.tar_files(repo_path))
         container.put_archive("/srv/scripts", self.tar_runner())
 
@@ -751,7 +775,8 @@ class DockerBackend(BaseBackend):
                                       f"/srv/scripts/{task_filename}"],
                                      tty=True)
 
-            if res.exit_code == 124:
+            # 124 is the standard, 143 on alpine
+            if res.exit_code in {124, 143}:
                 raise BuildTimeoutError(f"The task timeouted after {task.timeout} seconds.")
 
             return Result(res.output)
