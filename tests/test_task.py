@@ -27,6 +27,7 @@ def test_task_json(args, kwargs):
     task = Task("library.mod:func", args=args, kwargs=kwargs)
 
     assert isinstance(json.loads(task.json), dict)
+    assert task.hash
 
 
 @pytest.mark.parametrize("args", "kwargs", [

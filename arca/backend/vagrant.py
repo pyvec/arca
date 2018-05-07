@@ -296,9 +296,10 @@ class VagrantBackend(DockerBackend):
     def stop_vm(self):
         """ Stops or destroys the VM used to launch tasks.
         """
-        if self.destroy:
-            self.vagrant.destroy()
-            shutil.rmtree(self.vagrant.root, ignore_errors=True)
-            self.vagrant = None
-        else:
-            self.vagrant.halt()
+        if self.vagrant is not None:
+            if self.destroy:
+                self.vagrant.destroy()
+                shutil.rmtree(self.vagrant.root, ignore_errors=True)
+                self.vagrant = None
+            else:
+                self.vagrant.halt()
