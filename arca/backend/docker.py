@@ -182,7 +182,7 @@ class DockerBackend(BaseBackend):
 
         * Image type:
 
-          * i – Inherit image
+          * i – Inherited image
           * a – Arca base image
 
         * Requirements:
@@ -200,14 +200,14 @@ class DockerBackend(BaseBackend):
         * Inherited images:
 
           * `ise` – no requirements
-          * `ide_<requirements_hash>` – with requirements
+          * `ide_<hash(requirements)>` – with requirements
 
         * From Arca base image:
 
           * `ase` – no requirements and no dependencies
-          * `asd_<dependencies_hash>` – only dependencies
-          * `are_<requirements_hash>` – only requirements
-          * `ard_<hash(dependencies_hash + requirements_hash)>` – both requirements and dependencies
+          * `asd_<hash(dependencies)>` – only dependencies
+          * `are_<hash(requirements)>` – only requirements
+          * `ard_<hash(hash(dependencies) + hash(requirements))>` – both requirements and dependencies
         """
 
         prefix = "i" if self.inherit_image is not None else "a"
