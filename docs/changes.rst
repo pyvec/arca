@@ -1,6 +1,24 @@
 Changes
 =======
 
+0.2.0 (2018-05-??)
+******************
+
+This release has multiple backwards incompatible changes against the previous release
+
+Changes:
+  * Using extras to install Docker and Vagrant
+
+    * ``pip install arca[docker]`` or ``pip install arca[vagrant]`` has to be used
+
+  * Automatically using cloned repositories as reference for newly cloned branches
+  * Using Debian as the default base image in the Docker backend:
+
+    * **apk_dependencies** changed to **apt_dependencies**, now installing using `apt-get`
+
+  * Vagrant backend only creates one VM, instead of multiple -- see its documentation
+  * Added timeout to tasks -- 5 being the default
+
 0.1.1 (2018-04-23)
 ******************
 
