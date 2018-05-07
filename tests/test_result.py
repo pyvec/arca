@@ -16,3 +16,11 @@ def test_success():
 def test_error():
     with pytest.raises(BuildError):
         Result({"success": False, "error": "Error"})
+
+
+def test_json():
+    res = Result("""{"success": true, "result": "Message"}""")
+    assert res.output == "Message"
+
+    with pytest.raises(BuildError):
+        Result("""{"success": false, "error": "Error" """)
