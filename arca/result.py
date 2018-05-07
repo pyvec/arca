@@ -10,11 +10,15 @@ class Result:
 
     def __init__(self, result: Union[str, Dict[str, Any]]) -> None:
         if isinstance(result, (str, bytes, bytearray)):
+            output = result
             try:
                 result = json.loads(result)
             except ValueError:
                 raise BuildError("The build failed (the output was corrupted, "
-                                 "possibly by the callable printing something)")
+                                 "possibly by the callable printing something)",
+                                 extra_info={
+                                    "output": output
+                                 })
 
         if not isinstance(result, dict):
             raise BuildError("The build failed (the value returned from the runner was not valid)")
