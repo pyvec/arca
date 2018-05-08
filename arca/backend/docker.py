@@ -163,10 +163,7 @@ class DockerBackend(BaseBackend):
         """ Returns the name for images with installed requirements and dependencies.
         """
         if self.inherit_image is None:
-            return "arca_{arca_version}_{python_version}".format(
-                arca_version=str(arca.__version__),
-                python_version=self.get_python_version()
-            )
+            return self.get_arca_base_name()
         else:
             name, tag = str(self.inherit_image).split(":")
 
@@ -209,13 +206,20 @@ class DockerBackend(BaseBackend):
 
         * From Arca base image:
 
-          * `ase` – no requirements and no dependencies
-          * `asd_<hash(dependencies)>` – only dependencies
-          * `are_<hash(requirements)>` – only requirements
-          * `ard_<hash(hash(dependencies) + hash(requirements))>` – both requirements and dependencies
+          * `<Arca version>_<Python version>_ase` – no requirements and no dependencies
+          * `<Arca version>_<Python version>_asd_<hash(dependencies)>` – only dependencies
+          * `<Arca version>_<Python version>_are_<hash(requirements)>` – only requirements
+          * `<Arca version>_<Python version>_ard_<hash(hash(dependencies) + hash(requirements))>`
+            – both requirements and dependencies
+
         """
 
-        prefix = "i" if self.inherit_image is not None else "a"
+        prefix = ""
+
+        if self.inherit_image is None:
+            prefix = "{}_{}_".format(arca.__version__, self.get_python_version())
+
+        prefix += "i" if self.inherit_image is not None else "a"
         prefix += "r" if requirements_file is not None else "s"
         prefix += "d" if dependencies is not None else "e"
 
