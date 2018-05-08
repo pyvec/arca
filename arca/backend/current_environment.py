@@ -79,6 +79,7 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
         try:
             out_stream, err_stream = process.communicate(timeout=self.requirements_timeout)
         except subprocess.TimeoutExpired:
+            process.kill()
             raise BuildTimeoutError(f"Installing of requirements timeouted after {self.requirements_timeout} seconds.")
 
         out_stream = out_stream.decode("utf-8")

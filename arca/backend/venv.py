@@ -69,6 +69,7 @@ class VenvBackend(BaseRunInSubprocessBackend):
                 try:
                     out_stream, err_stream = process.communicate(timeout=self.requirements_timeout)
                 except subprocess.TimeoutExpired:
+                    process.kill()
                     shutil.rmtree(venv_path, ignore_errors=True)
 
                     raise BuildTimeoutError(f"Installing of requirements timeouted after "

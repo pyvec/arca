@@ -165,7 +165,11 @@ class BaseRunInSubprocessBackend(BaseBackend):
                                        stderr=subprocess.PIPE,
                                        cwd=cwd)
 
-            out_stream, err_stream = process.communicate(timeout=task.timeout)
+            try:
+                out_stream, err_stream = process.communicate(timeout=task.timeout)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                raise BuildTimeoutError(f"The task timeouted after {task.timeout} seconds.")
 
             out_output = out_stream.decode("utf-8")
             err_output = err_stream.decode("utf-8")
@@ -174,9 +178,7 @@ class BaseRunInSubprocessBackend(BaseBackend):
             logger.debug(out_output)
 
             return Result(out_output)
-        except subprocess.TimeoutExpired:
-            raise BuildTimeoutError(f"The task timeouted after {task.timeout} seconds.")
-        except BuildError:  # can be raised by  :meth:`Result.__init__`
+        except BuildError:  # can be raised by  :meth:`Result.__init__` or by timeout
             raise
         except Exception as e:
             logger.exception(e)
