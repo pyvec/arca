@@ -6,7 +6,6 @@ from pathlib import Path
 from textwrap import dedent
 from uuid import uuid4
 
-from fabric.exceptions import CommandTimeout
 from git import Repo
 
 from arca.exceptions import ArcaMisconfigured, BuildError, BuildTimeoutError
@@ -228,6 +227,7 @@ class VagrantBackend(DockerBackend):
             Stops the VM if ``keep_vm_running`` is not set.
         """
         from fabric import api
+        from fabric.exceptions import CommandTimeout
 
         # start up or get running VM
         vm_location = self.get_vm_location()
