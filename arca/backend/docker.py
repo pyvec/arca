@@ -54,7 +54,11 @@ class DockerBackend(BaseBackend):
     INSTALL_REQUIREMENTS = """
         FROM {name}:{tag}
         ADD {requirements} /srv/requirements.txt
-        RUN pip install -r /srv/requirements.txt
+        RUN if grep -q Alpine /etc/issue; then \
+                timeout -t {timeout} pip install --no-cache-dir -r /srv/requirements.txt; \
+            else \
+                timeout {timeout} pip install --no-cache-dir -r /srv/requirements.txt; \
+            fi
         CMD bash -i
     """
 
@@ -296,6 +300,11 @@ class DockerBackend(BaseBackend):
 
                 dockerfile_file.unlink()
         except docker.errors.BuildError as e:
+            for line in e.build_log:
+                if isinstance(line, dict) and line.get("errorDetail") and line["errorDetail"].get("code") in {124, 143}:
+                    raise BuildTimeoutError(f"Installing of requirements timeouted after "
+                                            f"{self.requirements_timeout} seconds.")
+
             logger.exception(e)
             raise
 
@@ -412,7 +421,8 @@ class DockerBackend(BaseBackend):
         install_requirements_dockerfile = self.INSTALL_REQUIREMENTS.format(
             name=base_name,
             tag=base_tag,
-            requirements=relative_requirements
+            requirements=relative_requirements,
+            timeout=self.requirements_timeout
         )
 
         self.get_or_build_image(image_name, image_tag, install_requirements_dockerfile,
@@ -508,7 +518,8 @@ class DockerBackend(BaseBackend):
                 return self.INSTALL_REQUIREMENTS.format(
                     name=dependencies_name,
                     tag=dependencies_tag,
-                    requirements=relative_requirements
+                    requirements=relative_requirements,
+                    timeout=self.requirements_timeout
                 )
 
             self.get_or_build_image(image_name, image_tag, install_requirements_dockerfile, build_context=build_context,

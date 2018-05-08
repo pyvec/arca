@@ -21,12 +21,16 @@ class BaseBackend:
 
     * **requirements_location**: Relative path to the requirements file in the target repositories.
       (default is ``requirements.txt``)
-    * **cwd**: Relative path to the required working directory. (default is ``""``, the root of the repo)
+    * **requirements_timeout**: The maximum time in seconds allowed for installing requirements.
+      (default is 5 minutes, 300 seconds)
+    * **cwd**: Relative path to the required working directory.
+      (default is ``""``, the root of the repo)
     """
 
     RUNNER = Path(__file__).parent.parent.resolve() / "_runner.py"
 
     requirements_location: str = LazySettingProperty(default="requirements.txt")
+    requirements_timeout: int = LazySettingProperty(default=300, convert=int)
     cwd: str = LazySettingProperty(default="")
 
     def __init__(self, **settings):
