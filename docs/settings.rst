@@ -71,6 +71,12 @@ This section describes settings that are common for all the backends.
 Tells backends where to look for a requirements file in the repositories, so it must be a relative path. You can set it
 to ``None`` to indicate there are no requirements. The default is ``requirements.txt``.
 
+**requirements_timeout** (`ARCA_BACKEND_REQUIREMENTS_TIMEOUT`)
+
+Tells backends how long the installing of requirements can take, in seconds.
+The default is 120 seconds.
+If the limit is exceeded :class:`BuildTimeoutError <arca.exceptions.BuildTimeoutError>` is raised.
+
 **cwd** (`ARCA_BACKEND_CWD`)
 
 Tells Arca in what working directory the tasks should be launched, so again a relative path.

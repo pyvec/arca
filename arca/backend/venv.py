@@ -1,10 +1,11 @@
+import shutil
 import subprocess
 from pathlib import Path
 from venv import EnvBuilder
 
 from git import Repo
 
-from arca.exceptions import BuildError
+from arca.exceptions import BuildError, BuildTimeoutError
 from arca.utils import logger
 from .base import BaseRunInSubprocessBackend
 
@@ -65,7 +66,14 @@ class VenvBackend(BaseRunInSubprocessBackend):
                                             str(requirements_file)],
                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-                [out_stream, err_stream] = process.communicate()
+                try:
+                    out_stream, err_stream = process.communicate(timeout=self.requirements_timeout)
+                except subprocess.TimeoutExpired:
+                    shutil.rmtree(venv_path, ignore_errors=True)
+
+                    raise BuildTimeoutError(f"Installing of requirements timeouted after "
+                                            f"{self.requirements_timeout} seconds.")
+
                 out_stream = out_stream.decode("utf-8")
                 err_stream = err_stream.decode("utf-8")
 

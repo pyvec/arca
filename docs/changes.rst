@@ -17,7 +17,8 @@ Changes:
     * **apk_dependencies** changed to **apt_dependencies**, now installing using `apt-get`
 
   * Vagrant backend only creates one VM, instead of multiple -- see its documentation
-  * Added timeout to tasks -- 5 being the default
+  * Added timeout to tasks, 5 seconds by default. Can be set using the argument **timeout** for ``Task``.
+  * Added timeout to installing requirements, 300 seconds by default. Can be set using the **requirements_timeout** configuration option for backends.
 
 0.1.1 (2018-04-23)
 ******************

@@ -6,7 +6,7 @@ from typing import Optional, Iterable, Set
 
 from git import Repo
 
-from arca.exceptions import ArcaMisconfigured, RequirementsMismatch, BuildError
+from arca.exceptions import ArcaMisconfigured, RequirementsMismatch, BuildError, BuildTimeoutError
 from arca.utils import LazySettingProperty, logger
 from .base import BaseRunInSubprocessBackend
 
@@ -76,7 +76,11 @@ class CurrentEnvironmentBackend(BaseRunInSubprocessBackend):
 
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        [out_stream, err_stream] = process.communicate()
+        try:
+            out_stream, err_stream = process.communicate(timeout=self.requirements_timeout)
+        except subprocess.TimeoutExpired:
+            raise BuildTimeoutError(f"Installing of requirements timeouted after {self.requirements_timeout} seconds.")
+
         out_stream = out_stream.decode("utf-8")
         err_stream = err_stream.decode("utf-8")
 

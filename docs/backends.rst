@@ -39,6 +39,7 @@ or you can use settings (described in more details in :ref:`configuring`). For e
 As mentioned in :ref:`options`, there are two options common for all backends. (See that section for more details.)
 
 * **requirements_location**
+* **requirements_timeout**
 * **cwd**
 
 .. _backends_cur:
