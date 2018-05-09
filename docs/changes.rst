@@ -1,13 +1,13 @@
 Changes
 =======
 
-0.2.0 (2018-05-??)
+0.2.0 (2018-05-09)
 ******************
 
-This release has multiple backwards incompatible changes against the previous release
+This release has multiple backwards incompatible changes against the previous release.
 
 Changes:
-  * Using extras to install Docker and Vagrant
+  * Using extras to install Docker and Vagrant dependencies
 
     * ``pip install arca[docker]`` or ``pip install arca[vagrant]`` has to be used
 
