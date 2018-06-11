@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.2.1 (2018-06-11)
+******************
+
+Updated dogpile.cache to 0.6.5, enabling compatability with Python 3.7.
+Updated the Docker backend to be able to run on Python betas.
+
 0.2.0 (2018-05-09)
 ******************
 
