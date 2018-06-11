@@ -1,7 +1,7 @@
 import hashlib
 import json
+import platform
 import signal
-import sys
 import tarfile
 import time
 
@@ -150,10 +150,10 @@ class DockerBackend(BaseBackend):
         return dependencies
 
     def get_python_version(self) -> str:
-        """ Returns either the specified version from settings or a string of the sys.executable version.
+        """ Returns either the specified version from settings or platform.python_version()
         """
         if self.python_version is None:
-            python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            python_version = platform.python_version()
         else:
             python_version = self.python_version
 

@@ -20,7 +20,7 @@ def long_description():
 
 setup(
     name="arca",
-    version="0.2.0",
+    version="0.2.1",
     author="Mikuláš Poul",
     author_email="mikulaspoul@gmail.com",
     description="A library for running Python functions (callables) from git repositories "
@@ -32,7 +32,7 @@ setup(
     long_description=long_description(),
     install_requires=[
         "gitpython==2.1.9",
-        "dogpile.cache==0.6.4",
+        "dogpile.cache==0.6.5",
         "requests",
         "entrypoints>=0.2.3",
         "cached-property",
