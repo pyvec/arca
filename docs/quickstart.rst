@@ -42,7 +42,8 @@ To call the function using Arca, the following example would do so:
 The code would print ``Hello World!``.
 
 ``result`` would be a :class:`Result <arca.Result>` instance. :class:`Result <arca.Result>` has three attributes,
-``output`` with the return value of the function call, ``stdout`` and ``stderr`` contain things printed to the standard outputs.
+``output`` with the return value of the function call, ``stdout`` and ``stderr`` contain things printed to the standard outputs
+(see the section about :ref:`Result <result>` for more info about the capture of the standard outputs).
 If the task fails, :class:`arca.exceptions.BuildError` would be raised.
 
 By default, the :ref:`Current Environment Backend <backends_cur>` is used to run tasks,

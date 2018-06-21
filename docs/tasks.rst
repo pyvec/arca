@@ -69,6 +69,8 @@ The default value is 5 seconds.
 
 When a task exceeds a timeout, :class:`arca.exceptions.BuildTimeoutError` is raised.
 
+.. _result:
+
 Result
 ------
 
@@ -77,3 +79,7 @@ Anything that's json-serializable can be returned from the entrypoints.
 The :class:`arca.Result` instances contain three attributes.
 ``output`` contains the value returned from the entrypoint.
 ``stdout`` and ``stderr`` contain things written to the standard outputs.
+
+Arca uses :func:`contextlib.redirect_stdout` and :func:`contextlib.redirect_stderrr` to catch the standard outputs,
+which only redirect things written from standard Python code -- for example output from a subprocess is not caught.
+Due to the way backends launch tasks the callables cannot output anything that is not redirectable by these two context managers.
