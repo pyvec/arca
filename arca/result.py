@@ -36,3 +36,9 @@ class Result:
 
         #: The output of the task
         self.output = result.get("result")
+
+        #: What the function wrote to stdout
+        self.stdout = result.get("stdout")
+
+        #: What the function wrote to stderr
+        self.stderr = result.get("stderr")

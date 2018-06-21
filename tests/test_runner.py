@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 
 import arca._runner as runner
-from arca import Task, Result
+from arca import Task, Result, Arca, CurrentEnvironmentBackend
+from common import PRINTING_FUNCTION
 
 
 @pytest.mark.parametrize("definition", [
@@ -130,3 +131,18 @@ def test_unicode(mocker, args, kwargs, result):
     assert Result(output).output == result
 
     file.unlink()
+
+
+def test_output(temp_repo_func):
+    arca = Arca(backend=CurrentEnvironmentBackend(current_environment_requirements=None,
+                                                  requirements_strategy="ignore"))
+
+    temp_repo_func.file_path.write_text(PRINTING_FUNCTION)
+    temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])
+    temp_repo_func.repo.index.commit("Initial")
+
+    result = arca.run(temp_repo_func.url, temp_repo_func.branch, Task("test_file:func"))
+
+    assert result.output == 1
+    assert result.stdout == "Printed to stdout\nWritten to stdout"
+    assert result.stderr == "Printed to stderr\nWritten to stderr"
