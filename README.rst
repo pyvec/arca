@@ -101,7 +101,8 @@ To call the function using Arca, the following example would do so:
 
 The code would print ``Hello World!``.
 ``result`` would be a ``arca.Result`` instance. ``arca.Result`` has three attributes,
-``output`` with the return value of the function call, ``stdout`` and ``stderr`` contain things printed to the standard outputs.
+``output`` with the return value of the function call, ``stdout`` and ``stderr`` contain things printed to the standard outputs
+(see the section about `Result <http://arca.readthedocs.io/en/latest/tasks.html#result>`_ for more info about the capture of the standard outputs).
 If the task fails, ``arca.exceptions.BuildError`` would be raised.
 
 By default, the `Current Environment Backend <https://arca.readthedocs.io/en/latest/backends.html#current-environment>`_ is used to run tasks,
