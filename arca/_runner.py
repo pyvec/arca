@@ -1,9 +1,11 @@
 """ This file is the code which actually launches the tasks, the serialized JSONs.
 """
+import contextlib
+import io
 import json
-import traceback
-import sys
 import os
+import sys
+import traceback
 from importlib import import_module
 from pathlib import Path
 
@@ -53,12 +55,19 @@ def run(filename):
     except (ImportError, AttributeError):
         return {"success": False, "reason": "import", "error": traceback.format_exc()}
 
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
     try:
-        res = entry_point(*args, **kwargs)
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            res = entry_point(*args, **kwargs)
     except BaseException:
         return {"success": False, "error": traceback.format_exc()}
 
-    return {"success": True, "result": res}
+    return {"success": True,
+            "result": res,
+            "stdout": stdout.getvalue(),
+            "stderr": stderr.getvalue()}
 
 
 if __name__ == "__main__":

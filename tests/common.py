@@ -64,3 +64,16 @@ def return_str_function():
     time.sleep(2)
     return "Some string"
 """
+
+PRINTING_FUNCTION = """
+import sys
+
+def func():
+    print("Printed to stdout")
+    sys.stdout.write("Written to stdout")
+
+    print("Printed to stderr", file=sys.stderr)
+    sys.stderr.write("Written to stderr")
+
+    return 1
+"""

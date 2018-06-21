@@ -72,6 +72,8 @@ When a task exceeds a timeout, :class:`arca.exceptions.BuildTimeoutError` is rai
 Result
 ------
 
+The output of a task is stored and returned in a :class:`arca.Result` instance.
 Anything that's json-serializable can be returned from the entrypoints.
-Unfortunately, due to the way tasks are being launched by various backends, the entrypoints **must not** print anything,
-they can only return values.
+The :class:`arca.Result` instances contain three attributes.
+``output`` contains the value returned from the entrypoint.
+``stdout`` and ``stderr`` contain things written to the standard outputs.
