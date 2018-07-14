@@ -1,5 +1,4 @@
 # encoding=utf-8
-import os
 import platform
 import re
 import shutil
@@ -194,8 +193,8 @@ def test_depth(temp_repo_static):
     cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
     assert cloned_repo.commit().count() == 2
 
-    if not os.environ.get("APPVEYOR", False):
-        shutil.rmtree(str(cloned_repo_path))
+    cloned_repo.close()
+    shutil.rmtree(str(cloned_repo_path))
 
     # test that when setting a certain depth, at least the depth is pulled (in case of merges etc)
 
@@ -212,8 +211,8 @@ def test_depth(temp_repo_static):
     cloned_repo, cloned_repo_path = arca.get_files(temp_repo_static.url, temp_repo_static.branch)
     assert cloned_repo.commit().count() == before_second_pull + 1
 
-    if not os.environ.get("APPVEYOR", False):
-        shutil.rmtree(str(cloned_repo_path))
+    cloned_repo.close()
+    shutil.rmtree(str(cloned_repo_path))
 
     # test when setting depth bigger than repo size, no fictional commits are included
 
@@ -221,8 +220,8 @@ def test_depth(temp_repo_static):
 
     assert cloned_repo.commit().count() == 22  # 20 plus the 2 extra commits
 
-    if not os.environ.get("APPVEYOR", False):
-        shutil.rmtree(str(cloned_repo_path))
+    cloned_repo.close()
+    shutil.rmtree(str(cloned_repo_path))
 
     # test no limit
 
@@ -275,8 +274,8 @@ def test_reference():
     cloned_repo, cloned_repo_path = arca.get_files(git_url_1, branch, reference=Path(BASE_DIR) / str(uuid4()))
     assert (cloned_repo_path / "test_file.txt").read_text() == last_uuid
 
-    if not os.environ.get("APPVEYOR", False):
-        shutil.rmtree(str(cloned_repo_path))
+    cloned_repo.close()
+    shutil.rmtree(str(cloned_repo_path))
 
     # test existing reference with no common commits
 
@@ -292,8 +291,8 @@ def test_reference():
     cloned_repo, cloned_repo_path = arca.get_files(git_url_1, branch, reference=git_dir_2)
     assert (cloned_repo_path / "test_file.txt").read_text() == last_uuid
 
-    if not os.environ.get("APPVEYOR", False):
-        shutil.rmtree(str(cloned_repo_path))
+    cloned_repo.close()
+    shutil.rmtree(str(cloned_repo_path))
 
     # test existing reference with common commits
 
