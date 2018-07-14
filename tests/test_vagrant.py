@@ -78,7 +78,7 @@ def test_vagrant(temp_repo_func, destroy=False):
     # branch branch - return unicode
     temp_repo_func.repo.create_head("branch")
     temp_repo_func.repo.branches.branch.checkout()
-    temp_repo_func.file_path.write_text(SECOND_RETURN_STR_FUNCTION)
+    temp_repo_func.file_path.write_text(SECOND_RETURN_STR_FUNCTION, encoding="utf-8")
     temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])
     temp_repo_func.repo.index.commit("Test unicode on a separate branch")
 

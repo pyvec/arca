@@ -13,7 +13,7 @@ def test_single_pull(temp_repo_func, mocker):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
     assert arca._pull.call_count == 1
 
-    temp_repo_func.file_path.write_text(SECOND_RETURN_STR_FUNCTION)
+    temp_repo_func.file_path.write_text(SECOND_RETURN_STR_FUNCTION, encoding="utf-8")
     temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])
     temp_repo_func.repo.index.commit("Updated function")
 
@@ -40,7 +40,7 @@ def test_pull_efficiency(temp_repo_func, mocker):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
     assert arca._pull.call_count == 2
 
-    temp_repo_func.file_path.write_text(SECOND_RETURN_STR_FUNCTION)
+    temp_repo_func.file_path.write_text(SECOND_RETURN_STR_FUNCTION, encoding="utf-8")
     temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])
     temp_repo_func.repo.index.commit("Updated function")
 

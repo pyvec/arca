@@ -57,7 +57,7 @@ def test_arca_backend():
     # windows paths
     pytest.param("file:///C:\\user\\path \\to\\repo", True,
                  marks=pytest.mark.skipif(platform.system() != "Windows", reason="Windows Path")),
-    pytest.param("http:///c:\\user\\path \\to\\repo", True,
+    pytest.param("file:///c:\\user\\path \\to\\repo", True,
                  marks=pytest.mark.skipif(platform.system() != "Windows", reason="Windows Path")),
 
     # ssh
@@ -257,7 +257,7 @@ def test_reference():
     arca = Arca(base_dir=BASE_DIR)
     branch = "master"
 
-    git_dir_1 = Path("/tmp/arca/") / str(uuid4())
+    git_dir_1 = Path(BASE_DIR) / str(uuid4())
     git_url_1 = f"file://{git_dir_1}"
     filepath_1 = git_dir_1 / "test_file.txt"
     repo_1 = Repo.init(git_dir_1)
@@ -272,7 +272,7 @@ def test_reference():
 
     # test nonexistent reference
 
-    cloned_repo, cloned_repo_path = arca.get_files(git_url_1, branch, reference=Path("/tmp/arca/") / str(uuid4()))
+    cloned_repo, cloned_repo_path = arca.get_files(git_url_1, branch, reference=Path(BASE_DIR) / str(uuid4()))
     assert (cloned_repo_path / "test_file.txt").read_text() == last_uuid
 
     if not os.environ.get("APPVEYOR", False):
@@ -280,7 +280,7 @@ def test_reference():
 
     # test existing reference with no common commits
 
-    git_dir_2 = Path("/tmp/arca/") / str(uuid4())
+    git_dir_2 = Path(BASE_DIR) / str(uuid4())
     filepath_2 = git_dir_2 / "test_file.txt"
     repo_2 = Repo.init(git_dir_2)
 
@@ -297,7 +297,7 @@ def test_reference():
 
     # test existing reference with common commits
 
-    git_dir_3 = Path("/tmp/arca/") / str(uuid4())
+    git_dir_3 = Path(BASE_DIR) / str(uuid4())
     git_url_3 = f"file://{git_dir_3}"
     filepath_3 = git_dir_3 / "test_file.txt"
     repo_3 = repo_1.clone(str(git_dir_3))  # must pass string, fails otherwise
@@ -358,7 +358,7 @@ def test_get_reference_repository(temp_repo_static):
 def test_pull_error():
     arca = Arca(base_dir=BASE_DIR)
 
-    git_dir = Path("/tmp/arca/") / str(uuid4())
+    git_dir = Path(BASE_DIR) / str(uuid4())
     git_url = f"file://{git_dir}"
 
     with pytest.raises(PullError):

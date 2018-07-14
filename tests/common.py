@@ -4,7 +4,7 @@ from pathlib import Path
 if os.environ.get("TRAVIS", False):
     BASE_DIR = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
 elif os.environ.get("APPVEYOR", False):
-    BASE_DIR = Path(os.environ["APPVEYOR_BUILD_FOLDER"]) / "test_loc"
+    BASE_DIR = str(Path(os.environ["APPVEYOR_BUILD_FOLDER"]) / "test_loc")
 else:
     BASE_DIR = "/tmp/arca/test"
 
