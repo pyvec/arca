@@ -146,14 +146,14 @@ class Arca:
 
         if not isinstance(repo, str):
             valid = False
-
-        if platform.system() == "Windows":
-            if not url_regex.match(repo) and not re.match(r"file://(localhost)?/[a-zA-Z]:\\[\\\S|*\S]?.*", repo):
-                valid = False
-
         else:
-            if not url_regex.match(repo) and not re.match(r"file://[\w._\-/~]*[.git]?/?$", repo):
-                valid = False
+            if platform.system() == "Windows":
+                if not url_regex.match(repo) and not re.match(r"file://(localhost)?/[a-zA-Z]:\\[\\\S|*\S]?.*", repo):
+                    valid = False
+
+            else:
+                if not url_regex.match(repo) and not re.match(r"file://[\w._\-/~]*[.git]?/?$", repo):
+                    valid = False
 
         if not valid:
             raise ValueError(f"{repo} is not a valid http[s] or file:// git repository.")
