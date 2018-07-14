@@ -3,8 +3,10 @@ env:
   - DOCKER_HUB_USERNAME=mikicz
   - secure: g80a90m7rMFm1+sYNRcu34TJ+eqD5hOeiWNTGQg5mNa46mC/XtAyAIR1JTmRR0cTiW1agcTdZ9GiFrNhxskf2kHd8T9UrKGXUGpg47SLMjQgqE4XS0QFtqftFESmEQk5FEQzPKqbm+tF7D05Bt8FcgqGfqPQwOqliooUdxkbJ0FAvd8MlbmmyCG9E3zq7pAURoAFKOJ854x5zYLF3JptOPACz4hEh3nQNFEF8xFwQFRVxdg6/zKD9ubxuqc3EDCmv/yjcWXfQExBct1+kUpFhzWa1QzYZE3vr+MGBcBEo+jw34bHDT7cQTywfsjQXDeZa0nt3/ieR1oAbNdscZp8PWRGvKjWRVWU62x6VpmETQUWIoU7S0Rlqosy9Y+oqR3yl69ByjOuvZAGeso2CKj+SR+TFvGM+YItMXQhmA9KXhvuxnddxwOvZlqZ5cLF8tTeDEvI9uIDoeEG0lFmmcvt5o3MQ7jLAXfQMP0I740TXY7CCqa1oh3Bv7bvs9UcjNXTm4RrxVsZcCHOhlD4RoUWcZ7R7fQ048yrbaT3XvuY9NPBdFJyTIkYEMNqvdpXNhzTFOgaXr6GyQsZn8GGlkqqq2Ldp0NgLTR+0FTa1v8Y7Ef6YBWMCqC5WJkoEekdI6dyOOIJUlKMd3IDyu6mfaUnF1HG/kqUNGV+PLV47l/oo1c=
 language: python
+dist: xenial
 python:
 - '3.6'
+- '3.7'
 
 cache:
 - pip
@@ -38,3 +40,4 @@ deploy:
   on:
     branch: master
     repo: mikicz/arca
+    python: '3.7'
