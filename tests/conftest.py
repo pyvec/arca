@@ -1,3 +1,4 @@
+import os
 import platform
 import shutil
 import tempfile
@@ -36,7 +37,11 @@ def temp_repo_func():
 
     yield temp_repo
 
-    shutil.rmtree(str(temp_repo.repo_path))
+    # The fixture is not being cleaned because the deletion raises
+    # [WinError 32] The process cannot access the file because it is being used by another process
+
+    if not os.environ.get("APPVEYOR", False):
+        shutil.rmtree(str(temp_repo.repo_path))
 
 
 @pytest.fixture()
@@ -50,4 +55,5 @@ def temp_repo_static():
 
     yield temp_repo
 
-    shutil.rmtree(str(temp_repo.repo_path))
+    if not os.environ.get("APPVEYOR", False):
+        shutil.rmtree(str(temp_repo.repo_path))
