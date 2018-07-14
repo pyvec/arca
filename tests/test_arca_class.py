@@ -375,6 +375,8 @@ def test_pull_error():
     with pytest.raises(PullError):
         arca.get_files(git_url, "some_branch")
 
+    repo.close()
+
     shutil.rmtree(str(git_dir))
 
     with pytest.raises(PullError):
