@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -49,7 +50,8 @@ def test_definition_corruption(definition):
     assert output["error"]
     assert output["reason"] == "corrupted_definition"
 
-    file.unlink()
+    if not os.environ.get("APPVEYOR", False):
+        file.unlink()
 
 
 @pytest.mark.parametrize("module_name,object_name", [
@@ -74,7 +76,8 @@ def test_import_error(module_name, object_name):
     assert output["error"]
     assert output["reason"] == "import"
 
-    file.unlink()
+    if not os.environ.get("APPVEYOR", False):
+        file.unlink()
 
 
 @pytest.mark.parametrize("func,result", [
@@ -104,7 +107,8 @@ def test_run(mocker, func, result):
         assert output["success"] is False
         assert result.__name__ in output["error"]
 
-    file.unlink()
+    if not os.environ.get("APPVEYOR", False):
+        file.unlink()
 
 
 @pytest.mark.parametrize("args,kwargs,result", [
@@ -130,7 +134,8 @@ def test_unicode(mocker, args, kwargs, result):
 
     assert Result(output).output == result
 
-    file.unlink()
+    if not os.environ.get("APPVEYOR", False):
+        file.unlink()
 
 
 def test_output(temp_repo_func):

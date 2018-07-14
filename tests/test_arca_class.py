@@ -375,8 +375,7 @@ def test_pull_error():
     with pytest.raises(PullError):
         arca.get_files(git_url, "some_branch")
 
-    if not os.environ.get("APPVEYOR", False):
-        shutil.rmtree(str(git_dir))
+    shutil.rmtree(str(git_dir))
 
     with pytest.raises(PullError):
         arca.get_files(git_url, "master")
