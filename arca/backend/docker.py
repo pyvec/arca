@@ -326,8 +326,13 @@ class DockerBackend(BaseBackend):
             RUN apt-get update && \
                 apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
                                    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-                                   xz-utils tk-dev libffi-dev git && \
+                                   xz-utils tk-dev libffi-dev git locales && \
                 apt-get clean
+
+            RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen
+            ENV LANG en_US.UTF-8
+            ENV LANGUAGE en_US:en
+            ENV LC_ALL en_US.UTF-8
 
             RUN adduser --system --disabled-password --shell /bin/bash arca
 
