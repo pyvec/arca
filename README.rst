@@ -129,7 +129,7 @@ docker images is also tested and vagrant, in general, takes a long time to set u
 Contributing
 ************
 
-I am developing this library as my bachelor thesis and will be not accepting any PRs at the moment.
+Contributions are welcomed! Feel free to open a issue or submit a pull request on `GitHub <https://github.com/mikicz/arca>`_!
 
 .. split_here
 
