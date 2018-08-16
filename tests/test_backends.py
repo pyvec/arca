@@ -11,7 +11,7 @@ from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR
 
 @pytest.mark.parametrize(
     ["backend", "requirements_location", "file_location"], list(itertools.product(
-        (CurrentEnvironmentBackend, VenvBackend, DockerBackend),
+        (VenvBackend, DockerBackend),
         (None, "requirements/requirements.txt"),
         (None, "test_package"),
     ))
@@ -33,9 +33,6 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     if backend == DockerBackend:
         kwargs["disable_pull"] = True
-    if backend == CurrentEnvironmentBackend:
-        kwargs["current_environment_requirements"] = None
-        kwargs["requirements_strategy"] = "install_extra"
 
     backend = backend(verbosity=2, **kwargs)
 
@@ -90,9 +87,6 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.8"
 
     # cleanup
-
-    if isinstance(backend, CurrentEnvironmentBackend):
-        backend._uninstall("colorama")
 
     with pytest.raises(ModuleNotFoundError):
         import colorama  # noqa
@@ -156,6 +150,10 @@ def test_advanced_backends(temp_repo_func, backend):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task_3_seconds).output == "Some string"
 
     # test requirements timeout
+
+    if isinstance(arca.backend, CurrentEnvironmentBackend):
+        return  # CurrentEnvironmentBackend ignores requirements
+
     requirements_path.write_text("scipy")
 
     filepath.write_text(RETURN_STR_FUNCTION)

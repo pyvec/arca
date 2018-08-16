@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.3.0 (2018-08-??)
+******************
+
+Changes
+  * Removed CurrentEnvironmentBackend's capability to process requirements - all requirements are ignored. (**BACKWARDS INCOMPATIBLE**)
+
 0.2.1 (2018-06-11)
 ******************
 

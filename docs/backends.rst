@@ -50,28 +50,9 @@ Current Environment
 *arca.backend.CurrentEnvironmentBackend*
 
 This backend is the default option, it runs the tasks with the same Python that's used to run Arca, in a subprocess.
-There are two settings for this backend, to determine how the backend should treat requirements in the repositories.
-
-* **current_environment_requirements**: a path to the requirements of the current environment,
-  the default is ``requirements.txt``.
-  ``None`` would indicate there are no requirements for the current environment.
-* **requirements_strategy**: Which approach the backend should take. There are three, the default being ``raise``.
+There are no extra settings for this backend. All the requirements in repositories are ignored completely.
 
 (possible settings prefixes: ``ARCA_CURRENT_ENVIRONMENT_BACKEND_`` and ``ARCA_BACKEND_``)
-
-Requirements strategies:
-++++++++++++++++++++++++
-
-The strategies are defined in a enum, ``arca.RequirementsStrategy``. Its values or the string representations can be
-used in settings.
-
-* ``raise``, ``RequirementsStrategy.RAISE``:
-  Raise an ``arca.exceptions.RequirementsMismatch`` if there are any extra requirements in the target repository.
-* ``ignore``, ``RequirementsStrategy.IGNORE``: Ignore any extra requirements.
-* ``install_extra``, ``RequirementsStrategy.INSTALL_EXTRA``:
-  Install the requirements that are extra in the target repository as opposed to the current environment.
-
-.. _backends_vir:
 
 Virtual Environment
 -------------------

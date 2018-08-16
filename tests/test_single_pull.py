@@ -3,7 +3,7 @@ from common import SECOND_RETURN_STR_FUNCTION, BASE_DIR, TEST_UNICODE
 
 
 def test_single_pull(temp_repo_func, mocker):
-    backend = CurrentEnvironmentBackend(verbosity=2, current_environment_requirements=None)
+    backend = CurrentEnvironmentBackend(verbosity=2)
     arca = Arca(backend=backend, base_dir=BASE_DIR, single_pull=True)
 
     mocker.spy(arca, "_pull")
@@ -27,7 +27,7 @@ def test_single_pull(temp_repo_func, mocker):
 
 
 def test_pull_efficiency(temp_repo_func, mocker):
-    backend = CurrentEnvironmentBackend(verbosity=2, current_environment_requirements=None)
+    backend = CurrentEnvironmentBackend(verbosity=2)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     mocker.spy(arca, "_pull")

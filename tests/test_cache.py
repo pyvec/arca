@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from dogpile.cache.api import NO_VALUE
 
-from arca import Arca, Task, CurrentEnvironmentBackend
+from arca import Arca, Task, VenvBackend
 from arca.exceptions import ArcaMisconfigured
 from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION
 
@@ -17,8 +17,7 @@ from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION
 def test_cache(mocker, temp_repo_func, cache_backend, arguments):
     base_dir = Path(BASE_DIR)
 
-    backend = CurrentEnvironmentBackend(verbosity=2, current_environment_requirements=None,
-                                        requirements_strategy="install_extra")
+    backend = VenvBackend(verbosity=2)
 
     base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -69,9 +68,6 @@ def test_cache(mocker, temp_repo_func, cache_backend, arguments):
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task).output == "0.3.9"
     assert arca.get_files.call_count == 1  # check that the repo was pulled
-
-    if isinstance(backend, CurrentEnvironmentBackend):
-        backend._uninstall("colorama")
 
 
 def test_json_loads_arguments():
