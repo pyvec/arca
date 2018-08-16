@@ -1,5 +1,6 @@
 import itertools
 import os
+from pathlib import Path
 
 import pytest
 
@@ -27,6 +28,7 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     if requirements_location is not None:
         kwargs["requirements_location"] = requirements_location
+        kwargs["pipfile_location"] = requirements_location.split("/")[0]
 
     if file_location is not None:
         kwargs["cwd"] = file_location
@@ -85,6 +87,30 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
     temp_repo_func.repo.index.commit("Updated requirements")
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.8"
+
+    if isinstance(backend, DockerBackend):
+        return
+
+    # Pipfile
+
+    pipfile_path = requirements_path.parent / "Pipfile"
+    pipfile_lock_path = pipfile_path.parent / "Pipfile.lock"
+
+    pipfile_path.write_text((Path(__file__).parent / "fixtures/Pipfile").read_text("utf-8"))
+
+    temp_repo_func.repo.index.add([str(pipfile_path)])
+    temp_repo_func.repo.index.commit("Added Pipfile")
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
+
+    # Pipfile Lock
+
+    pipfile_lock_path.write_text((Path(__file__).parent / "fixtures/Pipfile.lock").read_text("utf-8"))
+
+    temp_repo_func.repo.index.add([str(pipfile_lock_path)])
+    temp_repo_func.repo.index.commit("Added Pipfile.lock")
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
 
     # cleanup
 

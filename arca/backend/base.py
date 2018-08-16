@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -20,9 +21,12 @@ class BaseBackend:
     Available settings:
 
     * **requirements_location**: Relative path to the requirements file in the target repositories.
-      (default is ``requirements.txt``)
+      Setting to ``None`` makes Arca ignore requirements. (default is ``requirements.txt``)
     * **requirements_timeout**: The maximum time in seconds allowed for installing requirements.
       (default is 5 minutes, 300 seconds)
+    * **pipfile_location**: The folder containing ``Pipfile`` and ``Pipfile.lock``. Takes precedence
+      over requirements files. Setting to ``None`` makes Arca ignore the requirement.
+      (default is the root of the repository)
     * **cwd**: Relative path to the required working directory.
       (default is ``""``, the root of the repo)
     """
@@ -31,6 +35,9 @@ class BaseBackend:
 
     requirements_location: str = LazySettingProperty(default="requirements.txt")
     requirements_timeout: int = LazySettingProperty(default=300, convert=int)
+
+    pipfile_location: str = LazySettingProperty(default="")
+
     cwd: str = LazySettingProperty(default="")
 
     def __init__(self, **settings):
@@ -99,6 +106,31 @@ class BaseBackend:
         """
         logger.debug("Hashing: %s%s", requirements_file.read_text(), arca.__version__)
         return hashlib.sha256(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
+
+    def get_pipfiles(self, path: Path) -> Optional[Tuple[Path, Optional[Path]]]:
+        if self.pipfile_location is None:
+            return None
+
+        pipfile = path / self.pipfile_location / "Pipfile"
+        pipfile_lock = path / self.pipfile_location / "Pipfile.lock"
+
+        if not pipfile.exists():
+            return None
+
+        return pipfile, pipfile_lock if pipfile_lock.exists() else None
+
+    def get_pipfile_hash(self, pipfile: Path, pipfile_lock: Optional[Path]) -> str:
+        if pipfile_lock is not None:
+            pipfile_lock_contents = pipfile_lock.read_text("utf-8")
+
+            try:
+                to_hash = json.loads(pipfile_lock_contents)["_meta"]["hash"]["sha256"]
+            except (ValueError, KeyError):
+                to_hash = pipfile_lock_contents
+        else:
+            to_hash = pipfile.read_text("utf-8")
+
+        return hashlib.sha256(bytes(to_hash + arca.__version__, "utf-8")).hexdigest()
 
     def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path) -> Result:  # pragma: no cover
         """
