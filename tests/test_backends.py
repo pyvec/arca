@@ -88,9 +88,6 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.8"
 
-    if isinstance(backend, DockerBackend):
-        return
-
     # Pipfile
 
     pipfile_path = requirements_path.parent / "Pipfile"
@@ -98,6 +95,7 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     pipfile_path.write_text((Path(__file__).parent / "fixtures/Pipfile").read_text("utf-8"))
 
+    temp_repo_func.repo.index.remove([str(requirements_path)])
     temp_repo_func.repo.index.add([str(pipfile_path)])
     temp_repo_func.repo.index.commit("Added Pipfile")
 
@@ -109,6 +107,13 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     temp_repo_func.repo.index.add([str(pipfile_lock_path)])
     temp_repo_func.repo.index.commit("Added Pipfile.lock")
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
+
+    # works even when requirements is in the repo
+    requirements_path.write_text("colorama==0.3.8")
+    temp_repo_func.repo.index.add([str(requirements_path)])
+    temp_repo_func.repo.index.commit("Added back requirements")
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
 

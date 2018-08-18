@@ -14,6 +14,8 @@ from arca.result import Result
 from arca.task import Task
 from arca.utils import NOT_SET, LazySettingProperty, logger
 
+PipfilesType = Optional[Tuple[Path, Optional[Path]]]
+
 
 class BaseBackend:
     """ Abstract class for all the backends, implements some basic functionality.
@@ -107,7 +109,7 @@ class BaseBackend:
         logger.debug("Hashing: %s%s", requirements_file.read_text(), arca.__version__)
         return hashlib.sha256(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
 
-    def get_pipfiles(self, path: Path) -> Optional[Tuple[Path, Optional[Path]]]:
+    def get_pipfiles(self, path: Path) -> PipfilesType:
         if self.pipfile_location is None:
             return None
 

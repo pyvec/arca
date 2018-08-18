@@ -23,7 +23,7 @@ from arca.exceptions import ArcaMisconfigured, BuildError, PushToRegistryError, 
 from arca.result import Result
 from arca.task import Task
 from arca.utils import logger, LazySettingProperty
-from .base import BaseBackend
+from .base import BaseBackend, PipfilesType
 
 
 class DockerBackend(BaseBackend):
@@ -59,7 +59,22 @@ class DockerBackend(BaseBackend):
             else \
                 timeout {timeout} pip install --no-cache-dir -r /srv/requirements.txt; \
             fi
-        CMD bash -i
+    """
+
+    INSTALL_PIPENV = """
+        FROM {name}:{tag}
+        ADD {pipfile} /srv/Pipfile
+        {use_pipfile_lock}ADD {pipfile_lock} /srv/Pipfile.lock
+
+        WORKDIR /srv
+
+        RUN if grep -q Alpine /etc/issue; then \
+                timeout -t {timeout} pipenv {pipenv_cmd}; \
+            else \
+                timeout {timeout} pipenv {pipenv_cmd}; \
+            fi
+
+        WORKDIR /home/arca
     """
 
     INSTALL_DEPENDENCIES = """
@@ -69,7 +84,6 @@ class DockerBackend(BaseBackend):
             apt-get install --no-install-recommends -y --autoremove {dependencies} && \
             apt-get clean
         USER arca
-        CMD bash -i
     """
 
     def __init__(self, **kwargs):
@@ -159,7 +173,10 @@ class DockerBackend(BaseBackend):
 
         return python_version
 
-    def get_image_name(self, requirements_file: Optional[Path], dependencies: Optional[List[str]]) -> str:
+    def get_image_name(self,
+                       pipfiles: PipfilesType,
+                       requirements_file: Optional[Path],
+                       dependencies: Optional[List[str]]) -> str:
         """ Returns the name for images with installed requirements and dependencies.
         """
         if self.inherit_image is None:
@@ -174,7 +191,10 @@ class DockerBackend(BaseBackend):
         """
         return hashlib.sha256(bytes(",".join(dependencies), "utf-8")).hexdigest()
 
-    def get_image_tag(self, requirements_file: Optional[Path], dependencies: Optional[List[str]]) -> str:
+    def get_image_tag(self,
+                      pipfiles: PipfilesType,
+                      requirements_file: Optional[Path],
+                      dependencies: Optional[List[str]]) -> str:
         """ Returns the tag for images with the dependencies and requirements installed.
 
         64-byte hexadecimal strings cannot be used as docker tags, so the prefixes are necessary.
@@ -189,7 +209,7 @@ class DockerBackend(BaseBackend):
 
         * Requirements:
 
-          * r – Does have requirements
+          * r – Does have some kind of requirements
           * s – Doesn't have requirements
 
         * Dependencies:
@@ -220,19 +240,20 @@ class DockerBackend(BaseBackend):
             prefix = "{}_{}_".format(arca.__version__, self.get_python_version())
 
         prefix += "i" if self.inherit_image is not None else "a"
-        prefix += "r" if requirements_file is not None else "s"
+        prefix += "r" if (pipfiles is not None or requirements_file is not None) else "s"
         prefix += "d" if dependencies is not None else "e"
 
-        if self.inherit_image is not None:
-            if requirements_file is None:
-                return prefix
-            else:
-                return prefix + "_" + self.get_requirements_hash(requirements_file)
-
-        if requirements_file is None:
-            requirements_hash = ""
-        else:
+        if pipfiles is not None:
+            requirements_hash = self.get_pipfile_hash(*pipfiles)
+        elif requirements_file is not None:
             requirements_hash = self.get_requirements_hash(requirements_file)
+        else:
+            requirements_hash = ""
+
+        if self.inherit_image is not None:
+            if requirements_hash:
+                return prefix + "_" + requirements_hash
+            return prefix
 
         if dependencies is None:
             dependencies_hash = ""
@@ -380,6 +401,7 @@ class DockerBackend(BaseBackend):
                     pyenv install {python_version}
                 ENV PYENV_VERSION {python_version}
                 ENV PATH "/home/arca/.pyenv/shims:$PATH"
+                RUN pip install --upgrade pip setuptools pipenv
                 CMD bash -i
             """
 
@@ -407,6 +429,7 @@ class DockerBackend(BaseBackend):
 
     def build_image_from_inherited_image(self, image_name: str, image_tag: str,
                                          build_context: Path,
+                                         pipfiles: PipfilesType,
                                          requirements_file: Optional[Path]):
         """
         Builds a image with installed requirements from the inherited image. (Or just tags the image
@@ -419,23 +442,16 @@ class DockerBackend(BaseBackend):
 
         base_name, base_tag = self.get_inherit_image()
 
-        if requirements_file is None:
+        if pipfiles is None and requirements_file is None:
             image = self.get_image(base_name, base_tag)
             image.tag(image_name, image_tag)  # so ``build_image`` doesn't have to be called next time
 
             return image
 
-        relative_requirements = requirements_file.relative_to(build_context)
+        dockerfile = self.get_install_requirements_dockerfile(base_name, base_tag, build_context,
+                                                              pipfiles, requirements_file)
 
-        install_requirements_dockerfile = self.INSTALL_REQUIREMENTS.format(
-            name=base_name,
-            tag=base_tag,
-            requirements=relative_requirements,
-            timeout=self.requirements_timeout
-        )
-
-        self.get_or_build_image(image_name, image_tag, install_requirements_dockerfile,
-                                build_context=build_context, pull=False)
+        self.get_or_build_image(image_name, image_tag, dockerfile, build_context=build_context, pull=False)
 
         return self.get_image(image_name, image_tag)
 
@@ -461,8 +477,8 @@ class DockerBackend(BaseBackend):
                     dependencies=" ".join(self.get_dependencies())
                 )
 
-            image_tag = self.get_image_tag(None, dependencies)
-            self.get_or_build_image(image_name, image_tag, install_dependencies_dockerfile(),
+            image_tag = self.get_image_tag(None, None, dependencies)
+            self.get_or_build_image(image_name, image_tag, install_dependencies_dockerfile,
                                     pull=not self.disable_pull)
 
             return image_name, image_tag
@@ -471,6 +487,7 @@ class DockerBackend(BaseBackend):
 
     def build_image(self, image_name: str, image_tag: str,
                     build_context: Path,
+                    pipfiles: PipfilesType,
                     requirements_file: Optional[Path],
                     dependencies: Optional[List[str]]):
         """ Builds an image for specific requirements and dependencies, based on the settings.
@@ -478,15 +495,18 @@ class DockerBackend(BaseBackend):
         :param image_name: How the image should be named
         :param image_tag: And what tag it should have.
         :param build_context: Path to the cloned repository.
+        :param pipfiles: Tuple of paths to Pipfile and Pipfile.lock in the repository
+                         (or ``None`` if neither doesn't exist)
         :param requirements_file: Path to the requirements file in the repository (or ``None`` if it doesn't exist)
         :param dependencies: List of dependencies (in the formalized format)
         :return: The Image instance.
         :rtype: docker.models.images.Image
         """
         if self.inherit_image is not None:
-            return self.build_image_from_inherited_image(image_name, image_tag, build_context, requirements_file)
+            return self.build_image_from_inherited_image(image_name, image_tag, build_context, pipfiles,
+                                                         requirements_file)
 
-        if requirements_file is None:  # requirements file doesn't exist in the repo
+        if pipfiles is None and requirements_file is None:  # requirements file doesn't exist in the repo
 
             python_version = self.get_python_version()
 
@@ -522,13 +542,12 @@ class DockerBackend(BaseBackend):
                 dependencies_name, dependencies_tag = self.get_image_with_installed_dependencies(image_name,
                                                                                                  dependencies)
 
-                relative_requirements = requirements_file.relative_to(build_context)
-
-                return self.INSTALL_REQUIREMENTS.format(
+                return self.get_install_requirements_dockerfile(
                     name=dependencies_name,
                     tag=dependencies_tag,
-                    requirements=relative_requirements,
-                    timeout=self.requirements_timeout
+                    build_context=build_context,
+                    pipfiles=pipfiles,
+                    requirements_file=requirements_file,
                 )
 
             self.get_or_build_image(image_name, image_tag, install_requirements_dockerfile, build_context=build_context,
@@ -702,11 +721,16 @@ class DockerBackend(BaseBackend):
 
         :rtype: docker.models.images.Image
         """
+        pipfiles = self.get_pipfiles(repo_path)
         requirements_file = self.get_requirements_file(repo_path)
         dependencies = self.get_dependencies()
 
-        image_name = self.get_image_name(requirements_file, dependencies)
-        image_tag = self.get_image_tag(requirements_file, dependencies)
+        logger.info("Getting image based on %s, %s, %s", pipfiles, requirements_file, dependencies)
+
+        image_name = self.get_image_name(pipfiles, requirements_file, dependencies)
+        image_tag = self.get_image_tag(pipfiles, requirements_file, dependencies)
+
+        logger.info("Using image %s:%s", image_name, image_tag)
 
         if self.image_exists(image_name, image_tag):
             image = self.get_image(image_name, image_tag)
@@ -724,7 +748,7 @@ class DockerBackend(BaseBackend):
             if image is not None:  # image wasn't found
                 return image
 
-        image = self.build_image(image_name, image_tag, repo_path.parent, requirements_file, dependencies)
+        image = self.build_image(image_name, image_tag, repo_path.parent, pipfiles, requirements_file, dependencies)
 
         if self.use_registry_name is not None and not self.registry_pull_only:
             self.push_to_registry(image, image_tag)
@@ -813,3 +837,36 @@ class DockerBackend(BaseBackend):
                 container.kill(signal.SIGKILL)
             except docker.errors.APIError:  # probably doesn't exist anymore
                 pass
+
+    def get_install_requirements_dockerfile(self, name: str, tag: str, build_context: Path, pipfiles: PipfilesType,
+                                            requirements_file: Optional[Path]) -> str:
+        """
+        Returns the content of a Dockerfile that will install requirements based on the repository,
+        prioritizing Pipfile or Pipfile.lock and falling back on requirements.txt files
+        """
+        if pipfiles is not None:
+            if pipfiles[1] is None:
+                pipenv_cmd = "install --system --skip-lock"
+            else:
+                pipenv_cmd = "install --system --ignore-pipfile"
+
+            dockerfile = self.INSTALL_PIPENV.format(
+                name=name,
+                tag=tag,
+                timeout=self.requirements_timeout,
+                pipfile=pipfiles[0].relative_to(build_context),
+                pipfile_lock=pipfiles[1].relative_to(build_context) if pipfiles[1] is not None else None,
+                use_pipfile_lock="#" if pipfiles[1] is None else "",
+                pipenv_cmd=pipenv_cmd
+            )
+        else:
+            dockerfile = self.INSTALL_REQUIREMENTS.format(
+                name=name,
+                tag=tag,
+                requirements=requirements_file.relative_to(build_context),
+                timeout=self.requirements_timeout
+            )
+
+        logger.debug("Installing Python requirements with Dockerfile: %s", dockerfile)
+
+        return dockerfile

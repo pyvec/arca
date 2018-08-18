@@ -1,4 +1,5 @@
 import platform
+from pathlib import Path
 
 import pytest
 
@@ -69,7 +70,7 @@ def test_apt_dependencies(temp_repo_func):
 
 
 def test_inherit_image(temp_repo_func):
-    backend = DockerBackend(verbosity=2, inherit_image="python:alpine3.6")
+    backend = DockerBackend(verbosity=2, inherit_image="mikicz/alpine-python-pipenv:latest")
 
     arca = Arca(backend=backend, base_dir=BASE_DIR)
     task = Task("test_file:return_str_function")
@@ -86,13 +87,42 @@ def test_inherit_image(temp_repo_func):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output != "debian"
 
     requirements_path = temp_repo_func.repo_path / backend.requirements_location
-    requirements_path.write_text("colorama==0.3.9")
+    requirements_path.write_text("colorama==0.3.8")
 
     temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
     temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
     colorama_task = Task("test_file:return_str_function")
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task).output == "0.3.8"
+
+    # Pipfile
+
+    pipfile_path = requirements_path.parent / "Pipfile"
+    pipfile_lock_path = pipfile_path.parent / "Pipfile.lock"
+
+    pipfile_path.write_text((Path(__file__).parent / "fixtures/Pipfile").read_text("utf-8"))
+
+    temp_repo_func.repo.index.remove([str(requirements_path)])
+    temp_repo_func.repo.index.add([str(pipfile_path)])
+    temp_repo_func.repo.index.commit("Added Pipfile")
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task).output == "0.3.9"
+
+    # Pipfile Lock
+
+    pipfile_lock_path.write_text((Path(__file__).parent / "fixtures/Pipfile.lock").read_text("utf-8"))
+
+    temp_repo_func.repo.index.add([str(pipfile_lock_path)])
+    temp_repo_func.repo.index.commit("Added Pipfile.lock")
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task).output == "0.3.9"
+
+    # works even when requirements is in the repo
+    requirements_path.write_text("colorama==0.3.8")
+    temp_repo_func.repo.index.add([str(requirements_path)])
+    temp_repo_func.repo.index.commit("Added back requirements")
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task).output == "0.3.9"
 
