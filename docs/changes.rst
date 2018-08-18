@@ -6,6 +6,9 @@ Changes
 
 Changes
   * Removed CurrentEnvironmentBackend's capability to process requirements - all requirements are ignored. (**BACKWARDS INCOMPATIBLE**)
+  * Added support for installing requirements using `Pipenv <https://docs.pipenv.org/>`_.
+    The directory containing ``Pipfile`` and ``Pipfile.lock`` is set by the backend option **pipfile_location**, by default the root of the repository is selected.
+    The Pipenv files take precedence over regular requirement files.
 
 0.2.1 (2018-06-11)
 ******************

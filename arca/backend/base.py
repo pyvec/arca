@@ -26,8 +26,8 @@ class BaseBackend:
       Setting to ``None`` makes Arca ignore requirements. (default is ``requirements.txt``)
     * **requirements_timeout**: The maximum time in seconds allowed for installing requirements.
       (default is 5 minutes, 300 seconds)
-    * **pipfile_location**: The folder containing ``Pipfile`` and ``Pipfile.lock``. Takes precedence
-      over requirements files. Setting to ``None`` makes Arca ignore the requirement.
+    * **pipfile_location**: The folder containing ``Pipfile`` and ``Pipfile.lock``. Pipenv files take precedence
+      over requirements files. Setting to ``None`` makes Arca ignore Pipenv files.
       (default is the root of the repository)
     * **cwd**: Relative path to the required working directory.
       (default is ``""``, the root of the repo)
@@ -104,12 +104,18 @@ class BaseBackend:
         return f"{task.hash}.json", task.json
 
     def get_requirements_hash(self, requirements_file: Path) -> str:
-        """ Returns an SHA1 hash of the contents of the ``requirements_path``.
+        """ Returns an SHA256 hash of the contents of the ``requirements_path``.
         """
         logger.debug("Hashing: %s%s", requirements_file.read_text(), arca.__version__)
         return hashlib.sha256(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
 
     def get_pipfiles(self, path: Path) -> PipfilesType:
+        """
+        Checks the repository if it contains Pipenv files, if not returns ``None`` right away.
+        Otherwise it returns a tuple which contain :class:`Path <pathlib.Path>` instances to the files.
+        If ``Pipfile`` is in the repository but ``Pipfile.lock`` is missing then
+        the second item in the tuple is ``None``.
+        """
         if self.pipfile_location is None:
             return None
 
@@ -122,6 +128,10 @@ class BaseBackend:
         return pipfile, pipfile_lock if pipfile_lock.exists() else None
 
     def get_pipfile_hash(self, pipfile: Path, pipfile_lock: Optional[Path]) -> str:
+        """
+        Returns a SHA256 hash of the Pipenv file that is gonna be used for install.
+        (Lock file if present, otherwise Pipfile.)
+        """
         if pipfile_lock is not None:
             pipfile_lock_contents = pipfile_lock.read_text("utf-8")
 
