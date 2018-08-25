@@ -134,8 +134,7 @@ def test_unicode(mocker, args, kwargs, result):
 
 
 def test_output(temp_repo_func):
-    arca = Arca(backend=CurrentEnvironmentBackend(current_environment_requirements=None,
-                                                  requirements_strategy="ignore"))
+    arca = Arca(backend=CurrentEnvironmentBackend)
 
     temp_repo_func.file_path.write_text(PRINTING_FUNCTION)
     temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])

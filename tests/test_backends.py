@@ -1,17 +1,18 @@
 import itertools
 import os
+from pathlib import Path
 
 import pytest
 
 from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
-from arca.exceptions import BuildTimeoutError
+from arca.exceptions import BuildTimeoutError, BuildError
 from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
     TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION, WAITING_FUNCTION, RETURN_STR_FUNCTION
 
 
 @pytest.mark.parametrize(
     ["backend", "requirements_location", "file_location"], list(itertools.product(
-        (CurrentEnvironmentBackend, VenvBackend, DockerBackend),
+        (VenvBackend, DockerBackend),
         (None, "requirements/requirements.txt"),
         (None, "test_package"),
     ))
@@ -27,15 +28,13 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     if requirements_location is not None:
         kwargs["requirements_location"] = requirements_location
+        kwargs["pipfile_location"] = requirements_location.split("/")[0]
 
     if file_location is not None:
         kwargs["cwd"] = file_location
 
     if backend == DockerBackend:
         kwargs["disable_pull"] = True
-    if backend == CurrentEnvironmentBackend:
-        kwargs["current_environment_requirements"] = None
-        kwargs["requirements_strategy"] = "install_extra"
 
     backend = backend(verbosity=2, **kwargs)
 
@@ -89,10 +88,42 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.8"
 
-    # cleanup
+    # Pipfile
 
-    if isinstance(backend, CurrentEnvironmentBackend):
-        backend._uninstall("colorama")
+    pipfile_path = requirements_path.parent / "Pipfile"
+    pipfile_lock_path = pipfile_path.parent / "Pipfile.lock"
+
+    pipfile_path.write_text((Path(__file__).parent / "fixtures/Pipfile").read_text("utf-8"))
+
+    temp_repo_func.repo.index.remove([str(requirements_path)])
+    temp_repo_func.repo.index.add([str(pipfile_path)])
+    temp_repo_func.repo.index.commit("Added Pipfile")
+
+    with pytest.raises(BuildError):  # Only Pipfile
+        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
+
+    pipfile_lock_path.write_text((Path(__file__).parent / "fixtures/Pipfile.lock").read_text("utf-8"))
+
+    temp_repo_func.repo.index.remove([str(pipfile_path)])
+    temp_repo_func.repo.index.add([str(pipfile_lock_path)])
+    temp_repo_func.repo.index.commit("Removed Pipfile, added Pipfile.lock")
+
+    with pytest.raises(BuildError):  # Only Pipfile.lock
+        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
+
+    pipfile_path.write_text((Path(__file__).parent / "fixtures/Pipfile").read_text("utf-8"))
+
+    temp_repo_func.repo.index.add([str(pipfile_path)])
+    temp_repo_func.repo.index.commit("Added back Pipfile")
+
+    # works even when requirements is in the repo
+    requirements_path.write_text("colorama==0.3.8")
+    temp_repo_func.repo.index.add([str(requirements_path)])
+    temp_repo_func.repo.index.commit("Added back requirements")
+
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
+
+    # cleanup
 
     with pytest.raises(ModuleNotFoundError):
         import colorama  # noqa
@@ -156,6 +187,10 @@ def test_advanced_backends(temp_repo_func, backend):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task_3_seconds).output == "Some string"
 
     # test requirements timeout
+
+    if isinstance(arca.backend, CurrentEnvironmentBackend):
+        return  # CurrentEnvironmentBackend ignores requirements
+
     requirements_path.write_text("scipy")
 
     filepath.write_text(RETURN_STR_FUNCTION)

@@ -69,13 +69,25 @@ This section describes settings that are common for all the backends.
 **requirements_location** (`ARCA_BACKEND_REQUIREMENTS_LOCATION`)
 
 Tells backends where to look for a requirements file in the repositories, so it must be a relative path. You can set it
-to ``None`` to indicate there are no requirements. The default is ``requirements.txt``.
+to ``None`` to indicate that requirement file should be ignored. The default is ``requirements.txt``.
+If the path file doesn't exist in the repository than no requirements are installed.
 
 **requirements_timeout** (`ARCA_BACKEND_REQUIREMENTS_TIMEOUT`)
 
 Tells backends how long the installing of requirements can take, in seconds.
 The default is 120 seconds.
 If the limit is exceeded :class:`BuildTimeoutError <arca.exceptions.BuildTimeoutError>` is raised.
+
+**pipfile_location** (`ARCA_BACKEND_PIPFILE_LOCATION`)
+
+Tells backends where to look for ``Pipfile`` and ``Pipfile.lock`` files, for `Pipenv <https://docs.pipenv.org/>`_.
+It must be a relative path to a directory. You can set it to ``None`` to indicate that Pipenv files should be ignored.
+The default is an empty string, the root of the repository. If there are Pipenv files in the repository alongside a
+requirement file than Pipenv takes precedence.
+
+Both ``Pipfile`` and ``Pipfile.lock`` must be present in the repository for Pipenv to be used. If only one of them is
+present then an exception is raised. The ``--deploy`` flag is used, meaning that the ``Pipfile.lock`` must be up to
+date with ``Pipfile``.
 
 **cwd** (`ARCA_BACKEND_CWD`)
 

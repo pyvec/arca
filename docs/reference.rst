@@ -40,9 +40,6 @@ Current environment
     :show-inheritance:
     :members:
 
-.. autoclass:: arca.RequirementsStrategy
-    :members:
-
 Python virtual environment
 ++++++++++++++++++++++++++
 

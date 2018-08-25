@@ -2,7 +2,7 @@
 import os
 import pytest
 
-from arca import Arca, RequirementsStrategy
+from arca import Arca
 from arca.utils import Settings
 
 
@@ -28,12 +28,12 @@ def test_settings():
 def test_setting_integration():
     arca = Arca(settings={
         "ARCA_BACKEND": "arca.backend.CurrentEnvironmentBackend",
-        "ARCA_CURRENT_ENVIRONMENT_BACKEND_REQUIREMENTS_STRATEGY": "ignore",
-        "ARCA_BACKEND_REQUIREMENTS_STRATEGY": "install_extra",
+        "ARCA_CURRENT_ENVIRONMENT_BACKEND_REQUIREMENTS_TIMEOUT": 500,
+        "ARCA_BACKEND_REQUIREMENTS_TIMEOUT": 600,
         "ARCA_BACKEND_CWD": "test/"
     })
 
-    assert arca.backend.requirements_strategy == RequirementsStrategy.IGNORE  # specific backend setting
+    assert arca.backend.requirements_timeout == 500
     assert arca.backend.cwd == "test/"  # tests generic BACKEND settings
     assert arca.backend.requirements_location == "requirements.txt"  # tests default value
 

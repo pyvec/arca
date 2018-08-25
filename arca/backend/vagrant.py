@@ -238,8 +238,10 @@ class VagrantBackend(DockerBackend):
         self.check_docker_access()  # init client
         self.get_image_for_repo(repo, branch, git_repo, repo_path)
 
+        requirements_option, requirements_hash = self.get_requirements_information(repo_path)
+
         # getting things needed for execution over SSH
-        image_tag = self.get_image_tag(self.get_requirements_file(repo_path), self.get_dependencies())
+        image_tag = self.get_image_tag(requirements_option, requirements_hash, self.get_dependencies())
         image_name = self.use_registry_name
 
         task_filename, task_json = self.serialized_task(task)

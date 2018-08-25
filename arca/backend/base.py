@@ -1,6 +1,7 @@
 import hashlib
 import re
 import subprocess
+from enum import Enum
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -14,15 +15,24 @@ from arca.task import Task
 from arca.utils import NOT_SET, LazySettingProperty, logger
 
 
+class RequirementsOptions(Enum):
+    pipfile = 1
+    requirements_txt = 2
+    no_requirements = 3
+
+
 class BaseBackend:
     """ Abstract class for all the backends, implements some basic functionality.
 
     Available settings:
 
     * **requirements_location**: Relative path to the requirements file in the target repositories.
-      (default is ``requirements.txt``)
+      Setting to ``None`` makes Arca ignore requirements. (default is ``requirements.txt``)
     * **requirements_timeout**: The maximum time in seconds allowed for installing requirements.
       (default is 5 minutes, 300 seconds)
+    * **pipfile_location**: The folder containing ``Pipfile`` and ``Pipfile.lock``. Pipenv files take precedence
+      over requirements files. Setting to ``None`` makes Arca ignore Pipenv files.
+      (default is the root of the repository)
     * **cwd**: Relative path to the required working directory.
       (default is ``""``, the root of the repo)
     """
@@ -31,6 +41,9 @@ class BaseBackend:
 
     requirements_location: str = LazySettingProperty(default="requirements.txt")
     requirements_timeout: int = LazySettingProperty(default=300, convert=int)
+
+    pipfile_location: str = LazySettingProperty(default="")
+
     cwd: str = LazySettingProperty(default="")
 
     def __init__(self, **settings):
@@ -75,30 +88,46 @@ class BaseBackend:
             raise LazySettingProperty.SettingsNotReady
         return self._arca.settings.get(*self.get_settings_keys(key), default=default)
 
-    def get_requirements_file(self, path: Path) -> Optional[Path]:
+    @staticmethod
+    def hash_file_contents(requirements_option: RequirementsOptions, path: Path) -> str:
+        """ Returns a SHA256 hash of the contents of ``path`` combined with the Arca version.
         """
-        Gets a :class:`Path <pathlib.Path>` for the requirements file if it exists in the provided ``path``,
-        returns ``None`` otherwise.
+        return hashlib.sha256(path.read_bytes() +
+                              bytes(requirements_option.name + arca.__version__, "utf-8")).hexdigest()
+
+    def get_requirements_information(self, path: Path) -> Tuple[RequirementsOptions, Optional[str]]:
         """
-        if not self.requirements_location:
-            return None
+        Returns the information needed to install requirements for a repository - what kind is used and the hash
+        of contents of the defining file.
+        """
+        if self.pipfile_location is not None:
+            pipfile = path / self.pipfile_location / "Pipfile"
+            pipfile_lock = path / self.pipfile_location / "Pipfile.lock"
 
-        requirements_file = path / self.requirements_location
+            pipfile_exists = pipfile.exists()
+            pipfile_lock_exists = pipfile_lock.exists()
 
-        if not requirements_file.exists():
-            return None
-        return requirements_file
+            if pipfile_exists and pipfile_lock_exists:
+                option = RequirementsOptions.pipfile
+                return option, self.hash_file_contents(option, pipfile_lock)
+            elif pipfile_exists:
+                raise BuildError("Only the Pipfile is included in the repository, Arca does not support that.")
+            elif pipfile_lock_exists:
+                raise BuildError("Only the Pipfile.lock file is include in the repository, Arca does not support that.")
+
+        if self.requirements_location:
+            requirements_file = path / self.requirements_location
+
+            if requirements_file.exists():
+                option = RequirementsOptions.requirements_txt
+                return option, self.hash_file_contents(option, requirements_file)
+
+        return RequirementsOptions.no_requirements, None
 
     def serialized_task(self, task: Task) -> Tuple[str, str]:
         """ Returns the name of the task definition file and its contents.
         """
         return f"{task.hash}.json", task.json
-
-    def get_requirements_hash(self, requirements_file: Path) -> str:
-        """ Returns an SHA1 hash of the contents of the ``requirements_path``.
-        """
-        logger.debug("Hashing: %s%s", requirements_file.read_text(), arca.__version__)
-        return hashlib.sha256(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
 
     def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path) -> Result:  # pragma: no cover
         """

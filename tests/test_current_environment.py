@@ -1,262 +1,119 @@
-from pathlib import Path
-from uuid import uuid4
+import itertools
+import subprocess
+import sys
 
 import pytest
 
-from arca import Arca, CurrentEnvironmentBackend, RequirementsStrategy, Task
-from arca.exceptions import ArcaMisconfigured, BuildError, RequirementsMismatch
-from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION
+from arca import Arca, Task, CurrentEnvironmentBackend
+from arca.utils import logger
+from arca.exceptions import BuildError
+from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, TEST_UNICODE
 
 
-def test_current_environment_requirements():
-    arca = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=None
-    ), base_dir=BASE_DIR)
+def _pip_action(action, package):
+    if action not in ["install", "uninstall"]:
+        raise ValueError(f"{action} is invalid value for action")
 
-    # test how installing nonexisting packages is handled
-    with pytest.raises(BuildError):
-        arca.backend.install_requirements(requirements=[str(uuid4())])
+    cmd = [sys.executable, "-m", "pip", action]
 
-    with pytest.raises(ValueError):
-        arca.backend.install_requirements()
+    if action == "uninstall":
+        cmd += ["-y"]
 
-    with pytest.raises(ValueError):
-        arca.backend.install_requirements(requirements=["colorama"], _action="remove")
+    cmd += [package]
+
+    logger.info("Installing requirements with command: %s", cmd)
+
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    out_stream, err_stream = process.communicate()
+
+    out_stream = out_stream.decode("utf-8")
+    err_stream = err_stream.decode("utf-8")
+
+    logger.debug("Return code is %s", process.returncode)
+    logger.debug(out_stream)
+    logger.debug(err_stream)
 
 
-def test_requirements_strategy():
-    """ Test validation of invalid strategies
+@pytest.mark.parametrize(
+    ["requirements_location", "file_location"], list(itertools.product(
+        (None, "requirements/requirements.txt"),
+        (None, "test_package"),
+    ))
+)
+def test_current_environment_backend(temp_repo_func, requirements_location, file_location):
+    """ Tests the basic stuff around backends, if it can install requirements from more locations,
+        launch stuff with correct cwd, works well with multiple branches, etc
     """
+    kwargs = {}
 
-    with pytest.raises(ValueError):
-        Arca(backend=CurrentEnvironmentBackend(
-            verbosity=2,
-            current_environment_requirements=None,
-            requirements_strategy="nonexistant_strategy"
-        ), base_dir=BASE_DIR)
+    if requirements_location is not None:
+        kwargs["requirements_location"] = requirements_location
 
-    with pytest.raises(ValueError):
-        arca = Arca(base_dir=BASE_DIR, settings={
-            "ARCA_BACKEND": "arca.backend.CurrentEnvironmentBackend",
-            "ARCA_BACKEND_VERBOSITY": 2,
-            "ARCA_BACKEND_CURRENT_ENVIRONMENT_REQUIREMENTS": None,
-            "ARCA_BACKEND_REQUIREMENTS_STRATEGY": "nonexistant_strategy"
-        })
-        print(arca.backend.requirements_strategy)
+    if file_location is not None:
+        kwargs["cwd"] = file_location
 
+    backend = CurrentEnvironmentBackend(verbosity=2, **kwargs)
 
-@pytest.mark.parametrize("strategy", ["ignore", RequirementsStrategy.IGNORE])
-def test_strategy_ignore(mocker, temp_repo_func, strategy):
-    install_requirements = mocker.patch.object(CurrentEnvironmentBackend, "install_requirements")
+    arca = Arca(backend=backend, base_dir=BASE_DIR)
 
-    arca = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=None,
-        requirements_strategy=strategy
-    ), base_dir=BASE_DIR)
+    if file_location is None:
+        filepath = temp_repo_func.file_path
+    else:
+        filepath = temp_repo_func.repo_path / file_location / "test_file.py"
+        filepath.parent.mkdir(exist_ok=True, parents=True)
+        temp_repo_func.file_path.replace(filepath)
+
+        temp_repo_func.repo.index.remove([str(temp_repo_func.file_path)])
+        temp_repo_func.repo.index.add([str(filepath)])
+        temp_repo_func.repo.index.commit("Initial")
 
     task = Task("test_file:return_str_function")
 
-    # nor the current env or the repo has any requirements, install requirements is not called at all
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
-    assert install_requirements.call_count == 0
-
-    # keep a reference to when the repo had no requirements, needed later
-    temp_repo_func.repo.create_head("no_requirements")
-    temp_repo_func.repo.branches.master.checkout()
-
-    requirements_path = temp_repo_func.repo_path / arca.backend.requirements_location
-    requirements_path.write_text("colorama==0.3.9")
-
-    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
-
-    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
-    temp_repo_func.repo.index.commit("Added requirements, changed to version")
-
-    # now the repository has got requirements
-    # install still not called but the task should fail because colorama is not installed
-    with pytest.raises(BuildError):
-        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
-    assert install_requirements.call_count == 0
-
-    current_env_requirements = Path(BASE_DIR) / (str(uuid4()) + ".txt")
-    current_env_requirements_non_existent = Path(BASE_DIR) / (str(uuid4()) + ".txt")
-
-    with current_env_requirements.open("w") as fl:
-        fl.write("colorama==0.3.9")
-
-    arca = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=str(current_env_requirements.resolve()),
-        requirements_strategy=strategy
-    ), base_dir=BASE_DIR)
-
-    arca_nonexistent_req = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=str(current_env_requirements_non_existent.resolve()),
-        requirements_strategy=strategy
-    ), base_dir=BASE_DIR)
-
-    # now both the current env and the repo have requirements
-    # install still not called but the task should fail because colorama is not installed
-    with pytest.raises(BuildError):
-        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
-
-    # same result even when the current env requirements don't exist
-    with pytest.raises(BuildError):
-        arca_nonexistent_req.run(temp_repo_func.url, temp_repo_func.branch, task)
-
-    assert install_requirements.call_count == 0
-
-    # even when the requirements are not the same
-    with current_env_requirements.open("w") as fl:
-        fl.write("six")
-    with pytest.raises(BuildError):
-        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
-
-    assert install_requirements.call_count == 0
-
-    # and now we test everything still works when the req. file is missing from repo
-    assert arca.run(temp_repo_func.url, "no_requirements", task).output == "Some string"
-    assert arca_nonexistent_req.run(temp_repo_func.url, "no_requirements", task).output == "Some string"
-
-    assert install_requirements.call_count == 0
-
-
-@pytest.mark.parametrize("strategy", ["raise", RequirementsStrategy.RAISE])
-def test_strategy_raise(temp_repo_func, strategy):
-    arca = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=None,
-        requirements_strategy=strategy
-    ), base_dir=BASE_DIR)
-    arca_non_existent = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=str((Path(BASE_DIR) / (str(uuid4()) + ".txt")).resolve()),
-        requirements_strategy=strategy
-    ), base_dir=BASE_DIR)
-
-    task = Task("test_file:return_str_function")
-
-    # nor the current env or the repo has any requirements, install requirements is not called at all
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
 
-    # even when the current env. req. file doesn't exist
-    assert arca_non_existent.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
+    filepath.write_text(SECOND_RETURN_STR_FUNCTION)
+    temp_repo_func.repo.create_head("new_branch")
+    temp_repo_func.repo.create_tag("test_tag")
+    temp_repo_func.repo.index.add([str(filepath)])
+    temp_repo_func.repo.index.commit("Updated function")
 
-    # keep a reference to when the repo had no requirements, needed later
-    temp_repo_func.repo.create_head("no_requirements")
+    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == TEST_UNICODE
+
+    # in the other branch there's still the original
+    assert arca.run(temp_repo_func.url, "new_branch", task).output == "Some string"
+    # test that tags work as well
+    assert arca.run(temp_repo_func.url, "test_tag", task).output == "Some string"
+
     temp_repo_func.repo.branches.master.checkout()
 
-    requirements_path = temp_repo_func.repo_path / arca.backend.requirements_location
+    requirements_path = temp_repo_func.repo_path / backend.requirements_location
+    requirements_path.parent.mkdir(exist_ok=True, parents=True)
     requirements_path.write_text("colorama==0.3.9")
 
-    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
+    filepath.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
 
-    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
+    temp_repo_func.repo.index.add([str(filepath), str(requirements_path)])
     temp_repo_func.repo.index.commit("Added requirements, changed to version")
 
-    # Run should raise a exception because there's now extra requirements in the repo
-    with pytest.raises(RequirementsMismatch):
-        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
+    # check that it's not installed from previous tests
+    _pip_action("uninstall", "colorama")
 
-    # raise different exception when can't compare to current env because it's missing
-    with pytest.raises(ArcaMisconfigured):
-        arca_non_existent.run(temp_repo_func.url, temp_repo_func.branch, task)
+    with pytest.raises(ModuleNotFoundError):
+        import colorama  # noqa
 
-    current_env_requirements = Path(BASE_DIR) / (str(uuid4()) + ".txt")
-    current_env_requirements.write_text("colorama==0.3.9")
-
-    arca = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=str(current_env_requirements.resolve()),
-        requirements_strategy=strategy
-    ), base_dir=BASE_DIR)
-
-    # now both the current env and the repo have the same requirements
-    # run should fail not because of mismatch, but because colorama is not actually installed
+    # CurrentEnv fails because it ignores requirements
     with pytest.raises(BuildError):
-        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
+        assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
 
-    # an extra requirement when current env. reqs. are set
-    with current_env_requirements.open("w") as fl:
-        fl.write("six")
-    with pytest.raises(RequirementsMismatch):
-        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
+    # but when it's installed locally then it succeeds
+    _pip_action("install", "colorama==0.3.9")
 
-    # and now we test everything still works when the req. file is missing from repo but env. reqs. are set
-    assert arca.run(temp_repo_func.url, "no_requirements", task).output == "Some string"
-
-
-@pytest.mark.parametrize("strategy", ["install_extra", RequirementsStrategy.INSTALL_EXTRA])
-def test_strategy_install_extra(temp_repo_func, mocker, strategy):
-    install_requirements = mocker.spy(CurrentEnvironmentBackend, "install_requirements")
-
-    arca = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=None,
-        requirements_strategy=strategy
-    ), base_dir=BASE_DIR)
-
-    arca_non_existent = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=str((Path(BASE_DIR) / (str(uuid4()) + ".txt")).resolve()),
-        requirements_strategy=strategy
-    ), base_dir=BASE_DIR)
-
-    task = Task("test_file:return_str_function")
-
-    # nor the current env or the repo has any requirements, install requirements is not called at all
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
-
-    # even when the current env file is missing
-    assert arca_non_existent.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
-
-    assert install_requirements.call_count == 0
-
-    # keep a reference to when the repo had no requirements, needed later
-    temp_repo_func.repo.create_head("no_requirements")
-    temp_repo_func.repo.branches.master.checkout()
-
-    requirements_path = temp_repo_func.repo_path / arca.backend.requirements_location
-    requirements_path.write_text("colorama==0.3.9")
-    temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
-
-    temp_repo_func.repo.index.add([str(temp_repo_func.file_path), str(requirements_path)])
-    temp_repo_func.repo.index.commit("Added requirements, changed to version")
-
-    # Repository now contains a requirement while the current env has none - install is called with whole file
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
 
-    # but raises exception when can't compare because the current env file is missing
-    with pytest.raises(ArcaMisconfigured):
-        arca_non_existent.run(temp_repo_func.url, temp_repo_func.branch, task)
+    # cleanup
 
-    assert install_requirements.call_count == 1
+    _pip_action("uninstall", "colorama")
 
-    current_env_requirements = Path(BASE_DIR) / (str(uuid4()) + ".txt")
-    with current_env_requirements.open("w") as fl:
-        fl.write("colorama==0.3.9")
-
-    arca = Arca(backend=CurrentEnvironmentBackend(
-        verbosity=2,
-        current_environment_requirements=str(current_env_requirements.resolve()),
-        requirements_strategy=strategy
-    ), base_dir=BASE_DIR)
-
-    # now both the current env and the repo have the same requirements, call count shouldn't increase
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
-    assert install_requirements.call_count == 1
-
-    with current_env_requirements.open("w") as fl:
-        fl.write("six")
-
-    # requirements are now not the same, install is called again
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
-    assert install_requirements.call_count == 2
-
-    # and now we test everything still works when the req. file is missing from repo but env. reqs. are set
-    assert arca.run(temp_repo_func.url, "no_requirements", task).output == "Some string"
-
-    arca.backend._uninstall("colorama")
+    with pytest.raises(ModuleNotFoundError):
+        import colorama  # noqa

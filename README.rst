@@ -39,6 +39,7 @@ Requirements
 
 Requirements for certain backends:
 
+* `Pipenv <https://docs.pipenv.org/>`_ (for certain usecases in `Virtualenv Backend <https://arca.readthedocs.io/en/latest/backends.html#virtual-environment>`_)
 * `Docker <https://www.docker.com/>`_ (for `Docker Backend <https://arca.readthedocs.io/en/latest/backends.html#docker>`_
   and `Vagrant Backend <https://arca.readthedocs.io/en/latest/backends.html#vagrant>`_)
 * `Vagrant <https://www.vagrantup.com/>`_ (for the `Vagrant Backend <https://arca.readthedocs.io/en/latest/backends.html#vagrant>`_)

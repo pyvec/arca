@@ -10,6 +10,7 @@ Requirements
 
 Requirements for certain backends:
 
+* `Pipenv <https://docs.pipenv.org/>`_ (for certain usecases in :ref:`Virtualenv Backend <backends_venv>`)
 * `Docker <https://www.docker.com/>`_ (for :ref:`Docker Backend <backends_doc>` and :ref:`Vagrant Backend <backends_vag>`)
 * `Vagrant <https://www.vagrantup.com/>`_ (for the :ref:`Vagrant Backend <backends_vag>`)
 

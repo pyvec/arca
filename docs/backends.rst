@@ -40,6 +40,7 @@ As mentioned in :ref:`options`, there are two options common for all backends. (
 
 * **requirements_location**
 * **requirements_timeout**
+* **pipfile_location**
 * **cwd**
 
 .. _backends_cur:
@@ -50,28 +51,11 @@ Current Environment
 *arca.backend.CurrentEnvironmentBackend*
 
 This backend is the default option, it runs the tasks with the same Python that's used to run Arca, in a subprocess.
-There are two settings for this backend, to determine how the backend should treat requirements in the repositories.
-
-* **current_environment_requirements**: a path to the requirements of the current environment,
-  the default is ``requirements.txt``.
-  ``None`` would indicate there are no requirements for the current environment.
-* **requirements_strategy**: Which approach the backend should take. There are three, the default being ``raise``.
+There are no extra settings for this backend. All the requirements in repositories are ignored completely.
 
 (possible settings prefixes: ``ARCA_CURRENT_ENVIRONMENT_BACKEND_`` and ``ARCA_BACKEND_``)
 
-Requirements strategies:
-++++++++++++++++++++++++
-
-The strategies are defined in a enum, ``arca.RequirementsStrategy``. Its values or the string representations can be
-used in settings.
-
-* ``raise``, ``RequirementsStrategy.RAISE``:
-  Raise an ``arca.exceptions.RequirementsMismatch`` if there are any extra requirements in the target repository.
-* ``ignore``, ``RequirementsStrategy.IGNORE``: Ignore any extra requirements.
-* ``install_extra``, ``RequirementsStrategy.INSTALL_EXTRA``:
-  Install the requirements that are extra in the target repository as opposed to the current environment.
-
-.. _backends_vir:
+.. _backends_venv:
 
 Virtual Environment
 -------------------
@@ -82,6 +66,9 @@ This backend uses the Python virtual environments to run the tasks. The environm
 used to run Arca and they are shared between repositories that have the same exact requirement file.
 The virtual environments are stored in folder ``venv`` in folder
 determined by the :class:`Arca <arca.Arca>` ``base_dir`` setting, usually ``.arca``.
+
+For installing requirements using Pipenv it must be available to be launched by the current user.
+Disabling Pipenv can be done by setting the **pipfile_location** to ``None``.
 
 (possible settings prefixes: ``ARCA_VENV_BACKEND_`` and ``ARCA_BACKEND_``)
 
@@ -95,20 +82,20 @@ Docker
 This backend runs tasks in docker containers. To use this backend the user running Arca needs to be able to interact
 with ``docker`` (see `documentation <https://docs.docker.com/install/linux/linux-postinstall/>`_).
 
-This backend firstly creates an image with requirements and dependencies installed so the installation only runs one.
+This backend first creates an image with requirements and dependencies installed so the installation only runs once.
 By default the images are based on `custom images <https://hub.docker.com/r/mikicz/arca/tags/>`_, which have Python
 and several build tools pre-installed.
 These images are based on ``debian`` (slim ``stretch`` version) and use `pyenv <https://github.com/pyenv/pyenv>`_
 to install Python.
 You can specify you want to base your images on a different image with the ``inherit_image`` setting.
 
-Once arca has an image with the requirements installed, it launches a container for each task and
+Once Arca has an image with the requirements installed, it launches a container for each task and
 kills it when the task finishes. This can be modify by setting ``keep_container_running`` to ``True``,
 then the container is not killed and can be used by different tasks running from the same repository, branch and commit.
 This can save time on starting up containers before each task.
 You can then kill the containers by calling ``DockerBackend`` method ``stop_containers``.
 
-If you're using arca on a CI/CD tool or somewhere docker images are not kept long-term, you can setup pushing
+If you're using Arca on a CI/CD tool or somewhere docker images are not kept long-term, you can setup pushing
 images with the installed requirements and dependencies to a docker registry and they will be pulled next time instead
 of building them each time. It's set using ``use_registry_name`` and you'll have to be logged in to docker
 using ``docker login``. If you can't use ``docker login`` (for example in PRs on Travis CI), you can set
@@ -125,10 +112,12 @@ Settings:
 * **apt_dependencies**: For some python libraries, system dependencies are required,
   for example ``libxml2-dev`` and ``libxslt-dev`` are needed for ``lxml``.
   With this settings you can specify a list of system dependencies that will be installed via debian ``apt-get``.
-  This setting is ignored if ``inherit_image`` is set since arca can't
+  This setting is ignored if ``inherit_image`` is set since Arca can't
   determined how to install requirements on an unknown system.
-* **disable_pull**: Disable pulling prebuilt arca images from Docker Hub and build even the base images locally.
-* **inherit_image**: If you don't wish to use the arca images you can specify what image should be used instead.
+* **disable_pull**: Disable pulling prebuilt Arca images from Docker Hub and build even the base images locally.
+* **inherit_image**: If you don't wish to use the Arca images you can specify what image should be used instead.
+  Pipenv must be available in the image if the repositories contain Pipenv files. Alternativelly Pipenv can be
+  disabled by setting the option **pipfile_location** to ``None``.
 * **use_registry_name**: Uses this registry to store images with installed requirements and dependencies to,
   tries to pull image from the registry before building it locally to save time.
 * **registry_pull_only**: Disables pushing to registry.
