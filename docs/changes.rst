@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.3.0 (2018-08-??)
+0.3.0 (2018-08-25)
 ******************
 
 Changes
@@ -9,6 +9,10 @@ Changes
   * Added support for installing requirements using `Pipenv <https://docs.pipenv.org/>`_.
     The directory containing ``Pipfile`` and ``Pipfile.lock`` is set by the backend option **pipfile_location**, by default the root of the repository is selected.
     The Pipenv files take precedence over regular requirement files.
+  * The ``Result`` class now has two more attributes, ``stdout`` and ``stderr`` with the outputs of launched tasks to standard output and error.
+    Priting is therefore now allowed in the endpoints.
+  * Using UTF-8 locale in Docker images used in ``DockerBackend``.
+  * Supporting Python 3.7.
 
 0.2.1 (2018-06-11)
 ******************
