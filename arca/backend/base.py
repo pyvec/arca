@@ -1,5 +1,4 @@
 import hashlib
-import json
 import re
 import subprocess
 from pathlib import Path
@@ -132,15 +131,7 @@ class BaseBackend:
         Returns a SHA256 hash of the Pipenv file that is gonna be used for install.
         (Lock file if present, otherwise Pipfile.)
         """
-        if pipfile_lock is not None:
-            pipfile_lock_contents = pipfile_lock.read_text("utf-8")
-
-            try:
-                to_hash = json.loads(pipfile_lock_contents)["_meta"]["hash"]["sha256"]
-            except (ValueError, KeyError):
-                to_hash = pipfile_lock_contents
-        else:
-            to_hash = pipfile.read_text("utf-8")
+        to_hash = (pipfile_lock or pipfile).read_text("utf-8")
 
         return hashlib.sha256(bytes(to_hash + arca.__version__, "utf-8")).hexdigest()
 
