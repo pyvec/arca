@@ -54,14 +54,9 @@ class VenvBackend(BaseRunInSubprocessBackend):
             cmd = None
             cwd = None
 
-            if (requirements_option == RequirementsOptions.pipfile or
-                    requirements_option == RequirementsOptions.pipfile_lock):
-                cmd = ["source", (str(venv_path / "bin" / "activate")), "&&", "pipenv"]
-
-                if requirements_option == RequirementsOptions.pipfile_lock:
-                    cmd += ["install", "--ignore-pipfile"]
-                else:
-                    cmd += ["install", "--skip-lock"]
+            if requirements_option == RequirementsOptions.pipfile:
+                cmd = ["source", (str(venv_path / "bin" / "activate")), "&&",
+                       "pipenv", "install", "--deploy", "--ignore-pipfile"]
 
                 cmd = " ".join(cmd)
 

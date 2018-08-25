@@ -16,10 +16,9 @@ from arca.utils import NOT_SET, LazySettingProperty, logger
 
 
 class RequirementsOptions(Enum):
-    pipfile_lock = 1
-    pipfile = 2
-    requirements_txt = 3
-    no_requirements = 4
+    pipfile = 1
+    requirements_txt = 2
+    no_requirements = 3
 
 
 class BaseBackend:
@@ -89,10 +88,12 @@ class BaseBackend:
             raise LazySettingProperty.SettingsNotReady
         return self._arca.settings.get(*self.get_settings_keys(key), default=default)
 
-    def hash_file_contents(self, path: Path) -> str:
+    @staticmethod
+    def hash_file_contents(requirements_option: RequirementsOptions, path: Path) -> str:
         """ Returns a SHA256 hash of the contents of ``path`` combined with the Arca version.
         """
-        return hashlib.sha256(path.read_bytes() + bytes(arca.__version__, "utf-8")).hexdigest()
+        return hashlib.sha256(path.read_bytes() +
+                              bytes(requirements_option.name + arca.__version__, "utf-8")).hexdigest()
 
     def get_requirements_information(self, path: Path) -> Tuple[RequirementsOptions, Optional[str]]:
         """
@@ -103,17 +104,23 @@ class BaseBackend:
             pipfile = path / self.pipfile_location / "Pipfile"
             pipfile_lock = path / self.pipfile_location / "Pipfile.lock"
 
-            if pipfile.exists():
-                if pipfile_lock.exists():
-                    return RequirementsOptions.pipfile_lock, self.hash_file_contents(pipfile_lock)
+            pipfile_exists = pipfile.exists()
+            pipfile_lock_exists = pipfile_lock.exists()
 
-                return RequirementsOptions.pipfile, self.hash_file_contents(pipfile)
+            if pipfile_exists and pipfile_lock_exists:
+                option = RequirementsOptions.pipfile
+                return option, self.hash_file_contents(option, pipfile_lock)
+            elif pipfile_exists:
+                raise BuildError("Only the Pipfile is included in the repository, Arca does not support that.")
+            elif pipfile_lock_exists:
+                raise BuildError("Only the Pipfile.lock file is include in the repository, Arca does not support that.")
 
         if self.requirements_location:
             requirements_file = path / self.requirements_location
 
             if requirements_file.exists():
-                return RequirementsOptions.requirements_txt, self.hash_file_contents(requirements_file)
+                option = RequirementsOptions.requirements_txt
+                return option, self.hash_file_contents(option, requirements_file)
 
         return RequirementsOptions.no_requirements, None
 

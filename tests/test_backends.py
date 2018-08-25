@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from arca import Arca, VenvBackend, DockerBackend, Task, CurrentEnvironmentBackend
-from arca.exceptions import BuildTimeoutError
+from arca.exceptions import BuildTimeoutError, BuildError
 from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR_FUNCTION, \
     TEST_UNICODE, ARG_STR_FUNCTION, KWARG_STR_FUNCTION, WAITING_FUNCTION, RETURN_STR_FUNCTION
 
@@ -99,16 +99,22 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
     temp_repo_func.repo.index.add([str(pipfile_path)])
     temp_repo_func.repo.index.commit("Added Pipfile")
 
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
-
-    # Pipfile Lock
+    with pytest.raises(BuildError):  # Only Pipfile
+        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
 
     pipfile_lock_path.write_text((Path(__file__).parent / "fixtures/Pipfile.lock").read_text("utf-8"))
 
+    temp_repo_func.repo.index.remove([str(pipfile_path)])
     temp_repo_func.repo.index.add([str(pipfile_lock_path)])
-    temp_repo_func.repo.index.commit("Added Pipfile.lock")
+    temp_repo_func.repo.index.commit("Removed Pipfile, added Pipfile.lock")
 
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
+    with pytest.raises(BuildError):  # Only Pipfile.lock
+        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
+
+    pipfile_path.write_text((Path(__file__).parent / "fixtures/Pipfile").read_text("utf-8"))
+
+    temp_repo_func.repo.index.add([str(pipfile_path)])
+    temp_repo_func.repo.index.commit("Added back Pipfile")
 
     # works even when requirements is in the repo
     requirements_path.write_text("colorama==0.3.8")

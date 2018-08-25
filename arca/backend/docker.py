@@ -48,30 +48,17 @@ class DockerBackend(BaseBackend):
     use_registry_name = LazySettingProperty(default=None)
     registry_pull_only = LazySettingProperty(default=False)
 
-    NO_REQUIREMENTS_HASH = "no_req"
-    NO_DEPENDENCIES_HASH = "no_dep"
-
     INSTALL_REQUIREMENTS = """
         FROM {name}:{tag}
-        ADD {requirements} /srv/requirements.txt
-        RUN if grep -q Alpine /etc/issue; then \
-                timeout -t {timeout} pip install --no-cache-dir -r /srv/requirements.txt; \
-            else \
-                timeout {timeout} pip install --no-cache-dir -r /srv/requirements.txt; \
-            fi
-    """
 
-    INSTALL_PIPENV = """
-        FROM {name}:{tag}
-        ADD {pipfile} /srv/Pipfile
-        {use_pipfile_lock}ADD {pipfile_lock} /srv/Pipfile.lock
+        ADD {requirements_files} /srv/{target_file}
 
-        WORKDIR /srv
+        WORKDIR /srv/
 
         RUN if grep -q Alpine /etc/issue; then \
-                timeout -t {timeout} pipenv {pipenv_cmd}; \
+                timeout -t {timeout} {install_cmd} {cmd_arguments}; \
             else \
-                timeout {timeout} pipenv {pipenv_cmd}; \
+                timeout {timeout} {install_cmd} {cmd_arguments}; \
             fi
 
         WORKDIR /home/arca
@@ -828,32 +815,32 @@ class DockerBackend(BaseBackend):
         Returns the content of a Dockerfile that will install requirements based on the repository,
         prioritizing Pipfile or Pipfile.lock and falling back on requirements.txt files
         """
-        if requirements_option != RequirementsOptions.requirements_txt:
-            pipfile = repo_path / self.pipfile_location / "Pipfile"
-            pipfile_lock = None
+        if requirements_option == RequirementsOptions.requirements_txt:
+            target_file = "requirements.txt"
+            requirements_files = [repo_path / self.requirements_location]
 
-            if requirements_option == RequirementsOptions.pipfile:
-                pipenv_cmd = "install --system --skip-lock"
-            else:
-                pipenv_cmd = "install --system --ignore-pipfile"
-                pipfile_lock = repo_path / self.pipfile_location / "Pipfile.lock"
+            install_cmd = "pip"
+            cmd_arguments = "install -r /srv/requirements.txt"
 
-            dockerfile = self.INSTALL_PIPENV.format(
-                name=name,
-                tag=tag,
-                timeout=self.requirements_timeout,
-                pipfile=pipfile.relative_to(repo_path.parent),
-                pipfile_lock=pipfile_lock.relative_to(repo_path.parent) if pipfile_lock is not None else None,
-                use_pipfile_lock="#" if pipfile_lock is None else "",
-                pipenv_cmd=pipenv_cmd
-            )
+        elif requirements_option == RequirementsOptions.pipfile:
+            target_file = ""
+            requirements_files = [repo_path / self.pipfile_location / "Pipfile",
+                                  repo_path / self.pipfile_location / "Pipfile.lock"]
+
+            install_cmd = "pipenv"
+            cmd_arguments = "install --system --ignore-pipfile --deploy"
         else:
-            dockerfile = self.INSTALL_REQUIREMENTS.format(
-                name=name,
-                tag=tag,
-                requirements=(repo_path / self.requirements_location).relative_to(repo_path.parent),
-                timeout=self.requirements_timeout
-            )
+            raise ValueError("Invalid requirements_option")
+
+        dockerfile = self.INSTALL_REQUIREMENTS.format(
+            name=name,
+            tag=tag,
+            timeout=self.requirements_timeout,
+            target_file=target_file,
+            requirements_files=" ".join(str(x.relative_to(repo_path.parent)) for x in requirements_files),
+            cmd_arguments=cmd_arguments,
+            install_cmd=install_cmd
+        )
 
         logger.debug("Installing Python requirements with Dockerfile: %s", dockerfile)
 

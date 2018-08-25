@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from arca import Arca, DockerBackend, Task
-from arca.exceptions import ArcaMisconfigured, PushToRegistryError
+from arca.exceptions import ArcaMisconfigured, PushToRegistryError, BuildError
 from common import (RETURN_COLORAMA_VERSION_FUNCTION, BASE_DIR, RETURN_PLATFORM,
                     RETURN_PYTHON_VERSION_FUNCTION, RETURN_ALSAAUDIO_INSTALLED)
 
@@ -108,14 +108,22 @@ def test_inherit_image(temp_repo_func):
     temp_repo_func.repo.index.add([str(pipfile_path)])
     temp_repo_func.repo.index.commit("Added Pipfile")
 
-    assert arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task).output == "0.3.9"
-
-    # Pipfile Lock
+    with pytest.raises(BuildError):  # Only Pipfile
+        arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task)
 
     pipfile_lock_path.write_text((Path(__file__).parent / "fixtures/Pipfile.lock").read_text("utf-8"))
 
+    temp_repo_func.repo.index.remove([str(pipfile_path)])
     temp_repo_func.repo.index.add([str(pipfile_lock_path)])
-    temp_repo_func.repo.index.commit("Added Pipfile.lock")
+    temp_repo_func.repo.index.commit("Removed Pipfile, added Pipfile.lock")
+
+    with pytest.raises(BuildError):  # Only Pipfile.lock
+        arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task)
+
+    pipfile_path.write_text((Path(__file__).parent / "fixtures/Pipfile").read_text("utf-8"))
+
+    temp_repo_func.repo.index.add([str(pipfile_path)])
+    temp_repo_func.repo.index.commit("Added back Pipfile")
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task).output == "0.3.9"
 

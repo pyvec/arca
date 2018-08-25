@@ -85,8 +85,9 @@ It must be a relative path to a directory. You can set it to ``None`` to indicat
 The default is an empty string, the root of the repository. If there are Pipenv files in the repository alongside a
 requirement file than Pipenv takes precedence.
 
-If only ``Pipfile`` is present in the repository then requirements are installed using ``pipenv install --skip-lock``,
-otherwise ``pipenv install --ignore-pipfile`` is used.
+Both ``Pipfile`` and ``Pipfile.lock`` must be present in the repository for Pipenv to be used. If only one of them is
+present then an exception is raised. The ``--deploy`` flag is used, meaning that the ``Pipfile.lock`` must be up to
+date with ``Pipfile``.
 
 **cwd** (`ARCA_BACKEND_CWD`)
 
