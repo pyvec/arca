@@ -2,13 +2,14 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Optional
 from venv import EnvBuilder
 
 from git import Repo
 
 from arca.exceptions import BuildError, BuildTimeoutError
 from arca.utils import logger
-from .base import BaseRunInSubprocessBackend
+from .base import BaseRunInSubprocessBackend, RequirementsOptions
 
 
 class VenvBackend(BaseRunInSubprocessBackend):
@@ -21,37 +22,14 @@ class VenvBackend(BaseRunInSubprocessBackend):
     There are no extra settings for this backend.
     """
 
-    def get_virtualenv_path(self, path: Path) -> Path:
+    def get_virtualenv_path(self, requirements_option: RequirementsOptions, requirements_hash: Optional[str]) -> Path:
         """
         Returns the path to the virtualenv the current state of the repository.
-
-        Either:
-
-        * hash of Pipfile.lock and Arca's version
-        * hash of Pipfile and Arca's version
-        * hash of the requirements file and Arca's version
-        * ``no_requirements`` if the requirements file doesn't exist.
-
-        :param Path: :class:`Path <pathlib.Path>` to where the repository
-
         """
-        pipfiles = self.get_pipfiles(path)
-
-        logger.debug("Pipfiles: %s", pipfiles)
-
-        if pipfiles is not None:
-            venv_name = self.get_pipfile_hash(*pipfiles)
+        if requirements_option == RequirementsOptions.no_requirements:
+            venv_name = "no_requirements"
         else:
-            requirements_file = self.get_requirements_file(path)
-
-            logger.debug("Requirement file: %s", requirements_file)
-
-            if requirements_file is not None:
-                venv_name = self.get_requirements_hash(requirements_file)
-            else:
-                logger.debug("No pipfile or requirement file")
-
-                venv_name = "no_requirements"
+            venv_name = requirements_hash
 
         return Path(self._arca.base_dir) / "venvs" / venv_name
 
@@ -63,25 +41,24 @@ class VenvBackend(BaseRunInSubprocessBackend):
 
         :param path: :class:`Path <pathlib.Path>` to the cloned repository.
         """
-        venv_path = self.get_virtualenv_path(path)
+        requirements_option, requirements_hash = self.get_requirements_information(path)
+
+        venv_path = self.get_virtualenv_path(requirements_option, requirements_hash)
 
         if not venv_path.exists():
             logger.info(f"Creating a venv in {venv_path}")
             builder = EnvBuilder(with_pip=True)
             builder.create(venv_path)
 
-            pipfiles = self.get_pipfiles(path)
-
             shell = False
             cmd = None
             cwd = None
 
-            if pipfiles is not None:
-                pipfile, lock = pipfiles
-
+            if (requirements_option == RequirementsOptions.pipfile or
+                    requirements_option == RequirementsOptions.pipfile_lock):
                 cmd = ["source", (str(venv_path / "bin" / "activate")), "&&", "pipenv"]
 
-                if lock is not None:
+                if requirements_option == RequirementsOptions.pipfile_lock:
                     cmd += ["install", "--ignore-pipfile"]
                 else:
                     cmd += ["install", "--skip-lock"]
@@ -90,16 +67,15 @@ class VenvBackend(BaseRunInSubprocessBackend):
 
                 cwd = path / self.pipfile_location
                 shell = True
-            else:
-                requirements_file = self.get_requirements_file(path)
+            elif requirements_option == RequirementsOptions.requirements_txt:
+                requirements_file = path / self.requirements_location
 
-                if requirements_file is not None:
-                    logger.debug("Requirements file:")
-                    logger.debug(requirements_file.read_text())
-                    logger.info("Installing requirements from %s", requirements_file)
+                logger.debug("Requirements file:")
+                logger.debug(requirements_file.read_text())
+                logger.info("Installing requirements from %s", requirements_file)
 
-                    cmd = [str(venv_path / "bin" / "python3"), "-m", "pip", "install", "-r",
-                           shlex.quote(str(requirements_file))]
+                cmd = [str(venv_path / "bin" / "python3"), "-m", "pip", "install", "-r",
+                       shlex.quote(str(requirements_file))]
 
             if cmd is not None:
                 logger.info("Running Popen cmd %s, with shell %s", cmd, shell)

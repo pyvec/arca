@@ -23,7 +23,7 @@ from arca.exceptions import ArcaMisconfigured, BuildError, PushToRegistryError, 
 from arca.result import Result
 from arca.task import Task
 from arca.utils import logger, LazySettingProperty
-from .base import BaseBackend, PipfilesType
+from .base import BaseBackend, RequirementsOptions
 
 
 class DockerBackend(BaseBackend):
@@ -174,8 +174,8 @@ class DockerBackend(BaseBackend):
         return python_version
 
     def get_image_name(self,
-                       pipfiles: PipfilesType,
-                       requirements_file: Optional[Path],
+                       repo_path: Path,
+                       requirements_option: RequirementsOptions,
                        dependencies: Optional[List[str]]) -> str:
         """ Returns the name for images with installed requirements and dependencies.
         """
@@ -192,8 +192,8 @@ class DockerBackend(BaseBackend):
         return hashlib.sha256(bytes(",".join(dependencies), "utf-8")).hexdigest()
 
     def get_image_tag(self,
-                      pipfiles: PipfilesType,
-                      requirements_file: Optional[Path],
+                      requirements_option: RequirementsOptions,
+                      requirements_hash: Optional[str],
                       dependencies: Optional[List[str]]) -> str:
         """ Returns the tag for images with the dependencies and requirements installed.
 
@@ -233,22 +233,14 @@ class DockerBackend(BaseBackend):
             – both requirements and dependencies
 
         """
-
         prefix = ""
 
         if self.inherit_image is None:
             prefix = "{}_{}_".format(arca.__version__, self.get_python_version())
 
         prefix += "i" if self.inherit_image is not None else "a"
-        prefix += "r" if (pipfiles is not None or requirements_file is not None) else "s"
+        prefix += "r" if requirements_option != RequirementsOptions.no_requirements else "s"
         prefix += "d" if dependencies is not None else "e"
-
-        if pipfiles is not None:
-            requirements_hash = self.get_pipfile_hash(*pipfiles)
-        elif requirements_file is not None:
-            requirements_hash = self.get_requirements_hash(requirements_file)
-        else:
-            requirements_hash = ""
 
         if self.inherit_image is not None:
             if requirements_hash:
@@ -264,8 +256,8 @@ class DockerBackend(BaseBackend):
             return prefix + "_" + hashlib.sha256(bytes(requirements_hash + dependencies_hash, "utf-8")).hexdigest()
         elif requirements_hash:
             return f"{prefix}_{requirements_hash}"
-        elif requirements_hash:
-            return f"{prefix}_{requirements_hash}"
+        elif dependencies_hash:
+            return f"{prefix}_{dependencies_hash}"
         else:
             return prefix
 
@@ -428,9 +420,8 @@ class DockerBackend(BaseBackend):
         return name, tag
 
     def build_image_from_inherited_image(self, image_name: str, image_tag: str,
-                                         build_context: Path,
-                                         pipfiles: PipfilesType,
-                                         requirements_file: Optional[Path]):
+                                         repo_path: Path,
+                                         requirements_option: RequirementsOptions):
         """
         Builds a image with installed requirements from the inherited image. (Or just tags the image
         if there are no requirements.)
@@ -442,16 +433,15 @@ class DockerBackend(BaseBackend):
 
         base_name, base_tag = self.get_inherit_image()
 
-        if pipfiles is None and requirements_file is None:
+        if requirements_option == RequirementsOptions.no_requirements:
             image = self.get_image(base_name, base_tag)
             image.tag(image_name, image_tag)  # so ``build_image`` doesn't have to be called next time
 
             return image
 
-        dockerfile = self.get_install_requirements_dockerfile(base_name, base_tag, build_context,
-                                                              pipfiles, requirements_file)
+        dockerfile = self.get_install_requirements_dockerfile(base_name, base_tag, repo_path, requirements_option)
 
-        self.get_or_build_image(image_name, image_tag, dockerfile, build_context=build_context, pull=False)
+        self.get_or_build_image(image_name, image_tag, dockerfile, build_context=repo_path.parent, pull=False)
 
         return self.get_image(image_name, image_tag)
 
@@ -477,7 +467,7 @@ class DockerBackend(BaseBackend):
                     dependencies=" ".join(self.get_dependencies())
                 )
 
-            image_tag = self.get_image_tag(None, None, dependencies)
+            image_tag = self.get_image_tag(RequirementsOptions.no_requirements, None, dependencies)
             self.get_or_build_image(image_name, image_tag, install_dependencies_dockerfile,
                                     pull=not self.disable_pull)
 
@@ -486,27 +476,23 @@ class DockerBackend(BaseBackend):
             return self.get_python_base(python_version, pull=not self.disable_pull)
 
     def build_image(self, image_name: str, image_tag: str,
-                    build_context: Path,
-                    pipfiles: PipfilesType,
-                    requirements_file: Optional[Path],
+                    repo_path: Path,
+                    requirements_option: RequirementsOptions,
                     dependencies: Optional[List[str]]):
         """ Builds an image for specific requirements and dependencies, based on the settings.
 
         :param image_name: How the image should be named
         :param image_tag: And what tag it should have.
-        :param build_context: Path to the cloned repository.
-        :param pipfiles: Tuple of paths to Pipfile and Pipfile.lock in the repository
-                         (or ``None`` if neither doesn't exist)
-        :param requirements_file: Path to the requirements file in the repository (or ``None`` if it doesn't exist)
+        :param repo_path: Path to the cloned repository.
+        :param requirements_option: How requirements are set in the repository.
         :param dependencies: List of dependencies (in the formalized format)
         :return: The Image instance.
         :rtype: docker.models.images.Image
         """
         if self.inherit_image is not None:
-            return self.build_image_from_inherited_image(image_name, image_tag, build_context, pipfiles,
-                                                         requirements_file)
+            return self.build_image_from_inherited_image(image_name, image_tag, repo_path, requirements_option)
 
-        if pipfiles is None and requirements_file is None:  # requirements file doesn't exist in the repo
+        if requirements_option == RequirementsOptions.no_requirements:
 
             python_version = self.get_python_version()
 
@@ -545,13 +531,12 @@ class DockerBackend(BaseBackend):
                 return self.get_install_requirements_dockerfile(
                     name=dependencies_name,
                     tag=dependencies_tag,
-                    build_context=build_context,
-                    pipfiles=pipfiles,
-                    requirements_file=requirements_file,
+                    repo_path=repo_path,
+                    requirements_option=requirements_option,
                 )
 
-            self.get_or_build_image(image_name, image_tag, install_requirements_dockerfile, build_context=build_context,
-                                    pull=False)
+            self.get_or_build_image(image_name, image_tag, install_requirements_dockerfile,
+                                    build_context=repo_path.parent, pull=False)
 
             return self.get_image(image_name, image_tag)
 
@@ -721,14 +706,13 @@ class DockerBackend(BaseBackend):
 
         :rtype: docker.models.images.Image
         """
-        pipfiles = self.get_pipfiles(repo_path)
-        requirements_file = self.get_requirements_file(repo_path)
+        requirements_option, requirements_hash = self.get_requirements_information(repo_path)
         dependencies = self.get_dependencies()
 
-        logger.info("Getting image based on %s, %s, %s", pipfiles, requirements_file, dependencies)
+        logger.info("Getting image based on %s, %s", requirements_option, dependencies)
 
-        image_name = self.get_image_name(pipfiles, requirements_file, dependencies)
-        image_tag = self.get_image_tag(pipfiles, requirements_file, dependencies)
+        image_name = self.get_image_name(repo_path, requirements_option, dependencies)
+        image_tag = self.get_image_tag(requirements_option, requirements_hash, dependencies)
 
         logger.info("Using image %s:%s", image_name, image_tag)
 
@@ -748,7 +732,7 @@ class DockerBackend(BaseBackend):
             if image is not None:  # image wasn't found
                 return image
 
-        image = self.build_image(image_name, image_tag, repo_path.parent, pipfiles, requirements_file, dependencies)
+        image = self.build_image(image_name, image_tag, repo_path, requirements_option, dependencies)
 
         if self.use_registry_name is not None and not self.registry_pull_only:
             self.push_to_registry(image, image_tag)
@@ -838,32 +822,36 @@ class DockerBackend(BaseBackend):
             except docker.errors.APIError:  # probably doesn't exist anymore
                 pass
 
-    def get_install_requirements_dockerfile(self, name: str, tag: str, build_context: Path, pipfiles: PipfilesType,
-                                            requirements_file: Optional[Path]) -> str:
+    def get_install_requirements_dockerfile(self, name: str, tag: str, repo_path: Path,
+                                            requirements_option: RequirementsOptions) -> str:
         """
         Returns the content of a Dockerfile that will install requirements based on the repository,
         prioritizing Pipfile or Pipfile.lock and falling back on requirements.txt files
         """
-        if pipfiles is not None:
-            if pipfiles[1] is None:
+        if requirements_option != RequirementsOptions.requirements_txt:
+            pipfile = repo_path / self.pipfile_location / "Pipfile"
+            pipfile_lock = None
+
+            if requirements_option == RequirementsOptions.pipfile:
                 pipenv_cmd = "install --system --skip-lock"
             else:
                 pipenv_cmd = "install --system --ignore-pipfile"
+                pipfile_lock = repo_path / self.pipfile_location / "Pipfile.lock"
 
             dockerfile = self.INSTALL_PIPENV.format(
                 name=name,
                 tag=tag,
                 timeout=self.requirements_timeout,
-                pipfile=pipfiles[0].relative_to(build_context),
-                pipfile_lock=pipfiles[1].relative_to(build_context) if pipfiles[1] is not None else None,
-                use_pipfile_lock="#" if pipfiles[1] is None else "",
+                pipfile=pipfile.relative_to(repo_path.parent),
+                pipfile_lock=pipfile_lock.relative_to(repo_path.parent) if pipfile_lock is not None else None,
+                use_pipfile_lock="#" if pipfile_lock is None else "",
                 pipenv_cmd=pipenv_cmd
             )
         else:
             dockerfile = self.INSTALL_REQUIREMENTS.format(
                 name=name,
                 tag=tag,
-                requirements=requirements_file.relative_to(build_context),
+                requirements=(repo_path / self.requirements_location).relative_to(repo_path.parent),
                 timeout=self.requirements_timeout
             )
 

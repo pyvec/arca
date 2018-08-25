@@ -1,6 +1,7 @@
 import hashlib
 import re
 import subprocess
+from enum import Enum
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -13,7 +14,12 @@ from arca.result import Result
 from arca.task import Task
 from arca.utils import NOT_SET, LazySettingProperty, logger
 
-PipfilesType = Optional[Tuple[Path, Optional[Path]]]
+
+class RequirementsOptions(Enum):
+    pipfile_lock = 1
+    pipfile = 2
+    requirements_txt = 3
+    no_requirements = 4
 
 
 class BaseBackend:
@@ -83,57 +89,38 @@ class BaseBackend:
             raise LazySettingProperty.SettingsNotReady
         return self._arca.settings.get(*self.get_settings_keys(key), default=default)
 
-    def get_requirements_file(self, path: Path) -> Optional[Path]:
+    def hash_file_contents(self, path: Path) -> str:
+        """ Returns a SHA256 hash of the contents of ``path`` combined with the Arca version.
         """
-        Gets a :class:`Path <pathlib.Path>` for the requirements file if it exists in the provided ``path``,
-        returns ``None`` otherwise.
+        return hashlib.sha256(path.read_bytes() + bytes(arca.__version__, "utf-8")).hexdigest()
+
+    def get_requirements_information(self, path: Path) -> Tuple[RequirementsOptions, Optional[str]]:
         """
-        if not self.requirements_location:
-            return None
+        Returns the information needed to install requirements for a repository - what kind is used and the hash
+        of contents of the defining file.
+        """
+        if self.pipfile_location is not None:
+            pipfile = path / self.pipfile_location / "Pipfile"
+            pipfile_lock = path / self.pipfile_location / "Pipfile.lock"
 
-        requirements_file = path / self.requirements_location
+            if pipfile.exists():
+                if pipfile_lock.exists():
+                    return RequirementsOptions.pipfile_lock, self.hash_file_contents(pipfile_lock)
 
-        if not requirements_file.exists():
-            return None
-        return requirements_file
+                return RequirementsOptions.pipfile, self.hash_file_contents(pipfile)
+
+        if self.requirements_location:
+            requirements_file = path / self.requirements_location
+
+            if requirements_file.exists():
+                return RequirementsOptions.requirements_txt, self.hash_file_contents(requirements_file)
+
+        return RequirementsOptions.no_requirements, None
 
     def serialized_task(self, task: Task) -> Tuple[str, str]:
         """ Returns the name of the task definition file and its contents.
         """
         return f"{task.hash}.json", task.json
-
-    def get_requirements_hash(self, requirements_file: Path) -> str:
-        """ Returns an SHA256 hash of the contents of the ``requirements_path``.
-        """
-        logger.debug("Hashing: %s%s", requirements_file.read_text(), arca.__version__)
-        return hashlib.sha256(bytes(requirements_file.read_text() + arca.__version__, "utf-8")).hexdigest()
-
-    def get_pipfiles(self, path: Path) -> PipfilesType:
-        """
-        Checks the repository if it contains Pipenv files, if not returns ``None`` right away.
-        Otherwise it returns a tuple which contain :class:`Path <pathlib.Path>` instances to the files.
-        If ``Pipfile`` is in the repository but ``Pipfile.lock`` is missing then
-        the second item in the tuple is ``None``.
-        """
-        if self.pipfile_location is None:
-            return None
-
-        pipfile = path / self.pipfile_location / "Pipfile"
-        pipfile_lock = path / self.pipfile_location / "Pipfile.lock"
-
-        if not pipfile.exists():
-            return None
-
-        return pipfile, pipfile_lock if pipfile_lock.exists() else None
-
-    def get_pipfile_hash(self, pipfile: Path, pipfile_lock: Optional[Path]) -> str:
-        """
-        Returns a SHA256 hash of the Pipenv file that is gonna be used for install.
-        (Lock file if present, otherwise Pipfile.)
-        """
-        to_hash = (pipfile_lock or pipfile).read_text("utf-8")
-
-        return hashlib.sha256(bytes(to_hash + arca.__version__, "utf-8")).hexdigest()
 
     def run(self, repo: str, branch: str, task: Task, git_repo: Repo, repo_path: Path) -> Result:  # pragma: no cover
         """
