@@ -123,6 +123,14 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
 
+    pipfile_lock_path.write_text((Path(__file__).parent / "fixtures/Pipfile.lock.invalid").read_text("utf-8"))
+
+    temp_repo_func.repo.index.add([str(pipfile_lock_path)])
+    temp_repo_func.repo.index.commit("Broke Pipfile.lock")
+
+    with pytest.raises(BuildError):  # Invalid Pipfile.lock
+        arca.run(temp_repo_func.url, temp_repo_func.branch, task)
+
     # cleanup
 
     with pytest.raises(ModuleNotFoundError):
