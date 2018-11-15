@@ -310,7 +310,10 @@ class DockerBackend(BaseBackend):
                                             f"{self.requirements_timeout} seconds.")
 
             logger.exception(e)
-            raise
+
+            raise BuildError("Building docker image failed, see extra info for details.", extra_info={
+                "build_log": e.build_log
+            })
 
     def get_arca_base(self, pull=True):
         """
