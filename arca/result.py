@@ -17,7 +17,7 @@ class Result:
                 raise BuildError("The build failed (the output was corrupted, "
                                  "possibly by the callable printing something)",
                                  extra_info={
-                                    "output": output
+                                     "output": output
                                  })
 
         if not isinstance(result, dict):
