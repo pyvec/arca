@@ -184,7 +184,8 @@ class VagrantBackend(DockerBackend):
 
             api.run(f"docker cp /vagrant/{definition_filename} {container_name}:/srv/scripts/")
 
-            output = api.run(" ".join([
+            output = api.run(
+                " ".join([
                     "docker", "exec", container_name,
                     "python", "/srv/scripts/runner.py", f"/srv/scripts/{definition_filename}",
                 ]),

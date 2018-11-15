@@ -92,8 +92,9 @@ class BaseBackend:
     def hash_file_contents(requirements_option: RequirementsOptions, path: Path) -> str:
         """ Returns a SHA256 hash of the contents of ``path`` combined with the Arca version.
         """
-        return hashlib.sha256(path.read_bytes() +
-                              bytes(requirements_option.name + arca.__version__, "utf-8")).hexdigest()
+        return hashlib.sha256(path.read_bytes() + bytes(
+            requirements_option.name + arca.__version__, "utf-8"
+        )).hexdigest()
 
     def get_requirements_information(self, path: Path) -> Tuple[RequirementsOptions, Optional[str]]:
         """
