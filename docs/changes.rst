@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.3.1 (2018-11-16)
+******************
+
+Raising a Arca exception when building of a Docker image fails. (`#56 <https://github.com/mikicz/arca/issues/56>`_, `#57 <https://github.com/mikicz/arca/pull/57>`_)
+
 0.3.0 (2018-08-25)
 ******************
 
