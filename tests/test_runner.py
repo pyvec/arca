@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -35,7 +36,8 @@ from common import PRINTING_FUNCTION
      "kwargs": [1, 2, 3]},
 ])
 def test_definition_corruption(definition):
-    _, file = tempfile.mkstemp()
+    fd, file = tempfile.mkstemp()
+
     file = Path(file)
 
     if isinstance(definition, dict):
@@ -49,6 +51,7 @@ def test_definition_corruption(definition):
     assert output["error"]
     assert output["reason"] == "corrupted_definition"
 
+    os.close(fd)
     file.unlink()
 
 
@@ -59,7 +62,7 @@ def test_definition_corruption(definition):
     ("arca", "Arca.some_random_method"),
 ])
 def test_import_error(module_name, object_name):
-    _, file = tempfile.mkstemp()
+    fd, file = tempfile.mkstemp()
     file = Path(file)
 
     file.write_text(json.dumps({
@@ -74,6 +77,7 @@ def test_import_error(module_name, object_name):
     assert output["error"]
     assert output["reason"] == "import"
 
+    os.close(fd)
     file.unlink()
 
 
@@ -86,7 +90,7 @@ def test_run(mocker, func, result):
     load = mocker.patch("arca._runner.EntryPoint.load")
     load.return_value = func
 
-    _, file = tempfile.mkstemp()
+    fd, file = tempfile.mkstemp()
     file = Path(file)
 
     file.write_text(json.dumps({
@@ -104,6 +108,7 @@ def test_run(mocker, func, result):
         assert output["success"] is False
         assert result.__name__ in output["error"]
 
+    os.close(fd)
     file.unlink()
 
 
@@ -121,7 +126,7 @@ def test_unicode(mocker, args, kwargs, result):
 
     load.return_value = func
 
-    _, file = tempfile.mkstemp()
+    fd, file = tempfile.mkstemp()
     file = Path(file)
 
     file.write_text(Task("library.mod:func", args=args, kwargs=kwargs).json)
@@ -130,6 +135,7 @@ def test_unicode(mocker, args, kwargs, result):
 
     assert Result(output).output == result
 
+    os.close(fd)
     file.unlink()
 
 

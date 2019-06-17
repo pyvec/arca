@@ -1,5 +1,6 @@
 import hashlib
 import json
+import platform
 import re
 from collections import defaultdict
 from datetime import datetime
@@ -139,7 +140,22 @@ class Arca:
         :raise ValueError: If the URL is not valid
         """
         # that should match valid git repos
-        if not isinstance(repo, str) or not re.match(r"^(https?|file)://[\w._\-/~]*[.git]?/?$", repo):
+        valid = True
+
+        url_regex = re.compile(r"^https?://[\w._\-/~]*[.git]?/?$")
+
+        if not isinstance(repo, str):
+            valid = False
+        else:
+            if platform.system() == "Windows":
+                if not url_regex.match(repo) and not re.match(r"file://(localhost)?/[a-zA-Z]:\\[\\\S|*\S]?.*", repo):
+                    valid = False
+
+            else:
+                if not url_regex.match(repo) and not re.match(r"file://[\w._\-/~]*[.git]?/?$", repo):
+                    valid = False
+
+        if not valid:
             raise ValueError(f"{repo} is not a valid http[s] or file:// git repository.")
 
     def repo_id(self, repo: str) -> str:

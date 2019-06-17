@@ -55,7 +55,7 @@ def test_backends(temp_repo_func, backend, requirements_location, file_location)
 
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "Some string"
 
-    filepath.write_text(SECOND_RETURN_STR_FUNCTION)
+    filepath.write_text(SECOND_RETURN_STR_FUNCTION, encoding="utf-8")
     temp_repo_func.repo.create_head("new_branch")
     temp_repo_func.repo.create_tag("test_tag")
     temp_repo_func.repo.index.add([str(filepath)])

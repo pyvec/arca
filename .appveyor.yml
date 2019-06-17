@@ -1,0 +1,19 @@
+environment:
+
+  matrix:
+    - PYTHON: "C:\\Python36"
+#    - PYTHON: "C:\\Python37"
+
+build: off
+
+install:
+  - "%PYTHON%\\python.exe -m pip install -r requirements.txt"
+  - "%PYTHON%\\python.exe setup.py install"
+
+test_script:
+  - "%PYTHON%\\python.exe setup.py test"
+
+branches:
+  only:
+  - master
+  - /release-v[0-9]+/

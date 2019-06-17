@@ -1,3 +1,4 @@
+import platform
 import shutil
 import tempfile
 from pathlib import Path
@@ -16,7 +17,12 @@ def create_temp_repo(file) -> TempRepo:
     git_dir = Path(tempfile.mkdtemp())
     repo = Repo.init(str(git_dir))
 
-    return TempRepo(repo, git_dir, f"file://{git_dir}", "master", git_dir / file)
+    file_url = f"file://{git_dir}"
+
+    if platform.system() == "Windows":
+        file_url = f"file:///{git_dir}"
+
+    return TempRepo(repo, git_dir, file_url, "master", git_dir / file)
 
 
 @pytest.fixture()
@@ -30,6 +36,7 @@ def temp_repo_func():
 
     yield temp_repo
 
+    temp_repo.repo.close()
     shutil.rmtree(str(temp_repo.repo_path))
 
 
@@ -44,4 +51,5 @@ def temp_repo_static():
 
     yield temp_repo
 
+    temp_repo.repo.close()
     shutil.rmtree(str(temp_repo.repo_path))
