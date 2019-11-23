@@ -249,7 +249,7 @@ class DockerBackend(BaseBackend):
             return prefix
 
     def get_arca_base_name(self):
-        return "docker.io/mikicz/arca"
+        return "docker.io/arcaoss/arca"
 
     def get_python_base_tag(self, python_version):
         return f"{arca.__version__}_{python_version}"

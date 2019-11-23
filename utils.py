@@ -39,7 +39,7 @@ class DeployDockerBasesCommand(distutils.cmd.Command):
         backend.check_docker_access()
 
         response = requests.get(
-            "https://hub.docker.com/v2/repositories/mikicz/arca/tags/",
+            "https://hub.docker.com/v2/repositories/arcaoss/arca/tags/",
             params={"page_size": 1000}
         )
         response = response.json()

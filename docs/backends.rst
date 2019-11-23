@@ -83,7 +83,7 @@ This backend runs tasks in docker containers. To use this backend the user runni
 with ``docker`` (see `documentation <https://docs.docker.com/install/linux/linux-postinstall/>`_).
 
 This backend first creates an image with requirements and dependencies installed so the installation only runs once.
-By default the images are based on `custom images <https://hub.docker.com/r/mikicz/arca/tags/>`_, which have Python
+By default the images are based on `custom images <https://hub.docker.com/r/arcaoss/arca/tags/>`_, which have Python
 and several build tools pre-installed.
 These images are based on ``debian`` (slim ``stretch`` version) and use `pyenv <https://github.com/pyenv/pyenv>`_
 to install Python.

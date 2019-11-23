@@ -9,6 +9,9 @@ from common import (RETURN_COLORAMA_VERSION_FUNCTION, BASE_DIR, RETURN_PLATFORM,
                     RETURN_PYTHON_VERSION_FUNCTION, RETURN_ALSAAUDIO_INSTALLED)
 
 
+TEST_REGISTRY = "docker.io/arcaoss/arca-test"
+
+
 def test_keep_container_running(temp_repo_func):
     backend = DockerBackend(verbosity=2, keep_container_running=True)
 
@@ -136,7 +139,7 @@ def test_inherit_image(temp_repo_func):
 
 
 def test_push_to_registry(temp_repo_func, mocker):
-    backend = DockerBackend(verbosity=2, use_registry_name="docker.io/mikicz/arca-test")
+    backend = DockerBackend(verbosity=2, use_registry_name=TEST_REGISTRY)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
     temp_repo_func.file_path.write_text(RETURN_COLORAMA_VERSION_FUNCTION)
@@ -167,12 +170,12 @@ def test_push_to_registry(temp_repo_func, mocker):
     mocker.patch.object(backend, "try_pull_image_from_registry", lambda *args: None)
 
     # untag the image so Arca thinks the images was just built and that it needs to be pushed
-    for image in backend.client.images.list("docker.io/mikicz/arca-test"):
+    for image in backend.client.images.list(TEST_REGISTRY):
         for tag in image.tags:
-            if tag.startswith("docker.io/mikicz/arca-test"):
+            if tag.startswith(TEST_REGISTRY):
                 backend.client.images.remove(tag)
 
-    backend = DockerBackend(verbosity=2, use_registry_name="docker.io/mikicz/arca-test",
+    backend = DockerBackend(verbosity=2, use_registry_name=TEST_REGISTRY,
                             registry_pull_only=True)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
