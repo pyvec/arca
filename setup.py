@@ -31,7 +31,7 @@ setup(
     packages=find_packages(),
     long_description=long_description(),
     install_requires=[
-        "gitpython==2.1.9",
+        "gitpython==3.0.5",
         "dogpile.cache==0.6.5",
         "requests",
         "entrypoints>=0.2.3",
