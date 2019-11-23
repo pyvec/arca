@@ -21,7 +21,7 @@ class DeployDockerBasesCommand(distutils.cmd.Command):
 
         _, pyenv = arca.get_files("https://github.com/pyenv/pyenv.git", "master")
 
-        build_for = re.compile(r"^3\.[67]\.[0-9]+$")
+        build_for = re.compile(r"^3\.[678]\.[0-9]+$")
 
         for path in sorted((pyenv / "plugins/python-build/share/python-build/").iterdir()):
             if path.is_dir():
