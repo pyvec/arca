@@ -13,6 +13,9 @@ from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR
     WAITING_FUNCTION
 
 
+TEST_REGISTRY = "docker.io/arcaoss/arca-test"
+
+
 @pytest.mark.skipif(vagrant is None, reason="Vagrant not installed.")
 @pytest.mark.skipif(os.environ.get("TRAVIS", "false") == "true", reason="Vagrant doesn't work on Travis")
 def test_validation():
@@ -23,29 +26,29 @@ def test_validation():
         Arca(backend=backend)
 
     # validation passes
-    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test")
+    backend = VagrantBackend(use_registry_name=TEST_REGISTRY)
     Arca(backend=backend)
 
     # push must be enabled
-    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", registry_pull_only=True)
+    backend = VagrantBackend(use_registry_name=TEST_REGISTRY, registry_pull_only=True)
     with pytest.raises(ArcaMisconfigured):
         Arca(backend=backend)
 
     # valid different box
-    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", box="hashicorp/precise64")
+    backend = VagrantBackend(use_registry_name=TEST_REGISTRY, box="hashicorp/precise64")
     assert Arca(backend=backend).backend.box == "hashicorp/precise64"
 
     # invalid box
-    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", box="ubuntu rusty64\"")
+    backend = VagrantBackend(use_registry_name=TEST_REGISTRY, box="ubuntu rusty64\"")
     with pytest.raises(ArcaMisconfigured):
         Arca(backend=backend)
 
     # valid different provider
-    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", provider="vmware_fusion")
+    backend = VagrantBackend(use_registry_name=TEST_REGISTRY, provider="vmware_fusion")
     assert Arca(backend=backend).backend.provider == "vmware_fusion"
 
     # invalid provider
-    backend = VagrantBackend(use_registry_name="docker.io/mikicz/arca-test", provider="libvirst\"")
+    backend = VagrantBackend(use_registry_name=TEST_REGISTRY, provider="libvirst\"")
     with pytest.raises(ArcaMisconfigured):
         Arca(backend=backend)
 
@@ -58,7 +61,7 @@ def test_validation():
 @pytest.mark.skipif(vagrant is None, reason="Vagrant not installed.")
 @pytest.mark.skipif(os.environ.get("TRAVIS", "false") == "true", reason="Vagrant doesn't work on Travis")
 def test_vagrant(temp_repo_func, destroy=False):
-    backend = VagrantBackend(verbosity=2, use_registry_name="docker.io/mikicz/arca-test",
+    backend = VagrantBackend(verbosity=2, use_registry_name=TEST_REGISTRY,
                              keep_vm_running=True)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
 
@@ -93,7 +96,7 @@ def test_vagrant(temp_repo_func, destroy=False):
 
     # halt the vm and create a new instance of the backend, to check that the vagrant attribute can be set from existing
     backend.stop_vm()
-    backend = VagrantBackend(verbosity=2, use_registry_name="docker.io/mikicz/arca-test",
+    backend = VagrantBackend(verbosity=2, use_registry_name=TEST_REGISTRY,
                              keep_vm_running=True)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, task).output == "0.3.9"
