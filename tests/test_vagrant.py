@@ -14,7 +14,7 @@ from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR
 
 
 @pytest.mark.skipif(vagrant is None, reason="Vagrant not installed.")
-@pytest.mark.skipif(os.environ.get("TRAVIS", False), reason="Vagrant doesn't work on Travis")
+@pytest.mark.skipif(os.environ.get("TRAVIS", "false") == "true", reason="Vagrant doesn't work on Travis")
 def test_validation():
     backend = VagrantBackend()
 
@@ -56,7 +56,7 @@ def test_validation():
 # If you want to test that even init of the VM works, set ``destroy`` to True, it will destroy the previous one as well.
 # Set to ``False`` by default to bootup time and bandwidth.
 @pytest.mark.skipif(vagrant is None, reason="Vagrant not installed.")
-@pytest.mark.skipif(os.environ.get("TRAVIS", False), reason="Vagrant doesn't work on Travis")
+@pytest.mark.skipif(os.environ.get("TRAVIS", "false") == "true", reason="Vagrant doesn't work on Travis")
 def test_vagrant(temp_repo_func, destroy=False):
     backend = VagrantBackend(verbosity=2, use_registry_name="docker.io/mikicz/arca-test",
                              keep_vm_running=True)
