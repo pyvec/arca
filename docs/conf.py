@@ -22,7 +22,7 @@ import arca  # noqa
 # -- Project information -----------------------------------------------------
 
 project = 'Arca'
-copyright = '2017 - 2018, Mikuláš Poul'
+copyright = '2017 - 2019, Mikuláš Poul'
 author = 'Mikuláš Poul'
 
 # The short X.Y version
