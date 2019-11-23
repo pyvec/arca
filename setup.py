@@ -20,7 +20,7 @@ def long_description():
 
 setup(
     name="arca",
-    version="0.3.1",
+    version="0.3.2",
     author="Mikuláš Poul",
     author_email="mikulaspoul@gmail.com",
     description="A library for running Python functions (callables) from git repositories "

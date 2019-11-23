@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.3.2 (2019-11-23)
+******************
+
+Changes:
+  * Moved the project under organisation Pyvec.
+  * Changed the Docker registry for the base images to `arcaoss/arca`.
+  * Fixed unicode paths to repositories (`#60 <https://github.com/mikicz/pyvec/issues/60>`_)
+
 0.3.1 (2018-11-16)
 ******************
 
@@ -9,7 +17,7 @@ Raising a Arca exception when building of a Docker image fails. (`#56 <https://g
 0.3.0 (2018-08-25)
 ******************
 
-Changes
+Changes:
   * Removed CurrentEnvironmentBackend's capability to process requirements - all requirements are ignored. (**BACKWARDS INCOMPATIBLE**)
   * Added support for installing requirements using `Pipenv <https://docs.pipenv.org/>`_.
     The directory containing ``Pipfile`` and ``Pipfile.lock`` is set by the backend option **pipfile_location**, by default the root of the repository is selected.
