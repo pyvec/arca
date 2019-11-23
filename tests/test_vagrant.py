@@ -2,7 +2,10 @@ import os
 import shutil
 
 import pytest
-from vagrant import Vagrant
+try:
+    import vagrant
+except ImportError:
+    vagrant = None
 
 from arca import VagrantBackend, Arca, Task
 from arca.exceptions import ArcaMisconfigured, BuildTimeoutError
@@ -10,10 +13,9 @@ from common import BASE_DIR, RETURN_COLORAMA_VERSION_FUNCTION, SECOND_RETURN_STR
     WAITING_FUNCTION
 
 
+@pytest.mark.skipif(vagrant is None, reason="Vagrant not installed.")
+@pytest.mark.skipif(os.environ.get("TRAVIS", False), reason="Vagrant doesn't work on Travis")
 def test_validation():
-    if os.environ.get("TRAVIS", False):
-        pytest.skip("Vagrant doesn't work on Travis")
-
     backend = VagrantBackend()
 
     # VagrantBackend requires `push_to_registry`
@@ -53,10 +55,9 @@ def test_validation():
 # Also a nonexistant box could be tested if it raises an exception.
 # If you want to test that even init of the VM works, set ``destroy`` to True, it will destroy the previous one as well.
 # Set to ``False`` by default to bootup time and bandwidth.
+@pytest.mark.skipif(vagrant is None, reason="Vagrant not installed.")
+@pytest.mark.skipif(os.environ.get("TRAVIS", False), reason="Vagrant doesn't work on Travis")
 def test_vagrant(temp_repo_func, destroy=False):
-    if os.environ.get("TRAVIS", False):
-        pytest.skip("Vagrant doesn't work on Travis")
-
     backend = VagrantBackend(verbosity=2, use_registry_name="docker.io/mikicz/arca-test",
                              keep_vm_running=True)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
@@ -64,8 +65,8 @@ def test_vagrant(temp_repo_func, destroy=False):
     if destroy:
         vagrant_location = backend.get_vm_location()
         if vagrant_location.exists():
-            vagrant = Vagrant(vagrant_location)
-            vagrant.destroy()
+            vagrant_instance = vagrant.Vagrant(vagrant_location)
+            vagrant_instance.destroy()
         shutil.rmtree(vagrant_location)
 
     # master branch - return colorama version
