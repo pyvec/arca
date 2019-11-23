@@ -86,7 +86,7 @@ html_theme_options = {
 
 html_context = {
     "display_github": True,
-    "github_user": "mikicz",  # Username
+    "github_user": "pyvec",  # Username
     "github_repo": "arca",  # Repo name
     "github_version": "master",  # Version
     "conf_py_path": "/docs/",  # Path in the checkout to the docs root

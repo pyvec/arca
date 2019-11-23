@@ -2,7 +2,7 @@ import os
 
 
 if os.environ.get("TRAVIS", False):
-    BASE_DIR = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "mikicz/arca"))
+    BASE_DIR = "/home/travis/build/{}/test_loc".format(os.environ.get("TRAVIS_REPO_SLUG", "pyvec/arca"))
 else:
     BASE_DIR = "/tmp/arca/test"
 

@@ -6,17 +6,17 @@
 Arca's documentation!
 =====================
 
-.. image:: https://img.shields.io/travis/mikicz/arca.svg
-   :target: https://travis-ci.org/mikicz/arca
+.. image:: https://img.shields.io/travis/pyvec/arca.svg
+   :target: https://travis-ci.org/pyvec/arca
 
-.. image:: https://img.shields.io/codecov/c/github/mikicz/arca.svg
-   :target: https://codecov.io/gh/mikicz/arca
+.. image:: https://img.shields.io/codecov/c/github/pyvec/arca.svg
+   :target: https://codecov.io/gh/pyvec/arca
 
 .. image:: https://img.shields.io/pypi/v/arca.svg
    :target: https://pypi.org/project/arca/
 
-.. image:: https://img.shields.io/github/license/mikicz/arca.svg?style=flat
-   :target: https://github.com/mikicz/arca/blob/master/LICENSE
+.. image:: https://img.shields.io/github/license/pyvec/arca.svg?style=flat
+   :target: https://github.com/pyvec/arca/blob/master/LICENSE
 
 .. image:: https://img.shields.io/readthedocs/arca.svg
    :target: https://arca.readthedocs.io/

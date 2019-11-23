@@ -41,6 +41,6 @@ Or if you wish to install the upstream version:
 
 .. code-block:: bash
 
-  python -m pip install git+https://github.com/mikicz/arca.git#egg=arca
-  python -m pip install git+https://github.com/mikicz/arca.git#egg=arca[docker]
-  python -m pip install git+https://github.com/mikicz/arca.git#egg=arca[vagrant]
+  python -m pip install git+https://github.com/pyvec/arca.git#egg=arca
+  python -m pip install git+https://github.com/pyvec/arca.git#egg=arca[docker]
+  python -m pip install git+https://github.com/pyvec/arca.git#egg=arca[vagrant]

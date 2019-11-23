@@ -1,17 +1,17 @@
 Arca
 ====
 
-.. image:: https://img.shields.io/travis/mikicz/arca.svg
-   :target: https://travis-ci.org/mikicz/arca
+.. image:: https://img.shields.io/travis/pyvec/arca.svg
+   :target: https://travis-ci.org/pyvec/arca
 
-.. image:: https://img.shields.io/codecov/c/github/mikicz/arca.svg
-   :target: https://codecov.io/gh/mikicz/arca
+.. image:: https://img.shields.io/codecov/c/github/pyvec/arca.svg
+   :target: https://codecov.io/gh/pyvec/arca
 
 .. image:: https://img.shields.io/pypi/v/arca.svg
    :target: https://pypi.org/project/arca/
 
-.. image:: https://img.shields.io/github/license/mikicz/arca.svg?style=flat
-   :target: https://github.com/mikicz/arca/blob/master/LICENSE
+.. image:: https://img.shields.io/github/license/pyvec/arca.svg?style=flat
+   :target: https://github.com/pyvec/arca/blob/master/LICENSE
 
 .. image:: https://img.shields.io/readthedocs/arca.svg
    :target: https://arca.readthedocs.io/
@@ -69,9 +69,9 @@ Or if you wish to install the upstream version:
 
 .. code-block:: bash
 
-  python -m pip install git+https://github.com/mikicz/arca.git#egg=arca
-  python -m pip install git+https://github.com/mikicz/arca.git#egg=arca[docker]
-  python -m pip install git+https://github.com/mikicz/arca.git#egg=arca[vagrant]
+  python -m pip install git+https://github.com/pyvec/arca.git#egg=arca
+  python -m pip install git+https://github.com/pyvec/arca.git#egg=arca[docker]
+  python -m pip install git+https://github.com/pyvec/arca.git#egg=arca[vagrant]
 
 Example
 +++++++
@@ -130,20 +130,20 @@ docker images is also tested and vagrant, in general, takes a long time to set u
 Contributing
 ************
 
-Contributions are welcomed! Feel free to open a issue or submit a pull request on `GitHub <https://github.com/mikicz/arca>`_!
+Contributions are welcomed! Feel free to open a issue or submit a pull request on `GitHub <https://github.com/pyvec/arca>`_!
 
 .. split_here
 
 Links
 *****
 
-- Repository: `GitHub <https://github.com/mikicz/arca>`_
+- Repository: `GitHub <https://github.com/pyvec/arca>`_
 - PyPi package: `arca <https://pypi.python.org/pypi/arca>`_
-- CI: `Travis <https://travis-ci.org/mikicz/arca>`_
-- Test coverage: `Codecov <https://codecov.io/gh/mikicz/arca>`_
+- CI: `Travis <https://travis-ci.org/pyvec/arca>`_
+- Test coverage: `Codecov <https://codecov.io/gh/pyvec/arca>`_
 - Documentation: `Read The Docs <https://arca.readthedocs.io/>`_
 
 License
 *******
 
-This project is licensed under the MIT License - see the `LICENSE <https://github.com/mikicz/arca/blob/master/LICENSE>`_ file for details.
+This project is licensed under the MIT License - see the `LICENSE <https://github.com/pyvec/arca/blob/master/LICENSE>`_ file for details.

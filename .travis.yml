@@ -1,7 +1,7 @@
 env:
   global:
   - DOCKER_HUB_USERNAME=arcaoss
-  - secure: Eg+cSMQWR+wwPumHay12C7EGV82MZqqw5BiS9NMdveNeNAJsb29ykDR52JL39vZNtHNli8iaykBXU9L+2KhkSIExnQevi0lptMdENKSNvGMp+QU4VOcwqXhQ124jrQhDdl1AcHdnsk84xBIAFV/70sCljOw/SktCYUbHX0tZK5XXOeWNcuLEhWIz0MxZuRgGIsGLK8of07b8uPrnNFCm5zHaTa0w9IGASVWHW6sM+O4RZLjKpFfn9vI/kdvbQv/3I+UePXbU4lSglWXzVMSD5Z0gjMs2ppMMefn8f53IHTuyCiFiOV/Kl/PWs6XCCp6G1T1uhrTx/KYGTYYa/Nic8caoAGGFYgjsQyTfGiiV8lj6b91kPCRte3FrUvtrwWl/fmMLMAZpztowQYWUiP+9SXkYOIV+Nm4iRNJ6Px2oS/lV40uBIOmipIApC+xU7WH0asxVkY+SsXUXZtgzFbzyWKddnsVfYCxBMOj/+1wG0l58ZQNcbkMqWXQuaBHywwqIkB56QMnFmnsaa21uDg9iS1HEx2jXrOQCMIcXaG8Xu6fDR9VQ1IDapJDT5eqi/WAm4WcfB3g8qnopKP/oAK0qdJCqW4AgSS3tMd/TeqKzbw1aAY3iLDZ1h7NwTerNLc9wsHv7FE/eMOV7wNuYXw6+jj/H5V+b217muiy38cEMw3E=
+  - secure: j0+kOTtkmv7vaB+nQVhYWaCpNsqPi3cfIz6rHVux3pEgAaJDn7ML6Dhdo8hzP3+duVoPHfttOsJSrRrnUK85s3WuU0y2RAds3X89+Rnp0lsf6rn/Pt6eQ01lXDee2ZUGJp4tdDQJUn30rXHEKy8dWYJTma9nQLJ9V0K4DuYMkmTWKrmxGD+95bFkSdRP7fBJ3fc1HCEqNQP/otOPrG/P5i2eKTRsvE2iIg3vMPcMoTSZgMUu4ZTco9AGH+e1r7rfeF9ttjA8kDzWqbhDAO+L4+BrFyVNKPwq/LPyqFvi/Q7hp3NRehlX7J0ySQ/+sxRWG5K7o2ACGu9+7M1+8rACFG7G+Hw3dvQPc1SwSYi8fBCwouXUfEXJPvXPmvHmF6s2mBZ6ik/FIpJTBTrYQcdWQFgam+zw/j0UnKq2BUCujfPqZx7P3flqLSaG734P20jV+E4Mnl2Qwp10uPqEBg0I6fVVFWC5CgyYzMtLgJRDltnOH+Bec1+UdWJCnunmr3JSdaqb1Y58O6t7L5pXulCjGUq+vnU5rAizIHp5P9ky9EUnWRB1gP9VuKzRJZcuPLIwJLZIYMbrO2DyutKY0oWk5Uun8p6F7jYBzaWxlZJKUt2xmCW/P+i0+iTDEjzPi+R/JopUEw0djPSK96kb7PRXEo0+Cmzusl6TCVHxNuUiFK0=
 language: python
 dist: xenial
 python:
@@ -40,5 +40,5 @@ deploy:
   script: python setup.py deploy_docker_bases
   on:
     branch: master
-    repo: mikicz/arca
+    repo: pyvec/arca
     python: '3.7'

@@ -27,7 +27,7 @@ setup(
                 "in various states of isolation with integrating caching.",
     keywords=["sandboxing", "git", "docker", "vagrant"],
     license="MIT",
-    url="https://github.com/mikicz/arca",
+    url="https://github.com/pyvec/arca",
     packages=find_packages(),
     long_description=long_description(),
     install_requires=[
@@ -69,7 +69,7 @@ setup(
     },
     project_urls={
         "Documentation": "https://arca.readthedocs.io/",
-        "CI": "https://travis-ci.org/mikicz/arca",
-        "Test coverage": "https://codecov.io/gh/mikicz/arca",
+        "CI": "https://travis-ci.org/pyvec/arca",
+        "Test coverage": "https://codecov.io/gh/pyvec/arca",
     },
 )
