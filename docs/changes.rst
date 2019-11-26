@@ -7,7 +7,7 @@ Changes
 Changes:
   * Moved the project under organisation Pyvec.
   * Changed the Docker registry for the base images to `arcaoss/arca`.
-  * Fixed unicode paths to repositories (`#60 <https://github.com/mikicz/pyvec/issues/60>`_)
+  * Fixed unicode paths to repositories (`#60 <https://github.com/pyvec/arca/issues/60>`_)
 
 0.3.1 (2018-11-16)
 ******************
