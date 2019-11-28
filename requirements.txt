@@ -12,5 +12,5 @@ entrypoints>=0.2.3
 flake8
 sphinx
 sphinx-autobuild
-sphinx_rtd_theme
+sphinx_rtd_theme==0.4.3
 cached-property
