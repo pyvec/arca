@@ -1,5 +1,5 @@
 gitpython
-pytest
+pytest==5.3.1
 dogpile.cache==0.6.5
 docker~=3.1.0
 pytest-flake8
