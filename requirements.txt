@@ -6,7 +6,7 @@ pytest-flake8
 pytest-cov
 pytest-mock
 requests
-python-vagrant
+python-vagrant==0.5.15
 fabric3
 entrypoints>=0.2.3
 flake8
