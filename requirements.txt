@@ -13,4 +13,4 @@ flake8
 sphinx
 sphinx-autobuild
 sphinx_rtd_theme
-cached-property
+cached-property==1.5.1
