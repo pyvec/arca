@@ -1,4 +1,4 @@
-gitpython
+gitpython==3.0.5
 pytest
 dogpile.cache==0.6.5
 docker~=3.1.0
