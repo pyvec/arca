@@ -11,6 +11,6 @@ fabric3
 entrypoints>=0.2.3
 flake8
 sphinx
-sphinx-autobuild
+sphinx-autobuild==0.7.1
 sphinx_rtd_theme
 cached-property
