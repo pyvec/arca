@@ -7,7 +7,7 @@ pytest-cov
 pytest-mock
 requests
 python-vagrant
-fabric3
+fabric3==1.14.post1
 entrypoints>=0.2.3
 flake8
 sphinx
