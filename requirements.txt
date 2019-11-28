@@ -5,7 +5,7 @@ docker~=3.1.0
 pytest-flake8
 pytest-cov
 pytest-mock
-requests
+requests==2.22.0
 python-vagrant
 fabric3
 entrypoints>=0.2.3
