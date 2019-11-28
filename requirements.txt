@@ -4,7 +4,7 @@ dogpile.cache==0.6.5
 docker~=3.1.0
 pytest-flake8
 pytest-cov
-pytest-mock
+pytest-mock==1.12.1
 requests
 python-vagrant
 fabric3
