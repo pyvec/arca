@@ -9,7 +9,7 @@ requests
 python-vagrant
 fabric3
 entrypoints>=0.2.3
-flake8
+flake8==3.7.9
 sphinx
 sphinx-autobuild
 sphinx_rtd_theme
