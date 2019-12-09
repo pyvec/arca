@@ -21,7 +21,8 @@ install:
 - pip install -r requirements.txt  # so travis pip cache can actually cache something
 - python setup.py install
 before_script:
-- docker login -u "$DOCKER_HUB_USERNAME" -p "$DOCKER_HUB_PASSWORD"
+- 'if [ -n "$DOCKER_HUB_PASSWORD" ]; then docker login -u "$DOCKER_HUB_USERNAME" -p "$DOCKER_HUB_PASSWORD"; fi'
+- 'if [ -z "$DOCKER_HUB_PASSWORD" ]; then export SKIP_PUSH_TEST=true; fi'
 script:
 - python setup.py test 2>error.log
 - mypy arca || echo "Optional MyPy check failed"

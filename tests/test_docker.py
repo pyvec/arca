@@ -1,3 +1,4 @@
+import os
 import platform
 from pathlib import Path
 
@@ -138,6 +139,8 @@ def test_inherit_image(temp_repo_func):
     assert arca.run(temp_repo_func.url, temp_repo_func.branch, colorama_task).output == "0.3.9"
 
 
+@pytest.mark.skipif(os.environ.get("SKIP_PUSH_TEST", "false") == "true",
+                    reason="Encrypted variables not available in pull requests.")
 def test_push_to_registry(temp_repo_func, mocker):
     backend = DockerBackend(verbosity=2, use_registry_name=TEST_REGISTRY)
     arca = Arca(backend=backend, base_dir=BASE_DIR)
