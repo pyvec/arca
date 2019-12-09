@@ -85,7 +85,7 @@ def test_current_environment_backend(temp_repo_func, requirements_location, file
     # test that tags work as well
     assert arca.run(temp_repo_func.url, "test_tag", task).output == "Some string"
 
-    temp_repo_func.repo.branches.master.checkout()
+    temp_repo_func.repo.branches[temp_repo_func.branch].checkout()
 
     requirements_path = temp_repo_func.repo_path / backend.requirements_location
     requirements_path.parent.mkdir(exist_ok=True, parents=True)

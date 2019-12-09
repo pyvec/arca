@@ -106,7 +106,7 @@ def test_vagrant(temp_repo_func, destroy=False):
     assert arca.run(temp_repo_func.url, "branch", task).output == TEST_UNICODE
 
     # test timeout
-    temp_repo_func.repo.branches.master.checkout()
+    temp_repo_func.repo.branches[temp_repo_func.branch].checkout()
     temp_repo_func.file_path.write_text(WAITING_FUNCTION)
     temp_repo_func.repo.index.add([str(temp_repo_func.file_path)])
     temp_repo_func.repo.index.commit("Waiting function")
