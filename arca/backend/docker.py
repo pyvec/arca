@@ -4,6 +4,7 @@ import platform
 import signal
 import tarfile
 import time
+import re
 
 from io import BytesIO
 from pathlib import Path
@@ -732,9 +733,13 @@ class DockerBackend(BaseBackend):
     def get_container_name(self, repo: str, branch: str, git_repo: Repo):
         """ Returns the name of the container used for the repo.
         """
+
+        # Remove characters that aren't valid in Docker container names
+        branch_string = re.sub('[^a-zA-Z0-9_.-]+', '-', branch)
+
         return "arca_{}_{}_{}".format(
             self._arca.repo_id(repo),
-            branch,
+            branch_string,
             self._arca.current_git_hash(repo, branch, git_repo, short=True)
         )
 
