@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.3.3 (2019-12-10)
+******************
+
+Changes:
+  * Updated dependencies
+  * Allowed branches with slashes  (`#79 <https://github.com/pyvec/arca/issues/79>`_)
+
 0.3.2 (2019-11-23)
 ******************
 
