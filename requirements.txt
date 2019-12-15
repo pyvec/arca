@@ -12,7 +12,7 @@ chardet==3.0.4            # via requests
 cryptography==2.8         # via paramiko
 decorator==4.4.1          # via dogpile.cache
 docker-pycreds==0.4.0     # via docker
-docker==3.2.1
+docker==4.1.0
 dogpile.cache==0.9.0
 entrypoints==0.3
 fabric3==1.14.post1
