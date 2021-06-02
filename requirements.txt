@@ -26,5 +26,5 @@ python-vagrant==0.5.15
 requests==2.22.0          # via docker
 six==1.13.0               # via bcrypt, cryptography, docker, docker-pycreds, fabric3, pynacl, websocket-client
 smmap2==2.0.5             # via gitdb2
-urllib3==1.25.7           # via requests
+urllib3==1.26.5           # via requests
 websocket-client==0.56.0  # via docker
