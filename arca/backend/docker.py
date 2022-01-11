@@ -305,15 +305,17 @@ class DockerBackend(BaseBackend):
 
                 dockerfile_file.unlink()
         except docker.errors.BuildError as e:
+            build_log = []
             for line in e.build_log:
                 if isinstance(line, dict) and line.get("errorDetail") and line["errorDetail"].get("code") in {124, 143}:
                     raise BuildTimeoutError(f"Installing of requirements timeouted after "
                                             f"{self.requirements_timeout} seconds.")
+                build_log.append(line)
 
             logger.exception(e)
 
             raise BuildError("Building docker image failed, see extra info for details.", extra_info={
-                "build_log": e.build_log
+                "build_log": build_log
             })
 
     def get_arca_base(self, pull=True):
