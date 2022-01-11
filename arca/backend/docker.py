@@ -332,7 +332,7 @@ class DockerBackend(BaseBackend):
             RUN apt-get update && \
                 apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
                                    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-                                   xz-utils tk-dev libffi-dev git locales && \
+                                   xz-utils tk-dev libffi-dev git locales libxml2-dev libxmlsec1-dev liblzma-dev && \
                 apt-get clean
 
             RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen
@@ -351,6 +351,7 @@ class DockerBackend(BaseBackend):
                   rm ~/pyenv-installer && \
                   echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /home/arca/.bash_profile && \
                   echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> /home/arca/.bash_profile && \
+                  echo 'eval "$(pyenv init --path)"' >> /home/arca/.bash_profile && \
                   echo 'eval "$(pyenv init -)"' >> /home/arca/.bash_profile
 
             USER root
@@ -385,7 +386,6 @@ class DockerBackend(BaseBackend):
                 RUN pyenv update && \
                     pyenv install {python_version}
                 ENV PYENV_VERSION {python_version}
-                ENV PATH "/home/arca/.pyenv/shims:$PATH"
                 RUN pip install --upgrade pip setuptools pipenv
                 CMD bash -i
             """
