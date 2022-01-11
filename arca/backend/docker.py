@@ -328,7 +328,7 @@ class DockerBackend(BaseBackend):
 
         pyenv_installer = "https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer"
         dockerfile = f"""
-            FROM debian:stretch-slim
+            FROM debian:bullseye-slim
             RUN apt-get update && \
                 apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
                                    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
