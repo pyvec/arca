@@ -6,4 +6,4 @@ from .task import Task
 
 __all__ = ["Arca", "BaseBackend", "VenvBackend", "DockerBackend", "Result", "Task", "CurrentEnvironmentBackend",
            "VagrantBackend"]
-__version__ = "0.3.3"
+__version__ = "0.4.0"

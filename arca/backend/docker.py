@@ -305,15 +305,17 @@ class DockerBackend(BaseBackend):
 
                 dockerfile_file.unlink()
         except docker.errors.BuildError as e:
+            build_log = []
             for line in e.build_log:
                 if isinstance(line, dict) and line.get("errorDetail") and line["errorDetail"].get("code") in {124, 143}:
                     raise BuildTimeoutError(f"Installing of requirements timeouted after "
                                             f"{self.requirements_timeout} seconds.")
+                build_log.append(line)
 
             logger.exception(e)
 
             raise BuildError("Building docker image failed, see extra info for details.", extra_info={
-                "build_log": e.build_log
+                "build_log": build_log
             })
 
     def get_arca_base(self, pull=True):
@@ -326,11 +328,11 @@ class DockerBackend(BaseBackend):
 
         pyenv_installer = "https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer"
         dockerfile = f"""
-            FROM debian:stretch-slim
+            FROM debian:bullseye-slim
             RUN apt-get update && \
                 apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
                                    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-                                   xz-utils tk-dev libffi-dev git locales && \
+                                   xz-utils tk-dev libffi-dev git locales libxml2-dev libxmlsec1-dev liblzma-dev && \
                 apt-get clean
 
             RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen
@@ -349,6 +351,7 @@ class DockerBackend(BaseBackend):
                   rm ~/pyenv-installer && \
                   echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /home/arca/.bash_profile && \
                   echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> /home/arca/.bash_profile && \
+                  echo 'eval "$(pyenv init --path)"' >> /home/arca/.bash_profile && \
                   echo 'eval "$(pyenv init -)"' >> /home/arca/.bash_profile
 
             USER root
@@ -383,7 +386,6 @@ class DockerBackend(BaseBackend):
                 RUN pyenv update && \
                     pyenv install {python_version}
                 ENV PYENV_VERSION {python_version}
-                ENV PATH "/home/arca/.pyenv/shims:$PATH"
                 RUN pip install --upgrade pip setuptools pipenv
                 CMD bash -i
             """

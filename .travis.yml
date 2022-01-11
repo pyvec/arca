@@ -13,7 +13,6 @@ cache:
 - pip
 notifications:
   email: false
-sudo: required
 services:
 - docker
 install:
@@ -37,7 +36,6 @@ branches:
   - /release-v[0-9]+/
 deploy:
   provider: script
-  skip_cleanup: true
   script: python setup.py deploy_docker_bases
   on:
     branch: master

@@ -85,7 +85,7 @@ with ``docker`` (see `documentation <https://docs.docker.com/install/linux/linux
 This backend first creates an image with requirements and dependencies installed so the installation only runs once.
 By default the images are based on `custom images <https://hub.docker.com/r/arcaoss/arca/tags/>`_, which have Python
 and several build tools pre-installed.
-These images are based on ``debian`` (slim ``stretch`` version) and use `pyenv <https://github.com/pyenv/pyenv>`_
+These images are based on ``debian`` (slim ``bullseye`` version) and use `pyenv <https://github.com/pyenv/pyenv>`_
 to install Python.
 You can specify you want to base your images on a different image with the ``inherit_image`` setting.
 
