@@ -9,7 +9,7 @@ cached-property==1.5.1
 certifi==2019.11.28       # via requests
 cffi==1.13.2              # via bcrypt, cryptography, pynacl
 chardet==3.0.4            # via requests
-cryptography==2.8         # via paramiko
+cryptography==39.0.1         # via paramiko
 decorator==4.4.1          # via dogpile.cache
 docker-pycreds==0.4.0     # via docker
 docker==3.2.1
